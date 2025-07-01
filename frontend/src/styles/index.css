@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/* -------------------------------------------------
+   Global design tokens and base styles
+   -------------------------------------------------*/
+
+/* Modern, legible font */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+/* CSS variables for consistent theming */
+:root {
+	--color-primary: #4f46e5; /* indigo-600 */
+	--color-secondary: #0ea5e9; /* sky-500    */
+	--color-accent: #10b981; /* emerald-500 */
+	--color-bg: #f9fafb; /* gray-50    */
+	--color-bg-dark: #0f172a; /* slate-900  */
+	--radius-base: 0.5rem;
+	--transition-base: 150ms ease-in-out;
+}
+
+/* Dark‑mode overrides */
+.dark {
+	--color-bg: var(--color-bg-dark);
+	--color-text: #f1f5f9; /* slate-100  */
+}
+
+/* Base element styles */
+body {
+	@apply bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100 antialiased;
+	font-family: "Inter", sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	@apply font-semibold tracking-tight;
+}
+
+/* Force full‑viewport canvas */
+html,
+body,
+#root {
+	@apply w-full h-full;
+}
+
+/* Headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	@apply font-semibold tracking-tight;
+}
+
+/* Layout helper */
+.container {
+	@apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+/* Card utility */
+.card {
+	@apply rounded-lg shadow-sm bg-white dark:bg-slate-800 p-6 border border-gray-100 dark:border-slate-700;
+}
+
+/* Primary button utility */
+.btn-primary {
+	@apply inline-flex items-center gap-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-medium transition-colors;
+}
+
+/* Scrollbar styling (WebKit) */
+::-webkit-scrollbar {
+	width: 8px;
+}
+::-webkit-scrollbar-thumb {
+	@apply bg-gray-300 dark:bg-slate-700 rounded;
+}
+::-webkit-scrollbar-thumb:hover {
+	@apply bg-gray-400 dark:bg-slate-600;
+}

@@ -1,0 +1,2423 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/vehicule-autonome/"
+     xml:base="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/vehicule-autonome/"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:vehicule-autonome="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#">
+    <owl:Ontology rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/vehicule-autonome">
+        <rdfs:comment></rdfs:comment>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#adaptéA -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#adaptéA">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#capteursEntrées -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#capteursEntrées">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#compatibilitéCapteurs -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#compatibilitéCapteurs">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#developpe -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#developpe">
+        <owl:inverseOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#développéPar"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#développéPar -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#développéPar">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#exploite -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#exploite">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#intégrationAlgorithmesIA -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#intégrationAlgorithmesIA">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeIA"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#nécessiteConformité -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#nécessiteConformité">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Réglementation"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#robusteFaceÀ -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#robusteFaceÀ">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionsLuminosité"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#sensibleÀ -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#sensibleÀ">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionsLuminosité"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#utilise -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#utilise">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/2002/07/owl#topObjectProperty"/>
+        <owl:inverseOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#utiliséDans"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Véhicule"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#utiliséDans -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#utiliséDans">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Véhicule"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Data properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Avantage -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Avantage">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/2002/07/owl#topDataProperty"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Fonctionnalités -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Fonctionnalités">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#avantageFusion -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#avantageFusion">
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#champDeVision -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#champDeVision">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#délaiPrédiction -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#délaiPrédiction">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#fréquenceImages -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#fréquenceImages">
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#gainPrécision -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#gainPrécision">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#implémentationTechnique -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#implémentationTechnique">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#indicateursPerformance -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#indicateursPerformance">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#latenceFusion -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#latenceFusion">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#niveauDAutonomieCible -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#niveauDAutonomieCible">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#nomCommercial -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#nomCommercial">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#portéeDétection -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#portéeDétection">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#précisionMoyenne -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#précisionMoyenne">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#réglementationCible -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#réglementationCible">
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#résolution -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#résolution">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/2002/07/owl#topDataProperty"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#scénariosPrivilégiés -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#scénariosPrivilégiés">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#source -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#source">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VehiculeAutonome"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#anyURI"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#spectre -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#spectre">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/2002/07/owl#topDataProperty"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#tauxPrédictionPannes -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#tauxPrédictionPannes">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#tempsInférence -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#tempsInférence">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#typeDeDonnéesEntrée -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#typeDeDonnéesEntrée">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#typeDeDonnéesFournies -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#typeDeDonnéesFournies">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#typeObjetsDétectés -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#typeObjetsDétectés">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- ==================================== -->
+    <!--            COMMENTAIRE               -->
+    <!-- ==================================== -->
+
+    <!-- Classe Commentaire -->
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Commentaire">
+        <rdfs:label xml:lang="fr">Commentaire</rdfs:label>
+    </owl:Class>
+
+    <!-- Propriétés de données du commentaire -->
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#texteCommentaire">
+        <rdfs:label xml:lang="fr">texteCommentaire</rdfs:label>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Commentaire"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#dateCommentaire">
+        <rdfs:label xml:lang="fr">dateCommentaire</rdfs:label>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Commentaire"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#dateTime"/>
+    </owl:DatatypeProperty>
+
+    <!-- Propriété objet vers l'auteur -->
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#auteurCommentaire">
+        <rdfs:label xml:lang="fr">auteurCommentaire</rdfs:label>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Commentaire"/>
+        <rdfs:range  rdf:resource="http://xmlns.com/foaf/0.1/Person"/>
+    </owl:ObjectProperty>
+
+    <!-- Lien générique entre n'importe quel individu et ses commentaires -->
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#hasCommentaire">
+        <rdfs:label xml:lang="fr">hasCommentaire</rdfs:label>
+        <rdfs:domain rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+        <rdfs:range  rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Commentaire"/>
+        <owl:inverseOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#commentaireDe"/>
+    </owl:ObjectProperty>
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#commentaireDe">
+        <rdfs:label xml:lang="fr">commentaireDe</rdfs:label>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Commentaire"/>
+        <rdfs:range  rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
+    </owl:ObjectProperty>
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur">
+        <rdfs:subClassOf>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VehiculeAutonome"/>
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#developpe"/>
+                        <owl:someValuesFrom>
+                            <owl:Class>
+                                <owl:unionOf rdf:parseType="Collection">
+                                    <rdf:Description rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+                                    <rdf:Description rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Véhicule"/>
+                                </owl:unionOf>
+                            </owl:Class>
+                        </owl:someValuesFrom>
+                    </owl:Restriction>
+                </owl:intersectionOf>
+            </owl:Class>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeIA"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeIA"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#capteursEntrées"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeIA -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeIA">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeIA"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurHybrideRadarLiDAR -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurHybrideRadarLiDAR">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurInfrarouge -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurInfrarouge">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur"/>
+    </owl:Class>
+    
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur"/>
+    </owl:Class>
+    
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurRadar -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurRadar">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Capteur"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CommunicationV2X -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CommunicationV2X">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VehiculeAutonome"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VehiculeAutonome"/>
+        <rdfs:subClassOf>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#adaptéA"/>
+                        <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Environnement"/>
+                    </owl:Restriction>
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#robusteFaceÀ"/>
+                        <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Environnement"/>
+                    </owl:Restriction>
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#sensibleÀ"/>
+                        <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Environnement"/>
+                    </owl:Restriction>
+                </owl:intersectionOf>
+            </owl:Class>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#utiliséDans"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Véhicule"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#développéPar"/>
+                <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Environnement"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionsLuminosité -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionsLuminosité">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Environnement"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Constructeur -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Constructeur">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Environnement -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Environnement">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VehiculeAutonome"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Environnement"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GrandConstructeur -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GrandConstructeur">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Logiciel -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Logiciel">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Logiciel"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#intégrationAlgorithmesIA"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeIA"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Logiciel"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#exploite"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Réglementation -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Réglementation">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VehiculeAutonome"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VehiculeAutonome -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VehiculeAutonome"/>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Véhicule -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Véhicule">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VehiculeAutonome"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#utilise"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ComposantTechnique"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#développéPar"/>
+                <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau2 -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau2">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Véhicule"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau3 -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau3">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Véhicule"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau4 -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau4">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Véhicule"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#nécessiteConformité"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Réglementation"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau5 -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau5">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Véhicule"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#nécessiteConformité"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Réglementation"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Individuals
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <!-- ==================================== -->
+    <!--             INDIVIDUS                -->
+    <!--  Groupe 1 : Véhicules niveaux 2‑5    -->
+    <!-- ==================================== -->
+
+    <!-- =====  Auteurs des commentaires  ===== -->
+    <foaf:Person rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#UserAlice">
+        <foaf:name>Alice Martin</foaf:name>
+    </foaf:Person>
+
+    <foaf:Person rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#UserBob">
+        <foaf:name>Bob Mathieu</foaf:name>
+    </foaf:Person>
+
+    <foaf:Person rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#UserCharlie">
+        <foaf:name>Charlie Nguyen</foaf:name>
+    </foaf:Person>
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva4D -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva4D">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Autoroute"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneSemiUrbaine"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeLégère"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Grêle"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:avantageFusion>Perception 4D</vehicule-autonome:avantageFusion>
+        <vehicule-autonome:indicateursPerformance>FMCW, mesure de vélocité intégrée</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Aeva 4D LiDAR-Radar</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~250m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.aeva.com/aeries-ii/</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points 3D + informations vitesse relative</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aptiv -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aptiv">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivConnectedServices -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivConnectedServices">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aptiv"/>
+        <vehicule-autonome:exploite rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivFleetCare"/>
+        <vehicule-autonome:Avantage>Aide les constructeurs et flottes à maintenir la fiabilité de leurs véhicules, améliore l’expérience client</vehicule-autonome:Avantage>
+        <vehicule-autonome:Fonctionnalités>Identification précoce des défaillances potentielles, planification d’entretiens ciblés, réduction des coûts de maintenance</vehicule-autonome:Fonctionnalités>
+        <vehicule-autonome:nomCommercial>Aptiv Connected Services</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:typeDeDonnéesEntrée>Historique des pannes, conditions routières, usage des composants, données télématiques</vehicule-autonome:typeDeDonnéesEntrée>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivESR -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivESR">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurRadar"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Autoroute"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aptiv"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumière"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Fiable en multi-cibles, bonne classification objets</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Aptiv ESR</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~200m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://hexagondownloads.blob.core.windows.net/public/AutonomouStuff/wp-content/uploads/2020/10/aptiv-esr-25-24v-datasheet.pdf</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de données radar, suivi simultané de plusieurs cibles</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivFleetCare -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivFleetCare">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aptiv"/>
+        <vehicule-autonome:délaiPrédiction>48 heures</vehicule-autonome:délaiPrédiction>
+        <vehicule-autonome:implémentationTechnique>Gradient Boosted Trees</vehicule-autonome:implémentationTechnique>
+        <vehicule-autonome:indicateursPerformance>Réduit coûts de maintenance de 15%, alerte sur usure prématurée des freins</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Aptiv FleetCare Predictive Maintenance</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:tauxPrédictionPannes>85%</vehicule-autonome:tauxPrédictionPannes>
+        <vehicule-autonome:typeDeDonnéesEntrée>Historique long-terme, conditions route, niveaux usure pièces</vehicule-autonome:typeDeDonnéesEntrée>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivFusion360 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivFusion360">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva4D"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschLRR4"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeCamera"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aptiv"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:gainPrécision>Amélioration ~12% sur la détection véhicules/piétons</vehicule-autonome:gainPrécision>
+        <vehicule-autonome:indicateursPerformance>Permet de combiner la portée radar avec la résolution LiDAR et l’interprétation caméra</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:latenceFusion>10-15ms</vehicule-autonome:latenceFusion>
+        <vehicule-autonome:nomCommercial>Aptiv Fusion 360</vehicule-autonome:nomCommercial>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivMultiModalDet -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivMultiModalDet">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aptiv"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Fusion des données de plusieurs capteurs (caméras, IR) pour améliorer la détection</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Aptiv Multi-Modal Detector</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:précisionMoyenne>mAP ~0.78</vehicule-autonome:précisionMoyenne>
+        <vehicule-autonome:tempsInférence>50ms par image</vehicule-autonome:tempsInférence>
+        <vehicule-autonome:typeObjetsDétectés>Véhicules, Piétons, Animaux, Panneaux</vehicule-autonome:typeObjetsDétectés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AuroraDriver -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AuroraDriver">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva4D"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivESR"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschLRR4"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschMRR1PLUS"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeCamera"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AuroraInnovation"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivFleetCare"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschPredictiveHealth"/>
+        <vehicule-autonome:niveauDAutonomieCible>4 (tests de camions et de robotaxis autonomes)</vehicule-autonome:niveauDAutonomieCible>
+        <vehicule-autonome:nomCommercial>Aurora Driver</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:réglementationCible>Conforme aux réglementations locales dans les États où Aurora teste (Texas, etc.)</vehicule-autonome:réglementationCible>
+        <vehicule-autonome:scénariosPrivilégiés>Autoroutes pour camions autonomes, trajets longue distance, conditions météo favorables</vehicule-autonome:scénariosPrivilégiés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AuroraInnovation -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AuroraInnovation">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Autoroute -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Autoroute">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Environnement"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Baidu -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Baidu">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BaiduApollo -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BaiduApollo">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva4D"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivESR"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschLRR4"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschMRR1PLUS"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeCamera"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Baidu"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BaiduApolloDet"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionBaséeSurFrameworksIA"/>
+        <vehicule-autonome:niveauDAutonomieCible>3-4 (tests de robotaxis sans conducteur dans certaines zones en Chine)</vehicule-autonome:niveauDAutonomieCible>
+        <vehicule-autonome:nomCommercial>Baidu Apollo</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:réglementationCible>Conforme aux réglementations chinoises, partenariats avec les autorités locales</vehicule-autonome:réglementationCible>
+        <vehicule-autonome:scénariosPrivilégiés>Zones urbaines en Chine, routes bien cartographiées, météo généralement favorable</vehicule-autonome:scénariosPrivilégiés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BaiduApolloDet -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BaiduApolloDet">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Baidu"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#JourEnsoleillé"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeForte"/>
+        <vehicule-autonome:indicateursPerformance>Bien intégré dans l’écosystème Apollo, optimisé pour la signalisation en milieu urbain chinois</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Baidu Apollo Object Detector</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:précisionMoyenne>mAP ~0.80</vehicule-autonome:précisionMoyenne>
+        <vehicule-autonome:tempsInférence>30ms sur GPU</vehicule-autonome:tempsInférence>
+        <vehicule-autonome:typeObjetsDétectés>Véhicules, Piétons, Cyclistes</vehicule-autonome:typeObjetsDétectés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Bosch -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Bosch">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GrandConstructeur"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschConnectedDiagnostics -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschConnectedDiagnostics">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Bosch"/>
+        <vehicule-autonome:exploite rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschPredictiveHealth"/>
+        <vehicule-autonome:Avantage>Augmente la disponibilité du véhicule, limite les immobilisations non planifiées</vehicule-autonome:Avantage>
+        <vehicule-autonome:Fonctionnalités>Détecte les signes précurseurs de panne, recommande un entretien préventif, permet une maintenance basée sur l’état du véhicule plutôt que sur un intervalle fixe</vehicule-autonome:Fonctionnalités>
+        <vehicule-autonome:nomCommercial>Bosch Connected Diagnostics</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:typeDeDonnéesEntrée>Télédiagnostic en temps réel (moteur, transmission, freinage), données issues des capteurs moteur, conditions opérationnelles du véhicule</vehicule-autonome:typeDeDonnéesEntrée>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschLRR4 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschLRR4">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurRadar"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneAutoroute"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Bosch"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeLégère"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Haute précision à longue distance, multi-cible fiable</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Bosch LRR4</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~250m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://fccid.io/ANATEL/00716-15-03745/Manual-LRR4/31C2FFEF-4EE5-4249-953F-247858F6FF0F/PDF</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Détection d’objets longue portée, mesures de distance et vitesse</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschMRR1PLUS -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschMRR1PLUS">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurRadar"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneSemiUrbaine"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Bosch"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeModérée"/>
+        <vehicule-autonome:indicateursPerformance>Faible latence, bonne gestion du trafic dense</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Bosch MRR</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~160m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://fccid.io/ANATEL/00850-13-03745/Manual-para-refer/F235B5AA-6AEA-408E-A9F5-4D1C40CC1EB9/PDF</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Détection d’objets à moyenne portée, estimation vitesse</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschPredictiveHealth -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschPredictiveHealth">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Bosch"/>
+        <vehicule-autonome:délaiPrédiction>48 heures avant panne potentielle</vehicule-autonome:délaiPrédiction>
+        <vehicule-autonome:implémentationTechnique>Réseau de neurones récurrents (RNN)</vehicule-autonome:implémentationTechnique>
+        <vehicule-autonome:indicateursPerformance>Réduit de 20% les pannes imprévues, améliore disponibilité flotte</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Bosch Predictive Health Monitor</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:tauxPrédictionPannes>85%</vehicule-autonome:tauxPrédictionPannes>
+        <vehicule-autonome:typeDeDonnéesEntrée>Historique capteurs moteur, vibrations, température batterie, logs freinage</vehicule-autonome:typeDeDonnéesEntrée>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardDense -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardDense">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CommunicationV2I -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CommunicationV2I">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CommunicationV2X"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CommunicationV2V -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CommunicationV2V">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CommunicationV2X"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Continental -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Continental">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GrandConstructeur"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ContinentalARS408-21 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ContinentalARS408-21">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurRadar"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Continental"/>
+        <vehicule-autonome:nomCommercial>Continental ARS 408-21</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://conti-engineering.com/wp-content/uploads/2020/02/ARS-408-21_EN_HS-1.pdf</vehicule-autonome:source>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ContinentalARSR320 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ContinentalARSR320">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurRadar"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneAutoroute"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Continental"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeLégère"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Précision vitesse élevée, bon suivi de cibles multiples</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Continental ARS R320</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~200m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:typeDeDonnéesFournies>Détection d’objets, mesures de vitesse relative</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ContinentalRemoteVehicleDataService -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ContinentalRemoteVehicleDataService">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Continental"/>
+        <vehicule-autonome:exploite rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionBaséeSurFrameworksIA"/>
+        <vehicule-autonome:Avantage>Réduit les coûts d’exploitation, améliore la sécurité et le temps de fonctionnement du véhicule</vehicule-autonome:Avantage>
+        <vehicule-autonome:Fonctionnalités>Fournit aux constructeurs et gestionnaires de flotte des alertes anticipées, suggère des maintenances préventives, optimise la durée de vie des composants</vehicule-autonome:Fonctionnalités>
+        <vehicule-autonome:nomCommercial>Continental Remote Vehicle Data Service</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:typeDeDonnéesEntrée>Données moteur, capteurs de châssis, état des freins, conditions d’exploitation</vehicule-autonome:typeDeDonnéesEntrée>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Cruise -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Cruise">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Constructeur"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CruiseAutomationSystem -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CruiseAutomationSystem">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva4D"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivESR"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschLRR4"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschMRR1PLUS"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeCamera"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Cruise"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivFleetCare"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschPredictiveHealth"/>
+        <vehicule-autonome:niveauDAutonomieCible>4 (robotaxis sans conducteur de sécurité à San Francisco)</vehicule-autonome:niveauDAutonomieCible>
+        <vehicule-autonome:nomCommercial>Cruise</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:réglementationCible>Conforme aux réglementations locales (Californie CPUC, DMV)</vehicule-autonome:réglementationCible>
+        <vehicule-autonome:scénariosPrivilégiés>Environnements urbains complexes (San Francisco), nuit comme jour</vehicule-autonome:scénariosPrivilégiés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CruiseOrigin2024 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CruiseOrigin2024">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau4"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Cruise"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschLRR4"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CruiseAutomationSystem"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#InnovizOne"/>
+        <vehicule-autonome:nomCommercial>Cruise Origin</vehicule-autonome:nomCommercial>
+        <rdfs:comment>Véhicule autonome de Cruise (GM) niveau 4 opérant à San Francisco</rdfs:comment>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Crépuscule -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Crépuscule">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionsLuminosité"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#DétectionObjetsPropriétaires -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#DétectionObjetsPropriétaires">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FLIR -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FLIR">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FLIRADKIRCam -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FLIRADKIRCam">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRuraleNuit"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbainNuit"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FLIR"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumière"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieForte"/>
+        <vehicule-autonome:champDeVision>Horizontal : 55°, Vertical : 40°</vehicule-autonome:champDeVision>
+        <vehicule-autonome:fréquenceImages>30 fps</vehicule-autonome:fréquenceImages>
+        <vehicule-autonome:indicateursPerformance>Détection piétons/animaux de nuit, améliore la sécurité</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>FLIR ADK IR Camera</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:résolution>640x512</vehicule-autonome:résolution>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://groupgets-files.s3.amazonaws.com/ADK/ADK-Datasheet-US.pdf</vehicule-autonome:source>
+        <vehicule-autonome:spectre>Infrarouge lointain (thermique)</vehicule-autonome:spectre>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FacebookAIRResearch -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FacebookAIRResearch">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Acteur"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FasterRCNN_CityScapes -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FasterRCNN_CityScapes">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FacebookAIRResearch"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#JourEnsoleillé"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumière"/>
+        <vehicule-autonome:indicateursPerformance>Haute précision, mais plus lent que YOLOv5</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Faster R-CNN CityScapes Model</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:précisionMoyenne>mAP ~0.75 sur CityScapes</vehicule-autonome:précisionMoyenne>
+        <vehicule-autonome:tempsInférence>Environ 40-50ms par image sur GPU</vehicule-autonome:tempsInférence>
+        <vehicule-autonome:typeObjetsDétectés>Véhicules, Piétons, Cyclistes</vehicule-autonome:typeObjetsDétectés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ForteLumièreDirecte -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ForteLumièreDirecte">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionsLuminosité"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionBaséeSurFrameworksIA -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionBaséeSurFrameworksIA">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionMultiCapteurs -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionMultiCapteurs">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionPropriétaire -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionPropriétaire">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GeneralMotors -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GeneralMotors">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GrandConstructeur"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Gentex -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Gentex">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GentexInteriorCam -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GentexInteriorCam">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ToutTypeDeZone"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Gentex"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumière"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ForteLumièreDirecte"/>
+        <vehicule-autonome:champDeVision>Large, 140°</vehicule-autonome:champDeVision>
+        <vehicule-autonome:fréquenceImages>30 fps</vehicule-autonome:fréquenceImages>
+        <vehicule-autonome:indicateursPerformance>Reconnaissance faciale du conducteur, détection somnolence</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Gentex Interior Driver Monitor</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:résolution>1080x1080</vehicule-autonome:résolution>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.gentex.com/files/brochures/Tech-Briefs-InCabin-Sensing-Dec2020-ENG.pdf</vehicule-autonome:source>
+        <vehicule-autonome:spectre>Infrarouge proche</vehicule-autonome:spectre>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Grêle -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Grêle">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Hesai -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Hesai">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#HesaiPandar40 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#HesaiPandar40">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Autoroute"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Hesai"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Haute densité de points</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Hesai Pandar40</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>200m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.cadden.fr/wp-content/uploads/2021/05/Lidar-Hesai-Pandar.pdf</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points 40 canaux</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#HesaiPandar64 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#HesaiPandar64">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Hesai"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Résolution verticale améliorée</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Hesai Pandar64</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~200m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.cadden.fr/wp-content/uploads/2021/05/Lidar-Hesai-Pandar.pdf</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points 64 canaux haute densité</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Innoviz -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Innoviz">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#InnovizOne -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#InnovizOne">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneSemiUrbaine"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Innoviz"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Compacité, faible consommation</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>InnovizOne</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>200m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://levelfivesupplies.com/wp-content/uploads/2023/08/InnovizOne-Series-Production-Datasheet-18.04.2023.pdf</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points 3D solide-state</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#InnovizPro -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#InnovizPro">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Innoviz"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeForte"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumière"/>
+        <vehicule-autonome:indicateursPerformance>Grande précision latérale</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>InnovizPro</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~150m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://innoviz.tech/wp-content/uploads/InnovizPro-datasheet_Jul_19.pdf</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points haute résolution</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#JourEnsoleillé -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#JourEnsoleillé">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionsLuminosité"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Luminar -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Luminar">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LuminarHydra -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LuminarHydra">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Autoroute"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Luminar"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Crépuscule"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Haute précision à longue distance</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Luminar Hydra</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>250m (longue portée)</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://levelfivesupplies.com/wp-content/uploads/2020/08/Luminar-Hydra-Datasheet.pdf</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points 3D à très longue portée</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LuminarIris -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LuminarIris">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneSemiUrbaine"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Luminar"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeModérée"/>
+        <vehicule-autonome:indicateursPerformance>Faible latence, bonne résolution horizontale</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Luminar Iris</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~250m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.luminartech.com/technology</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points 3D haute performance</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LuminarRadarLiDARFusion -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LuminarRadarLiDARFusion">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva4D"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschLRR4"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeCamera"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Luminar"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:gainPrécision>Amélioration ~10% pour estimation vitesse objets</vehicule-autonome:gainPrécision>
+        <vehicule-autonome:indicateursPerformance>Optimisé pour récupérer la vitesse et la position 3D des obstacles, réduit latence globale grâce au capteur hybride</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:latenceFusion>10ms</vehicule-autonome:latenceFusion>
+        <vehicule-autonome:nomCommercial>Luminar Radar-LiDAR Fusion</vehicule-autonome:nomCommercial>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MaintenancePrédictive -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MaintenancePrédictive"/>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ManœuvresDeStationnement -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ManœuvresDeStationnement"/>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Mercedes -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Mercedes">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GrandConstructeur"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MercedesF0152024 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MercedesF0152024">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau5"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Mercedes"/>
+        <vehicule-autonome:utiliséDans rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva4D"/>
+        <vehicule-autonome:utiliséDans rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NVIDIA_DRIVE"/>
+        <vehicule-autonome:nomCommercial>Mercedes F015 (Concept)</vehicule-autonome:nomCommercial>
+        <rdfs:comment>Concept-car autonome niveau 5 de Mercedes-Benz, expérimental</rdfs:comment>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Mobileye -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Mobileye">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeCamera -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeCamera"/>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeDrive -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeDrive">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Aeva4D"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AptivESR"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschLRR4"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschMRR1PLUS"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeCamera"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Mobileye"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionMultiCapteurs"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeVisionModule"/>
+        <vehicule-autonome:niveauDAutonomieCible>4</vehicule-autonome:niveauDAutonomieCible>
+        <vehicule-autonome:nomCommercial>Mobileye Drive</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:réglementationCible>Conforme aux réglementations dans les pays de déploiement (Israël, Allemagne, etc.)</vehicule-autonome:réglementationCible>
+        <vehicule-autonome:scénariosPrivilégiés>Zones urbaines, environnements pré-cartographiés, conditions météo modérées</vehicule-autonome:scénariosPrivilégiés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeVisionModule -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#MobileyeVisionModule">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Mobileye"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#JourEnsoleillé"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZonesUrbainesEtSemiUrbaines"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardDense"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Intégration profonde dans le hardware Mobileye, bonne fiabilité</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Mobileye Vision Module</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:précisionMoyenne>Proche de mAP ~0.80 dans conditions standard</vehicule-autonome:précisionMoyenne>
+        <vehicule-autonome:tempsInférence>Optimisé matériellement, &lt;30ms</vehicule-autonome:tempsInférence>
+        <vehicule-autonome:typeObjetsDétectés>Véhicules, Piétons, Signalisation routière</vehicule-autonome:typeObjetsDétectés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NVIDIA -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NVIDIA">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NVIDIA_DRIVE -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NVIDIA_DRIVE">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Radar"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NVIDIA"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#DétectionObjetsPropriétaires"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionPropriétaire"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuroMultiSensorCore"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuroPredictiveService"/>
+        <vehicule-autonome:niveauDAutonomieCible>2 à 4 (plateforme permettant aux constructeurs de développer leurs systèmes)</vehicule-autonome:niveauDAutonomieCible>
+        <vehicule-autonome:nomCommercial>NVIDIA DRIVE</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:réglementationCible>Dépend du constructeur final intégrateur, NVIDIA fournit la base technologique</vehicule-autonome:réglementationCible>
+        <vehicule-autonome:scénariosPrivilégiés>Variable selon l’intégration constructeur (autoroute, urbain, mixte)</vehicule-autonome:scénariosPrivilégiés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Neige -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Neige">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeForte -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeForte">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeLégère -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeLégère">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeModérée -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeModérée">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NormeRèglementaireV2X_2027 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NormeRèglementaireV2X_2027">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Réglementation"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumière -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumière">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionsLuminosité"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumièreSansIR -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumièreSansIR">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionsLuminosité"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Nuro -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Nuro">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuroAutonomous -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuroAutonomous">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Radar"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Nuro"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#DétectionObjetsPropriétaires"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FusionPropriétaire"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuroMultiSensorCore"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuroPredictiveService"/>
+        <vehicule-autonome:niveauDAutonomieCible>4 (véhicules de livraison autonomes sans conducteur dans certaines zones)</vehicule-autonome:niveauDAutonomieCible>
+        <vehicule-autonome:nomCommercial>Nuro Autonomous Delivery</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:réglementationCible>Conforme aux réglementations des États américains où Nuro opère</vehicule-autonome:réglementationCible>
+        <vehicule-autonome:scénariosPrivilégiés>Zones résidentielles, vitesse réduite, livraisons de courte distance</vehicule-autonome:scénariosPrivilégiés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuroMultiSensorCore -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuroMultiSensorCore">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FLIR"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Hesai"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#OmniVision"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Nuro"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumière"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeForte"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieForte"/>
+        <vehicule-autonome:gainPrécision>Amélioration ~15% sur détection piétons nocturnes</vehicule-autonome:gainPrécision>
+        <vehicule-autonome:indicateursPerformance>Excellente reconnaissance de silhouettes humaines, réduit erreurs en conditions de faible luminosité</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:latenceFusion>15-20ms</vehicule-autonome:latenceFusion>
+        <vehicule-autonome:nomCommercial>Nuro Multi-Sensor Core</vehicule-autonome:nomCommercial>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuroPredictiveService -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuroPredictiveService">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Nuro"/>
+        <vehicule-autonome:délaiPrédiction>24-36 heures avant événement</vehicule-autonome:délaiPrédiction>
+        <vehicule-autonome:implémentationTechnique>Random Forest + Réseau neuronal pour anomalies</vehicule-autonome:implémentationTechnique>
+        <vehicule-autonome:indicateursPerformance>Permet d’éviter retards sur livraisons, améliore rotation des véhicules autonomes de livraison</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Nuro Predictive Service</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:tauxPrédictionPannes>80%</vehicule-autonome:tauxPrédictionPannes>
+        <vehicule-autonome:typeDeDonnéesEntrée>Capteurs LiDAR/Radar, état pneus, consommation électrique, logs IA</vehicule-autonome:typeDeDonnéesEntrée>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#OmniVision -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#OmniVision">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#OmniVisionOV2311 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#OmniVisionOV2311">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneSemiUrbaine"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#OmniVision"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#JourEnsoleillé"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardDense"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeForte"/>
+        <vehicule-autonome:champDeVision>Horizontal : 90°, Vertical : 60°</vehicule-autonome:champDeVision>
+        <vehicule-autonome:fréquenceImages>60 fps</vehicule-autonome:fréquenceImages>
+        <vehicule-autonome:indicateursPerformance>Faible consommation, intégration facile, bon compromis</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>OmniVision OV2311</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:résolution>1600x1300</vehicule-autonome:résolution>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.ovt.com/wp-content/uploads/2023/07/OV2311-PB-v1.9-WEB.pdf</vehicule-autonome:source>
+        <vehicule-autonome:spectre>Visible + NIR</vehicule-autonome:spectre>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#OnStarVehicleDiagnostics -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#OnStarVehicleDiagnostics">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GeneralMotors"/>
+        <vehicule-autonome:Avantage>Réduit les pannes imprévues, améliore la planification des entretiens</vehicule-autonome:Avantage>
+        <vehicule-autonome:Fonctionnalités>Fournit des diagnostics mensuels, alerte sur l’usure de certains composants, prévient le conducteur/gestionnaire de flotte avant qu’une panne ne survienne</vehicule-autonome:Fonctionnalités>
+        <vehicule-autonome:nomCommercial>OnStar Vehicle Diagnostics</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:typeDeDonnéesEntrée>Données moteur, batterie, pression des pneus, codes défauts OBD, historique des entretiens</vehicule-autonome:typeDeDonnéesEntrée>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Panasonic -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Panasonic">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PanasonicAutomotiveRearCam -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PanasonicAutomotiveRearCam">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Panasonic"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#JourEnsoleillé"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Neige"/>
+        <vehicule-autonome:champDeVision>Horizontal : 170°</vehicule-autonome:champDeVision>
+        <vehicule-autonome:fréquenceImages>30 fps</vehicule-autonome:fréquenceImages>
+        <vehicule-autonome:indicateursPerformance>Idéale pour parking assisté, large champ de vision</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Panasonic Automotive Rear Camera</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:résolution>1280x720</vehicule-autonome:résolution>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://eu.automotive.panasonic.com/solutions/components/cameras</vehicule-autonome:source>
+        <vehicule-autonome:spectre>Visible</vehicule-autonome:spectre>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieForte -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieForte">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieTrèsIntense -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieTrèsIntense">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ConditionMétéo"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Quanergy -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Quanergy">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#QuanergyM8 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#QuanergyM8">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneSemiUrbaine"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Quanergy"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardDense"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Neige"/>
+        <vehicule-autonome:indicateursPerformance>Bon rapport performance/prix</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Quanergy M8</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~150m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://quanergy.com/wp-content/uploads/2019/12/M8-Datasheet_QPN-98-00037-Rev-M.pdf</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points multi-faisceaux</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Radar -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Radar"/>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Radar_ContinentalR1 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Radar_ContinentalR1"/>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Sony -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Sony">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#SonyIMX390Automotive -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#SonyIMX390Automotive">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneSemiUrbaine"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Sony"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#JourEnsoleillé"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardDense"/>
+        <vehicule-autonome:champDeVision>Horizontal : 100°, Vertical : 56°</vehicule-autonome:champDeVision>
+        <vehicule-autonome:fréquenceImages>60 fps</vehicule-autonome:fréquenceImages>
+        <vehicule-autonome:indicateursPerformance>Excellente gestion du contre-jour, bonne sensibilité en basse lumière</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Sony IMX390 Automotive Camera</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:résolution>1920x1080</vehicule-autonome:résolution>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://files.seeedstudio.com/wiki/IMX390_Camera/IMX390-Camera-datasheet.pdf</vehicule-autonome:source>
+        <vehicule-autonome:spectre>Visible + HDR</vehicule-autonome:spectre>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Tesla -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Tesla">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GrandConstructeur"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaAutopilot -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaAutopilot">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Radar"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Tesla"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaMaintenanceSuite"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaVisionFusionNet"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaVisionNN"/>
+        <vehicule-autonome:niveauDAutonomieCible>Actuellement niveau 2+ (FSD Beta vise niveau 3-4 à long terme)</vehicule-autonome:niveauDAutonomieCible>
+        <vehicule-autonome:nomCommercial>Tesla Autopilot</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:réglementationCible>Conforme aux réglementations US et EU pour l’assistance à la conduite</vehicule-autonome:réglementationCible>
+        <vehicule-autonome:scénariosPrivilégiés>Autoroutes, routes secondaires, conditions météo modérées</vehicule-autonome:scénariosPrivilégiés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaMaintenanceSuite -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaMaintenanceSuite">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Tesla"/>
+        <vehicule-autonome:délaiPrédiction>72 heures avant défaillance</vehicule-autonome:délaiPrédiction>
+        <vehicule-autonome:implémentationTechnique>Ensemble de modèles ML, incluant du Deep Learning</vehicule-autonome:implémentationTechnique>
+        <vehicule-autonome:indicateursPerformance>Apprend continuellement via fleet learning, optimise cycles de recharge et entretien</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Tesla Maintenance Suite</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:tauxPrédictionPannes>90%</vehicule-autonome:tauxPrédictionPannes>
+        <vehicule-autonome:typeDeDonnéesEntrée>Données télémétrie temps réel, diagnostics batterie, températures extrêmes</vehicule-autonome:typeDeDonnéesEntrée>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaModelS2024 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaModelS2024">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau2"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Tesla"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschMRR1PLUS"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaAutopilot"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaVisionNN"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ValeoFrontCam"/>
+        <vehicule-autonome:nomCommercial>Tesla Model S (2024)</vehicule-autonome:nomCommercial>
+        <rdfs:comment>Voiture autonome commerciale de Tesla, principalement Niveau 2+ via Autopilot/FSD Beta</rdfs:comment>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaVisionFusionNet -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaVisionFusionNet">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Radar_ContinentalR1"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Tesla"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumière"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZonesUrbainesEtRoutesRapides"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardDense"/>
+        <vehicule-autonome:gainPrécision>Amélioration ~8% par rapport caméra seule</vehicule-autonome:gainPrécision>
+        <vehicule-autonome:indicateursPerformance>Meilleure compréhension de la scène 3D, suivi d’objets plus stable</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:latenceFusion>5ms sur HW Tesla</vehicule-autonome:latenceFusion>
+        <vehicule-autonome:nomCommercial>Tesla Vision FusionNet</vehicule-autonome:nomCommercial>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaVisionNN -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TeslaVisionNN">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Tesla"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#JourEnsoleillé"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NuitFaibleLumière"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardDense"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeForte"/>
+        <vehicule-autonome:indicateursPerformance>Amélioré continuellement via fleet learning, très adaptatif</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Tesla Vision Neural Network</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:précisionMoyenne>mAP ~0.80+ sur données Tesla internes</vehicule-autonome:précisionMoyenne>
+        <vehicule-autonome:tempsInférence>Très optimisé, &lt;20ms sur hardware Tesla</vehicule-autonome:tempsInférence>
+        <vehicule-autonome:typeObjetsDétectés>Véhicules, Piétons, Cyclistes, Panneaux, Marquages au sol</vehicule-autonome:typeObjetsDétectés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ToutTypeDeZone -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ToutTypeDeZone">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TraficDense -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TraficDense">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TraficTrèsDense -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TraficTrèsDense">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Ultralytics -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Ultralytics">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Valeo -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Valeo">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#GrandConstructeur"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ValeoFrontCam -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ValeoFrontCam">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Caméra"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Autoroute"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Valeo"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Neige"/>
+        <vehicule-autonome:champDeVision>Horizontal : 120°, Vertical : 70°</vehicule-autonome:champDeVision>
+        <vehicule-autonome:fréquenceImages>60 fps</vehicule-autonome:fréquenceImages>
+        <vehicule-autonome:indicateursPerformance>Haute résolution, bonne détection de marquages au sol</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Valeo Front Cam</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:résolution>2560x1440</vehicule-autonome:résolution>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.valeo.com/en/catalogue/cda/smart-front-camera/</vehicule-autonome:source>
+        <vehicule-autonome:spectre>Visible</vehicule-autonome:spectre>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ValeoScalaGen3 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ValeoScalaGen3">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Valeo"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Neige"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TraficTrèsDense"/>
+        <vehicule-autonome:indicateursPerformance>Spécialement conçu pour l’automobile (grade automotive)</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Valeo SCALA Gen3</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~150m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.valeo.com/en/catalogue/cda/long-range-lidar-sensors-valeo-scala-gen-3/</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points 3D, Lidar automotive-grade</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Velodyne -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Velodyne">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VelodyneHDL64E -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VelodyneHDL64E">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneAutoroute"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Velodyne"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Neige"/>
+        <vehicule-autonome:nomCommercial>Velodyne HDL-64E</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>120m (environ)</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.mapix.com/wp-content/uploads/2018/07/63-9194_Rev-J_HDL-64E_S3_Spec-Sheet-Web.pdf</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points 3D haute densité</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VelodyneUltraPuckVLP32C -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VelodyneUltraPuckVLP32C">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneSemiUrbaine"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Velodyne"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardLéger"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Neige"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieTrèsIntense"/>
+        <vehicule-autonome:nomCommercial>Velodyne Ultra Puck (VLP-32C)</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>200m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.mapix.com/wp-content/uploads/2018/07/63-9378_Rev-D_ULTRA-Puck_VLP-32C_Datasheet_Web.pdf</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points 3D 32 canaux</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VelodyneVLS128 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VelodyneVLS128">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurLiDAR"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Velodyne"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Très haute résolution angulaire</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Velodyne VLS-128</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>200m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.mapix.com/wp-content/uploads/2019/11/VelodyneLidar_AlphaPrime_Datasheet.pdf</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Nuage de points 3D ultra-haute résolution</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Waymo -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Waymo">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#StartupInnovante"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoDriver -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoDriver">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielDeConduiteAutonome"/>
+        <vehicule-autonome:compatibilitéCapteurs rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Radar"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Waymo"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoOpenDatasetDet"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoSensorFusionPro"/>
+        <vehicule-autonome:intégrationAlgorithmesIA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoServiceHealthAI"/>
+        <vehicule-autonome:niveauDAutonomieCible>4 (véhicules autonomes sans conducteur de sécurité dans certaines zones)</vehicule-autonome:niveauDAutonomieCible>
+        <vehicule-autonome:nomCommercial>Waymo Driver</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:réglementationCible>Conforme aux réglementations des États américains (Arizona, Californie)</vehicule-autonome:réglementationCible>
+        <vehicule-autonome:scénariosPrivilégiés>Zones urbaines spécifiques, trafic dense, conditions météo généralement clémentes</vehicule-autonome:scénariosPrivilégiés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoOne2024 -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoOne2024">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau4"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Waymo"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LuminarHydra"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoDriver"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoOpenDatasetDet"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoSensorFusionPro"/>
+        <vehicule-autonome:utilise rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoServiceHealthAI"/>
+        <vehicule-autonome:nomCommercial>Waymo One Robotaxi</vehicule-autonome:nomCommercial>
+        <rdfs:comment>Service de taxi autonome niveau 4 opéré par Waymo dans certaines zones urbaines aux États-Unis</rdfs:comment>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoOpenDatasetDet -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoOpenDatasetDet">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Waymo"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#TraficDense"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardDense"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Neige"/>
+        <vehicule-autonome:indicateursPerformance>Excellente performance sur dataset propriétaire haute qualité</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Waymo Open Dataset Object Detector</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:précisionMoyenne>0.85</vehicule-autonome:précisionMoyenne>
+        <vehicule-autonome:tempsInférence>30-40ms par image sur GPU</vehicule-autonome:tempsInférence>
+        <vehicule-autonome:typeObjetsDétectés>Véhicules, Piétons, Cyclistes, Signalisation</vehicule-autonome:typeObjetsDétectés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoSensorFusionPro -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoSensorFusionPro">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeFusionCapteurs"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BoschMRR1PLUS"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#SonyIMX390Automotive"/>
+        <vehicule-autonome:capteursEntrées rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Velodyne"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Waymo"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbainDense"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:gainPrécision>Amélioration de ~10% de la détection globale</vehicule-autonome:gainPrécision>
+        <vehicule-autonome:indicateursPerformance>Améliore la classification multi-objets, réduit les faux positifs</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:latenceFusion>5-10ms</vehicule-autonome:latenceFusion>
+        <vehicule-autonome:nomCommercial>Waymo Sensor Fusion Pro</vehicule-autonome:nomCommercial>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoServiceHealthAI -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#WaymoServiceHealthAI">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Waymo"/>
+        <vehicule-autonome:délaiPrédiction>48 heures</vehicule-autonome:délaiPrédiction>
+        <vehicule-autonome:implémentationTechnique>Modèle hybride (RNN + XGBoost)</vehicule-autonome:implémentationTechnique>
+        <vehicule-autonome:indicateursPerformance>Améliore la disponibilité des taxis autonomes, réduit les interruptions de service</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>Waymo Service Health AI</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:tauxPrédictionPannes>88%</vehicule-autonome:tauxPrédictionPannes>
+        <vehicule-autonome:typeDeDonnéesEntrée>Logs complets capteurs, données météo, enregistrement anomalies logicielles</vehicule-autonome:typeDeDonnéesEntrée>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#YOLOv5_Auto -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#YOLOv5_Auto">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeDétectionObjets"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Ultralytics"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#JourEnsoleillé"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#PluieLégère"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#BrouillardDense"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeIntense"/>
+        <vehicule-autonome:indicateursPerformance>Bon compromis rapidité/précision</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>YOLOv5 Adapted for Automotive</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:précisionMoyenne>0.75</vehicule-autonome:précisionMoyenne>
+        <vehicule-autonome:tempsInférence>10-15ms par image sur GPU</vehicule-autonome:tempsInférence>
+        <vehicule-autonome:typeObjetsDétectés>Véhicules, Piétons, Panneaux</vehicule-autonome:typeObjetsDétectés>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZF -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZF">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#FournisseurComposants"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZFConditionMonitor -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZFConditionMonitor">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#AlgorithmeMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZF"/>
+        <vehicule-autonome:délaiPrédiction>36 heures</vehicule-autonome:délaiPrédiction>
+        <vehicule-autonome:implémentationTechnique>SVM + Autoencodeur d’anomalies</vehicule-autonome:implémentationTechnique>
+        <vehicule-autonome:indicateursPerformance>Identifie usure des amortisseurs, aide au remplacement préventif</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>ZF Condition Monitor</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:tauxPrédictionPannes>82%</vehicule-autonome:tauxPrédictionPannes>
+        <vehicule-autonome:typeDeDonnéesEntrée>Vibrations châssis, signaux suspension, température fluides</vehicule-autonome:typeDeDonnéesEntrée>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZFFullRangeRadarAC1000T -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZFFullRangeRadarAC1000T">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#CapteurRadar"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneAutoroute"/>
+        <vehicule-autonome:adaptéA rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZF"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Brouillard"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeLégère"/>
+        <vehicule-autonome:robusteFaceÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#Pluie"/>
+        <vehicule-autonome:sensibleÀ rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#NeigeForte"/>
+        <vehicule-autonome:indicateursPerformance>Couvre longue et moyenne portée, haute densité de cibles</vehicule-autonome:indicateursPerformance>
+        <vehicule-autonome:nomCommercial>ZF Full-Range Radar</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:portéeDétection>~250m</vehicule-autonome:portéeDétection>
+        <vehicule-autonome:source rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.zf.com/products/fr/cv/products_76432.html</vehicule-autonome:source>
+        <vehicule-autonome:typeDeDonnéesFournies>Mesures de distance, vitesse et angle multiple</vehicule-autonome:typeDeDonnéesFournies>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZFIoTPlatform -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZFIoTPlatform">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#LogicielMaintenancePrédictive"/>
+        <vehicule-autonome:développéPar rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZF"/>
+        <vehicule-autonome:Avantage>Diminue les arrêts imprévus, accroît la sécurité et l’efficience de la flotte</vehicule-autonome:Avantage>
+        <vehicule-autonome:Fonctionnalités>Anticipe les défaillances, recommande des entretiens proactifs, s’intègre dans l’écosystème IoT du véhicule</vehicule-autonome:Fonctionnalités>
+        <vehicule-autonome:nomCommercial>ZF IoT Platform</vehicule-autonome:nomCommercial>
+        <vehicule-autonome:typeDeDonnéesEntrée>Vibrations, télémétrie du groupe motopropulseur, température des fluides, données de freinage</vehicule-autonome:typeDeDonnéesEntrée>
+        <vehicule-autonome:exploite>Algorithmes d’analyse prédictive fondés sur l’IA pour la maintenance (basés sur le cloud et l’IoT)</vehicule-autonome:exploite>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneAutoroute -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneAutoroute">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRurale">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRuraleNuit -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneRuraleNuit">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneSemiUrbaine -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneSemiUrbaine">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbain">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbainDense -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbainDense">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbainNuit -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZoneUrbainNuit">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZonesUrbainesEtRoutesRapides -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZonesUrbainesEtRoutesRapides">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZonesUrbainesEtSemiUrbaines -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#ZonesUrbainesEtSemiUrbaines">
+        <rdf:type rdf:resource="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#EnvironnementRoutier"/>
+    </owl:NamedIndividual>
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // General axioms
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau2"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau3"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau4"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/maherzizouni/ontologies/2024/11/va#VéhiculeNiveau5"/>
+        </owl:members>
+    </rdf:Description>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.29.2024-05-13T12:11:03Z) https://github.com/owlcs/owlapi -->
+

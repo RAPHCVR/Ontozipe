@@ -1,0 +1,135 @@
+##############################
+## 1. Préfixes ###############
+##############################
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct:   <http://purl.org/dc/terms/> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+@prefix schema: <https://schema.org/> .
+@prefix acl:   <http://www.w3.org/ns/auth/acl#> .
+@prefix void:  <http://rdfs.org/ns/void#> .
+@prefix core:  <http://example.org/core#> .
+
+##############################
+## 2. Ontologie ##############
+##############################
+<http://example.org/core>
+  a owl:Ontology ;
+  dct:title "Core Ontology for Autonomy Platform"@en ;
+  dct:creator "TX AI11 – Autonomie Project" ;
+  owl:versionInfo "1.0.0" ;
+  owl:imports foaf:, prov:, schema:, acl:, void: .
+
+##############################
+## 3. Classes ################
+##############################
+core:User            a owl:Class ; rdfs:subClassOf foaf:Person .
+core:Account         a owl:Class ; rdfs:subClassOf schema:Person .
+core:Group           a owl:Class ; rdfs:subClassOf foaf:Group .
+core:Membership      a owl:Class ; rdfs:subClassOf prov:Association .
+core:OntologyProject a owl:Class ; rdfs:subClassOf void:Dataset, core:Resource .
+core:Resource        a owl:Class ; rdfs:subClassOf owl:Thing .
+core:Comment         a owl:Class ; rdfs:subClassOf schema:Comment .
+core:AccessPolicy    a owl:Class ; rdfs:subClassOf acl:Authorization .
+
+core:Organization  a owl:Class ; rdfs:subClassOf foaf:Organization .
+core:Role          a owl:Class .
+
+##############################
+## 4. Propriétés d’objets ####
+##############################
+core:hasAccount     a owl:ObjectProperty ; rdfs:domain core:User ; rdfs:range core:Account .
+core:hasMember      a owl:ObjectProperty ; rdfs:domain core:Group ; rdfs:range core:User .
+core:member         a owl:ObjectProperty ; rdfs:domain core:Membership ; rdfs:range core:User .
+core:group          a owl:ObjectProperty ; rdfs:domain core:Membership ; rdfs:range core:Group .
+core:inProject      a owl:ObjectProperty ; rdfs:domain core:Resource ; rdfs:range core:OntologyProject .
+core:createdBy      a owl:ObjectProperty ; rdfs:domain core:Resource ; rdfs:range core:User .
+core:updatedBy      a owl:ObjectProperty ; rdfs:domain core:Resource ; rdfs:range core:User .
+core:visibleTo      a owl:ObjectProperty ; rdfs:domain core:Resource ; rdfs:range core:Group ; rdfs:comment "Groups allowed to view the resource"@en .
+core:hasComment     a owl:ObjectProperty ; rdfs:domain core:Resource ; rdfs:range core:Comment .
+core:commentOf      a owl:ObjectProperty ; owl:inverseOf core:hasComment ; rdfs:domain core:Comment ; rdfs:range core:Resource .
+core:author         a owl:ObjectProperty ; rdfs:domain core:Comment ; rdfs:range core:User .
+core:replyTo        a owl:ObjectProperty ; rdfs:domain core:Comment ; rdfs:range core:Comment .
+core:allowRead      a owl:ObjectProperty ; rdfs:domain core:AccessPolicy ; rdfs:range core:Group .
+core:allowEdit      a owl:ObjectProperty ; rdfs:domain core:AccessPolicy ; rdfs:range core:Group .
+core:onResource     a owl:ObjectProperty ; rdfs:domain core:AccessPolicy ; rdfs:range core:Resource .
+
+core:hasRole               a owl:ObjectProperty ; rdfs:domain core:User ; rdfs:range core:Role .
+core:belongsToOrganization a owl:ObjectProperty ; rdfs:domain core:User ; rdfs:range core:Organization .
+
+core:memberOfOrganization a owl:ObjectProperty ;
+    owl:inverseOf core:belongsToOrganization ;
+    rdfs:domain core:Organization ;
+    rdfs:range  core:User .
+
+core:inOrganization a owl:ObjectProperty ;
+    rdfs:domain core:Group ;
+    rdfs:range  core:Organization .
+
+core:organizationOf a owl:ObjectProperty ;
+    owl:inverseOf core:inOrganization ;
+    rdfs:domain core:Organization ;
+    rdfs:range  core:Group .
+
+core:ownedBy a owl:ObjectProperty ;
+    rdfs:domain core:Organization ;
+    rdfs:range  core:User ;
+    rdfs:comment "Utilisateur qui possède / administre l’organisation"@fr .
+
+# --- Restrictions --------------------------------------------------
+core:Group rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty core:inOrganization ;
+    owl:someValuesFrom core:Organization
+] .
+
+core:Organization rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty core:ownedBy ;
+    owl:someValuesFrom core:User
+] .
+
+##############################
+## 5. Instances (Rôles) ######
+##############################
+
+core:SuperAdminRole a core:Role ;
+    rdfs:label "Super‑administrateur"@fr , "Super Administrator"@en .
+
+core:AdminRole a core:Role ;
+    rdfs:label "Administrateur"@fr , "Administrator"@en .
+
+core:RegularRole a core:Role ;
+    rdfs:label "Utilisateur"@fr , "User"@en .
+
+
+##############################
+## 6. Propriétés de données ##
+##############################
+core:provider   a owl:DatatypeProperty ; rdfs:domain core:Account ; rdfs:range xsd:string .
+core:email      a owl:DatatypeProperty ; rdfs:domain core:Account ; rdfs:range xsd:string .
+core:isVerified a owl:DatatypeProperty ; rdfs:domain core:Account ; rdfs:range xsd:boolean .
+
+core:createdAt a owl:DatatypeProperty ; rdfs:domain core:Resource, core:Comment ; rdfs:range xsd:dateTime .
+core:updatedAt a owl:DatatypeProperty ; rdfs:domain core:Resource ; rdfs:range xsd:dateTime .
+core:text      a owl:DatatypeProperty ; rdfs:domain core:Comment ; rdfs:range xsd:string .
+
+##############################
+## 7. Règles & annotations ###
+##############################
+
+core:User            rdfs:label "Utilisateur"@fr , "User"@en .
+core:Group           rdfs:label "Groupe"@fr , "Group"@en .
+core:Resource        rdfs:label "Ressource"@fr , "Resource"@en .
+core:Comment         rdfs:label "Commentaire"@fr , "Comment"@en .
+core:AccessPolicy    rdfs:label "Politique d’accès"@fr , "Access Policy"@en .
+
+core:Organization rdfs:label "Organisation"@fr , "Organization"@en .
+core:Role         rdfs:label "Rôle"@fr , "Role"@en .
+
+##############################
+# FIN #######################
+##############################

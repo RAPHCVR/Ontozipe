@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:ex="http://example.org/va#"
+    xmlns:foaf="http://xmlns.com/foaf/0.1/"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+    xml:base="http://example.org/va#">
+
+    <!-- Définition de l'ontologie elle-même -->
+    <owl:Ontology rdf:about="http://example.org/va#">
+        <rdfs:comment xml:lang="fr">
+            Ontologie simplifiée pour décrire un Véhicule Autonome et ses composants
+        </rdfs:comment>
+    </owl:Ontology>
+
+    <!-- ==================================== -->
+    <!--          CLASSE RACINE               -->
+    <!-- ==================================== -->
+    <owl:Class rdf:about="http://example.org/va#VehiculeAutonome">
+        <rdfs:label xml:lang="fr">VéhiculeAutonome</rdfs:label>
+    </owl:Class>
+
+    <!-- ==================================== -->
+    <!--          TYPES DE VÉHICULE           -->
+    <!-- ==================================== -->
+    <owl:Class rdf:about="http://example.org/va#TypeDeVehicule">
+        <rdfs:label xml:lang="fr">TypeDeVéhicule</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#VehiculeAutonome"/>
+    </owl:Class>
+
+    <owl:Class rdf:about="http://example.org/va#VehiculeNiveau2">
+        <rdfs:label xml:lang="fr">VéhiculeNiveau2</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#TypeDeVehicule"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#VehiculeNiveau3">
+        <rdfs:label xml:lang="fr">VéhiculeNiveau3</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#TypeDeVehicule"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#VehiculeNiveau4">
+        <rdfs:label xml:lang="fr">VéhiculeNiveau4</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#TypeDeVehicule"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#VehiculeNiveau5">
+        <rdfs:label xml:lang="fr">VéhiculeNiveau5</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#TypeDeVehicule"/>
+    </owl:Class>
+
+    <!-- ==================================== -->
+    <!--         COMPOSANT TECHNIQUE          -->
+    <!-- ==================================== -->
+    <owl:Class rdf:about="http://example.org/va#ComposantTechnique">
+        <rdfs:label xml:lang="fr">ComposantTechnique</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#VehiculeAutonome"/>
+    </owl:Class>
+
+    <!-- Sous-système physique -->
+    <owl:Class rdf:about="http://example.org/va#SousSystèmePhysique">
+        <rdfs:label xml:lang="fr">SousSystèmePhysique</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ComposantTechnique"/>
+    </owl:Class>
+
+    <!-- Capteur -->
+    <owl:Class rdf:about="http://example.org/va#Capteur">
+        <rdfs:label xml:lang="fr">Capteur</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#SousSystèmePhysique"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#CapteurLIDAR">
+        <rdfs:label xml:lang="fr">CapteurLIDAR</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Capteur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#CapteurRadar">
+        <rdfs:label xml:lang="fr">CapteurRadar</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Capteur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#CapteurCaméra">
+        <rdfs:label xml:lang="fr">CapteurCaméra</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Capteur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#CapteurUltrasons">
+        <rdfs:label xml:lang="fr">CapteurUltrasons</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Capteur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#CapteurGPS">
+        <rdfs:label xml:lang="fr">CapteurGPS</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Capteur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#CapteurIMU">
+        <rdfs:label xml:lang="fr">CapteurIMU</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Capteur"/>
+    </owl:Class>
+
+    <!-- Actionneur -->
+    <owl:Class rdf:about="http://example.org/va#Actionneur">
+        <rdfs:label xml:lang="fr">Actionneur</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#SousSystèmePhysique"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#Moteur">
+        <rdfs:label xml:lang="fr">Moteur</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Actionneur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#Freins">
+        <rdfs:label xml:lang="fr">Freins</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Actionneur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#VolantÉlectrique">
+        <rdfs:label xml:lang="fr">VolantÉlectrique</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Actionneur"/>
+    </owl:Class>
+
+    <!-- Sous-système logiciel -->
+    <owl:Class rdf:about="http://example.org/va#SousSystèmeLogiciel">
+        <rdfs:label xml:lang="fr">SousSystèmeLogiciel</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ComposantTechnique"/>
+    </owl:Class>
+
+    <!-- ModulePerception -->
+    <owl:Class rdf:about="http://example.org/va#ModulePerception">
+        <rdfs:label xml:lang="fr">ModulePerception</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#SousSystèmeLogiciel"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#AlgorithmeDétectionObjets">
+        <rdfs:label xml:lang="fr">AlgorithmeDétectionObjets</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ModulePerception"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#AlgorithmeReconnaissancePanneaux">
+        <rdfs:label xml:lang="fr">AlgorithmeReconnaissancePanneaux</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ModulePerception"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#AlgorithmeClassification">
+        <rdfs:label xml:lang="fr">AlgorithmeClassification</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ModulePerception"/>
+    </owl:Class>
+
+    <!-- ModulePlanification -->
+    <owl:Class rdf:about="http://example.org/va#ModulePlanification">
+        <rdfs:label xml:lang="fr">ModulePlanification</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#SousSystèmeLogiciel"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#AlgorithmePlanificationTrajectoire">
+        <rdfs:label xml:lang="fr">AlgorithmePlanificationTrajectoire</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ModulePlanification"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#AlgorithmeDécisionnel">
+        <rdfs:label xml:lang="fr">AlgorithmeDécisionnel</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ModulePlanification"/>
+    </owl:Class>
+
+    <!-- ModuleContrôle -->
+    <owl:Class rdf:about="http://example.org/va#ModuleContrôle">
+        <rdfs:label xml:lang="fr">ModuleContrôle</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#SousSystèmeLogiciel"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#AlgorithmeSuiviTrajectoire">
+        <rdfs:label xml:lang="fr">AlgorithmeSuiviTrajectoire</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ModuleContrôle"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#AlgorithmeCorrectionErreurs">
+        <rdfs:label xml:lang="fr">AlgorithmeCorrectionErreurs</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ModuleContrôle"/>
+    </owl:Class>
+
+    <!-- SystèmeCommunication -->
+    <owl:Class rdf:about="http://example.org/va#SystèmeCommunication">
+        <rdfs:label xml:lang="fr">SystèmeCommunication</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ComposantTechnique"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#Communication5G">
+        <rdfs:label xml:lang="fr">Communication5G</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#SystèmeCommunication"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#CommunicationSatellite">
+        <rdfs:label xml:lang="fr">CommunicationSatellite</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#SystèmeCommunication"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#WiFiBluetooth">
+        <rdfs:label xml:lang="fr">WiFiBluetooth</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#SystèmeCommunication"/>
+    </owl:Class>
+
+    <!-- SystèmeStockageDonnées -->
+    <owl:Class rdf:about="http://example.org/va#SystèmeStockageDonnées">
+        <rdfs:label xml:lang="fr">SystèmeStockageDonnées</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ComposantTechnique"/>
+    </owl:Class>
+
+    <!-- MaintenancePrédictiveDiagnostic -->
+    <owl:Class rdf:about="http://example.org/va#MaintenancePrédictiveDiagnostic">
+        <rdfs:label xml:lang="fr">MaintenancePrédictiveDiagnostic</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ComposantTechnique"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#ModuleMaintenancePrédictive">
+        <rdfs:label xml:lang="fr">ModuleMaintenancePrédictive</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#MaintenancePrédictiveDiagnostic"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#ModuleDiagnostic">
+        <rdfs:label xml:lang="fr">ModuleDiagnostic</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#MaintenancePrédictiveDiagnostic"/>
+    </owl:Class>
+
+    <!-- InterfaceHommeMachine -->
+    <owl:Class rdf:about="http://example.org/va#InterfaceHommeMachine">
+        <rdfs:label xml:lang="fr">InterfaceHommeMachine</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#ComposantTechnique"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#InterfaceConducteur">
+        <rdfs:label xml:lang="fr">InterfaceConducteur</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#InterfaceHommeMachine"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#InterfacePassager">
+        <rdfs:label xml:lang="fr">InterfacePassager</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#InterfaceHommeMachine"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#InterfaceVocale">
+        <rdfs:label xml:lang="fr">InterfaceVocale</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#InterfaceHommeMachine"/>
+    </owl:Class>
+
+    <!-- ==================================== -->
+    <!--         MÉTRIQUES / PERFORMANCE      -->
+    <!-- ==================================== -->
+    <owl:Class rdf:about="http://example.org/va#Métrique">
+        <rdfs:label xml:lang="fr">Métrique</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#VehiculeAutonome"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#TempsDeRéponse">
+        <rdfs:label xml:lang="fr">TempsDeRéponse</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Métrique"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#TauxDeFiabilité">
+        <rdfs:label xml:lang="fr">TauxDeFiabilité</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Métrique"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#TauxDeReconnaissance">
+        <rdfs:label xml:lang="fr">TauxDeReconnaissance</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Métrique"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#ÉnergieConsommée">
+        <rdfs:label xml:lang="fr">ÉnergieConsommée</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Métrique"/>
+    </owl:Class>
+
+    <!-- ==================================== -->
+    <!--             ACTEURS                  -->
+    <!-- ==================================== -->
+    <owl:Class rdf:about="http://example.org/va#Acteur">
+        <rdfs:label xml:lang="fr">Acteur</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#VehiculeAutonome"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#Constructeur">
+        <rdfs:label xml:lang="fr">Constructeur</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Acteur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#FournisseurComposants">
+        <rdfs:label xml:lang="fr">FournisseurComposants</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Acteur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#GrandConstructeur">
+        <rdfs:label xml:lang="fr">GrandConstructeur</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Acteur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#StartupInnovante">
+        <rdfs:label xml:lang="fr">StartupInnovante</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Acteur"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#CentreRecherche">
+        <rdfs:label xml:lang="fr">CentreRecherche</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Acteur"/>
+    </owl:Class>
+
+    <!-- ==================================== -->
+    <!--           ENVIRONNEMENT              -->
+    <!-- ==================================== -->
+    <owl:Class rdf:about="http://example.org/va#Environnement">
+        <rdfs:label xml:lang="fr">Environnement</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#VehiculeAutonome"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#ConditionMétéo">
+        <rdfs:label xml:lang="fr">ConditionMétéo</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Environnement"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#ConditionsLuminosité">
+        <rdfs:label xml:lang="fr">ConditionsLuminosité</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Environnement"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#EnvironnementRoutier">
+        <rdfs:label xml:lang="fr">EnvironnementRoutier</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Environnement"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#Infrastructures">
+        <rdfs:label xml:lang="fr">Infrastructures</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Environnement"/>
+    </owl:Class>
+
+    <!-- ==================================== -->
+    <!--        RÉGLEMENTATION / NORMES       -->
+    <!-- ==================================== -->
+    <owl:Class rdf:about="http://example.org/va#Réglementation">
+        <rdfs:label xml:lang="fr">Réglementation</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#VehiculeAutonome"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#LoisNationales">
+        <rdfs:label xml:lang="fr">LoisNationales</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Réglementation"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#DirectivesInternationales">
+        <rdfs:label xml:lang="fr">DirectivesInternationales</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Réglementation"/>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.org/va#StandardsTechniques">
+        <rdfs:label xml:lang="fr">StandardsTechniques</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Réglementation"/>
+    </owl:Class>
+
+    <!-- Certification -->
+    <owl:Class rdf:about="http://example.org/va#Certification">
+        <rdfs:label xml:lang="fr">Certification</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://example.org/va#Réglementation"/>
+    </owl:Class>
+</rdf:RDF>

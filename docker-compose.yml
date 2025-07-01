@@ -1,0 +1,29 @@
+services:
+  fuseki:
+    build: ./fuseki
+    image: stain/jena-fuseki
+    container_name: fuseki
+    ports:
+      - "3030:3030"
+    environment:
+      - ADMIN_PASSWORD=Pass123
+    volumes:
+      - ./fuseki_data:/fuseki
+  backend:
+    build: ./backend
+    container_name: autonomy_backend
+    env_file: .env
+    depends_on:
+      - fuseki
+    ports:
+      - "4000:4000"
+    platform: linux/amd64
+  frontend:
+    build: ./frontend
+    container_name: autonomy_frontend
+    env_file: .env
+    depends_on:
+      - backend
+    ports:
+      - "3000:5173"
+    platform: linux/amd64

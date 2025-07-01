@@ -1,0 +1,8 @@
+{
+	"scripts": {
+		"dev": "concurrently -k -n BACK,FRONT \"yarn --cwd backend start:dev\" \"yarn --cwd frontend dev\""
+	},
+	"devDependencies": {
+		"concurrently": "^9.1.2"
+	}
+}
