@@ -45,6 +45,8 @@ cd ../backend && yarn install
 
 ## 🐳 Lancer Fuseki (serveur RDF)
 
+⚠️⚠️⚠️ Créez un dossier vide a la racine, du nom de `fuseki_data` ⚠️⚠️⚠️
+
 Depuis la racine du projet :
 
 ```bash
