@@ -44,30 +44,24 @@ const IndividualsPanel: React.FC<{
 	const [search, setSearch] = useState("");
 	const [groupFilter, setGroupFilter] = useState<string>("all");
 
-	if (!snapshot || !classId) {
-		return (
-			<aside className="shrink-0 pr-2" style={{ width }}>
-				<div className="card h-full flex items-center justify-center text-gray-500">
-					Sélectionnez une classe
-				</div>
-			</aside>
-		);
-	}
+	// ------------------------------------------------------------
+	// Memos (toujours exécutés pour garder le même nombre de hooks)
+	// ------------------------------------------------------------
+	const baseIndividuals = useMemo(() => {
+		if (!snapshot || !classId) return [];
+		return snapshot.individuals.filter((ind) => ind.classId === classId);
+	}, [snapshot, classId]);
 
-	// Filtrage par classe
-	const baseIndividuals = snapshot.individuals.filter(
-		(ind) => ind.classId === classId
-	);
-
-	// Filtrage par groupe (visibleTo)
+	// Filtrage par groupe
 	const groupFiltered = useMemo(() => {
 		if (groupFilter === "all") return baseIndividuals;
 		return baseIndividuals.filter((ind) =>
 			(ind.visibleTo || []).includes(groupFilter)
 		);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [baseIndividuals, groupFilter]);
 
-	// Recherche puissante
+	// Recherche puissante (label, propriétés, commentaires)
 	const normalized = (s: string) => s.toLowerCase();
 	const term = normalized(search.trim());
 
@@ -80,7 +74,6 @@ const IndividualsPanel: React.FC<{
 		groupFiltered.forEach((ind) => {
 			const labelMatch = normalized(ind.label || "").includes(term);
 
-			// match inside properties
 			let propMatch = false;
 			if (!labelMatch) {
 				propMatch = (ind.properties || []).some((p) =>
@@ -90,9 +83,8 @@ const IndividualsPanel: React.FC<{
 				);
 			}
 
-			// match inside comments
 			let commentMatch = false;
-			if (!labelMatch && !propMatch && snapshot.comments) {
+			if (!labelMatch && !propMatch && snapshot?.comments) {
 				commentMatch = (snapshot.comments as CommentNode[]).some(
 					(c) => c.onResource === ind.id && normalized(c.body).includes(term)
 				);
@@ -103,9 +95,21 @@ const IndividualsPanel: React.FC<{
 		});
 
 		return [...inLabel, ...inProps];
-	}, [groupFiltered, term]);
+	}, [groupFiltered, term, snapshot?.comments]);
 
-	const classLabel = formatLabel(classId.split(/[#/]/).pop() || classId);
+	if (!snapshot || !classId) {
+		return (
+			<aside className="shrink-0 pr-2" style={{ width }}>
+				<div className="card h-full flex items-center justify-center text-gray-500">
+					Sélectionnez une classe
+				</div>
+			</aside>
+		);
+	}
+
+	const classLabel = classId
+		? formatLabel(classId.split(/[#/]/).pop() || classId)
+		: "";
 
 	return (
 		<aside className="max-h-full pr-2 flex flex-col shrink-0" style={{ width }}>
