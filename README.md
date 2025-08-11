@@ -18,7 +18,7 @@ Initialement développée autour d'une ontologie des **véhicules autonomes**, e
 
 ## 🧰 Prérequis
 
-* [Node.js](https://nodejs.org/) ≥ 18.x
+* [Node.js](https://nodejs.org/) ≥ 22.x
 * [Yarn](https://yarnpkg.com/)
 * [Docker + Docker Compose](https://www.docker.com/products/docker-desktop)
 
@@ -40,6 +40,25 @@ yarn install         # à la racine
 cd frontend && yarn install
 cd ../backend && yarn install
 ```
+
+---
+
+## ⚙️ Configuration
+
+L'application utilise des variables d'environnement pour se configurer.
+
+1.  Copiez le fichier d'exemple :
+
+    ```bash
+    cp .env.example .env
+    ```
+
+2.  Modifiez le fichier `.env` à la racine du projet selon vos besoins. Les valeurs par défaut sont généralement suffisantes pour un lancement local avec Docker.
+
+    *   `FUSEKI_URL`: L'URL complète du *dataset* Fuseki. Par défaut `http://fuseki:3030/autonomy` pour que le backend (dans Docker) puisse communiquer avec le service `fuseki`. Si vous lancez le backend localement (hors Docker), utilisez `http://localhost:3030/autonomy`.
+    *   `FUSEKI_USER` / `FUSEKI_PASSWORD`: Identifiants pour que le backend puisse écrire dans Fuseki. Doivent correspondre à ceux de `fuseki_data/shiro.ini`.
+    *   `JWT_SECRET`: Clé secrète pour signer les tokens d'authentification.
+    *   `VITE_API_BASE_URL`: URL du backend, utilisée par le frontend.
 
 ---
 
