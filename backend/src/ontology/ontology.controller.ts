@@ -25,7 +25,6 @@ import {
 	IndividualNode,
 	Property,
 } from "./ontology.service";
-import { on } from "events";
 
 interface CreateIndividualDto extends IndividualNode {
 	/** IRI of the ontology graph where the individual will be stored */
@@ -131,36 +130,38 @@ export class OntologyController {
 	}
 
 	/** Mise à jour d’un individu existant */
-	@Patch("individuals/:iri")
-	async updateIndividual(
-		@Req() req: AuthRequest,
-		@Param("iri") iri: string,
-		@Body() dto: UpdateIndividualDto
-	): Promise<void> {
-		const { addProps = [], delProps = [], visibleToGroups } = dto;
-		console.log("updateIndividual");
-
-		return this.ontologyService.updateIndividual(
-			decodeURIComponent(iri), // target individual IRI
-			addProps,
-			delProps,
-			req.user.sub, // requesterIri (for ACL check)
-			visibleToGroups // new ACL (optional)
-		);
-	}
+    @Patch("individuals/:iri")
+    async updateIndividual(
+        @Req() req: AuthRequest,
+        @Param("iri") iri: string,
+        @Query("ontology") ontologyIri: string,
+        @Body() dto: UpdateIndividualDto
+    ): Promise<void> {
+        const { addProps = [], delProps = [], visibleToGroups } = dto;
+        return this.ontologyService.updateIndividual(
+            decodeURIComponent(iri),
+            addProps,
+            delProps,
+            req.user.sub,
+            visibleToGroups,
+            ontologyIri
+        );
+    }
 
 	/** Supprimer un individu et tous ses triples */
-	@Delete("individuals/:iri")
-	deleteIndividual(@Req() req: AuthRequest, @Param("iri") iri: string) {
-		console.log("deleteIndividual");
+    @Delete("individuals/:iri")
+    deleteIndividual(
+        @Req() _req: AuthRequest,
+        @Param("iri") iri: string,
+        @Query("ontology") ontologyIri: string
+    ) {
+        return this.ontologyService.deleteIndividual(
+            decodeURIComponent(iri),
+            ontologyIri
+        );
+    }
 
-		return this.ontologyService.deleteIndividual(
-			req.user.sub,
-			decodeURIComponent(iri)
-		);
-	}
-
-	@Get("persons")
+    @Get("persons")
 	getAllPersons(): Promise<IndividualNode[]> {
 		console.log("getAllPersons");
 
@@ -168,24 +169,29 @@ export class OntologyController {
 	}
 
 	/** Détails d’une personne (Individual « foaf:Person ») par IRI */
-	@Get("persons/:iri")
-	getPerson(
-		@Req() req: AuthRequest,
-		@Param("iri") iri: string
-	): Promise<IndividualNode | null> {
-		console.log("getPerson");
-		return this.ontologyService.getPerson(req.user.sub, iri);
-	}
+    @Get("persons/:iri")
+    getPerson(
+        @Req() req: AuthRequest,
+        @Param("iri") iri: string
+    ): Promise<IndividualNode | null> {
+        return this.ontologyService.getPerson(req.user.sub, decodeURIComponent(iri));
+    }
 
 	/**
 	 * Propriétés (data & object) applicables à une classe donnée
 	 */
-	@Get("properties")
-	getPropsForClass(@Query("class") classIri: string, @Req() req: AuthRequest) {
-		console.log("getPropsForClass");
-
-		return this.ontologyService.getClassProperties(classIri, req.user.sub);
-	}
+    @Get("properties")
+    getPropsForClass(
+        @Query("class") classIri: string,
+        @Query("ontology") ontologyIri: string,
+        @Req() req: AuthRequest
+    ) {
+        return this.ontologyService.getClassProperties(
+            classIri,
+            req.user.sub,
+            ontologyIri
+        );
+    }
 
 	/**
 	 * Liste des ontologies (core:OntologyProject) visibles pour l'utilisateur

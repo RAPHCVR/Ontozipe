@@ -20,7 +20,7 @@ export class AuthService {
     private readonly fusekiUpdate = `${this.fusekiBase}/update`;
     private FUSEKI_USER = process.env.FUSEKI_USER || "admin";
 	private FUSEKI_PASS = process.env.FUSEKI_PASSWORD || "Pass123";
-	private JWT_SECRET = "qM5P1eXaNufP+5W6EVWwJ86SLUkHUMolnrfsj/3Tz==";
+    private JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
 	constructor(private readonly http: HttpService) {}
 

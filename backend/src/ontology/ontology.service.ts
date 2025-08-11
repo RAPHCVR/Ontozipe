@@ -351,60 +351,55 @@ export class OntologyService {
 	 *  - `addProps` : propriétés à insérer
 	 *  - `delProps` : propriétés à supprimer
 	 */
-	async updateIndividual(
-		iri: string,
-		addProps: Property[] = [],
-		delProps: Property[] = [],
-		requesterIri?: string,
-		newVisibleToGroups?: string[]
-	): Promise<void> {
-		if (!(await this.individualExists(iri))) {
-			throw new Error("Individu introuvable");
-		}
+    async updateIndividual(
+        iri: string,
+        addProps: Property[] = [],
+        delProps: Property[] = [],
+        requesterIri?: string,
+        newVisibleToGroups?: string[],
+        ontologyIri?: string
+    ): Promise<void> {
+        if (!(await this.individualExists(iri))) {
+            throw new Error("Individu introuvable");
+        }
+        if (!ontologyIri) {
+            throw new Error("ontologyIri manquant");
+        }
 
-		const now = new Date().toISOString();
+        const now = new Date().toISOString();
 
-		/* ----------- suppression des triples à retirer ----------- */
-		let deleteTriples = "";
-		for (const p of delProps) {
-			deleteTriples += `<${iri}> <${p.predicate}> ${toRDF(
-				p.value,
-				p.isLiteral
-			)} .\n`;
-		}
+        let deleteTriples = "";
+        for (const p of delProps) {
+            deleteTriples += `<${iri}> <${p.predicate}> ${toRDF(p.value, p.isLiteral)} .\n`;
+        }
 
-		/* ----------- insertion / mise à jour ----------- */
-		let insertTriples = "";
-		for (const p of addProps) {
-			insertTriples += `<${iri}> <${p.predicate}> ${toRDF(
-				p.value,
-				p.isLiteral
-			)} .\n`;
-		}
-		// nouvelle ACL éventuelle
-		let deleteVis = "";
-		let insertVis = "";
-		if (Array.isArray(newVisibleToGroups)) {
-			deleteVis = `<${iri}> core:visibleTo ?vg .\n`;
-			insertVis = newVisibleToGroups
-				.map((g) => `<${iri}> core:visibleTo <${g}> .\n`)
-				.join("");
-		}
+        let insertTriples = "";
+        for (const p of addProps) {
+            insertTriples += `<${iri}> <${p.predicate}> ${toRDF(p.value, p.isLiteral)} .\n`;
+        }
 
-		// mise à jour des meta‑données d’édition
-		const deleteMeta = `<${iri}> core:updatedBy ?ub ; core:updatedAt ?ua .\n`;
-		const insertMeta = `<${iri}> core:updatedBy <${requesterIri}> ;
-		                           core:updatedAt "${now}"^^xsd:dateTime .\n`;
+        let deleteVis = "";
+        let insertVis = "";
+        if (Array.isArray(newVisibleToGroups)) {
+            deleteVis = `<${iri}> core:visibleTo ?vg .\n`;
+            insertVis = newVisibleToGroups.map((g) => `<${iri}> core:visibleTo <${g}> .\n`).join("");
+        }
 
-		const update = `
-			PREFIX core: <${this.CORE}>
-			PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
-			DELETE { ${deleteTriples}${deleteVis}${deleteMeta} }
-			INSERT { ${insertTriples}${insertVis}${insertMeta} }
-			WHERE  { OPTIONAL { ${deleteTriples}${deleteVis}${deleteMeta} } }`;
+        const deleteMeta = `<${iri}> core:updatedBy ?ub ; core:updatedAt ?ua .\n`;
+        const insertMeta = `<${iri}> core:updatedBy <${requesterIri}> ;
+                             core:updatedAt "${now}"^^xsd:dateTime .\n`;
 
-		await this.runUpdate(update);
-	}
+        const update = `
+            PREFIX core: <${this.CORE}>
+            PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+            WITH <${ontologyIri}>
+            DELETE { ${deleteTriples}${deleteVis}${deleteMeta} }
+            INSERT { ${insertTriples}${insertVis}${insertMeta} }
+            WHERE  { OPTIONAL { ${deleteTriples}${deleteVis}${deleteMeta} } }`;
+
+        await this.runUpdate(update);
+    }
+
 
 	/* ============================================================
 	 *                 CRUD – core:Comment
@@ -736,135 +731,125 @@ export class OntologyService {
 		return { graph, individuals, persons };
 	}
 
-	async getGraph(
-		ontologyIri: string
-	): Promise<{ nodes: NodeData[]; edges: EdgeData[] }> {
-		const sparql = `
-		PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    async getGraph(
+        ontologyIri: string
+    ): Promise<{ nodes: NodeData[]; edges: EdgeData[] }> {
+        const sparql = `
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+            SELECT ?s ?sLabel ?o ?oLabel WHERE {
+              GRAPH <${ontologyIri}> {
+                ?s rdfs:subClassOf ?o .
+                FILTER(isIRI(?s) && isIRI(?o))
+                OPTIONAL { ?s rdfs:label ?sLabel }
+                OPTIONAL { ?o rdfs:label ?oLabel }
+              }
+            }`;
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const response = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
+        const bindings = response.data.results.bindings as Array<{
+            s: { value: string };
+            o: { value: string };
+            sLabel?: { value: string };
+            oLabel?: { value: string };
+        }>;
 
-		SELECT ?s ?sLabel ?o ?oLabel WHERE {
-			GRAPH ?g {                        # <-- AJOUT
-			?s rdfs:subClassOf ?o .
-			FILTER(isIRI(?s) && isIRI(?o))
-			FILTER(STRSTARTS(STR(?s), STR(<${ontologyIri}>)))
-			OPTIONAL { ?s rdfs:label ?sLabel }
-			OPTIONAL { ?o rdfs:label ?oLabel }
-			}
-		}`;
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
+        const nodesMap = new Map<string, NodeData>();
+        const edges: EdgeData[] = [];
 
-		const response = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
-		const bindings = response.data.results.bindings;
-		const nodesMap = new Map<string, NodeData>();
-		const edges: EdgeData[] = [];
+        bindings.forEach((row) => {
+            const s = row.s.value;
+            const o = row.o.value;
+            const sLbl = row.sLabel?.value || s.split(/[#/]/).pop() || s;
+            const oLbl = row.oLabel?.value || o.split(/[#/]/).pop() || o;
+            nodesMap.set(s, { id: s, label: sLbl, title: s });
+            nodesMap.set(o, { id: o, label: oLbl, title: o });
+            edges.push({ from: s, to: o });
+        });
 
-		bindings.forEach(
-			(row: {
-				s: { value: string };
-				o: { value: string };
-				sLabel?: { value: string };
-				oLabel?: { value: string };
-			}) => {
-				const s = row.s.value;
-				const o = row.o.value;
-
-				const sLbl = row.sLabel?.value || s.split(/[#/]/).pop();
-				const oLbl = row.oLabel?.value || o.split(/[#/]/).pop();
-
-				// enregistre les nœuds
-				nodesMap.set(s, { id: s, label: sLbl, title: s });
-				nodesMap.set(o, { id: o, label: oLbl, title: o });
-
-				// enregistre la liaison S→O (sans label pour alléger)
-				edges.push({ from: s, to: o });
-			}
-		);
-
-		return { nodes: Array.from(nodesMap.values()), edges };
-	}
+        return { nodes: Array.from(nodesMap.values()), edges };
+    }
 
 	/**
 	 * Retourne les DataProperties & ObjectProperties applicables à une classe
 	 * (via rdfs:domain sur la classe ou l’une de ses super‑classes).
 	 */
-	async getClassProperties(
-		classIri: string,
-		userIri: string
-	): Promise<{
-		dataProps: { iri: string; label: string }[];
-		objectProps: {
-			iri: string;
-			label: string;
-			range?: { iri: string; label: string };
-		}[];
-	}> {
-		const sparql = `
-      PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-      PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-      PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+    async getClassProperties(
+        classIri: string,
+        userIri: string,
+        ontologyIri: string
+    ): Promise<{
+        dataProps: { iri: string; label: string }[];
+        objectProps: {
+            iri: string;
+            label: string;
+            range?: { iri: string; label: string };
+        }[];
+    }> {
+        const sparql = `
+            PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+            SELECT ?p ?pLabel ?kind ?range ?rangeLabel WHERE {
+              GRAPH <${ontologyIri}> {
+                {
+                  ?p rdf:type owl:DatatypeProperty .
+                  BIND("data" AS ?kind)
+                } UNION {
+                  ?p rdf:type owl:ObjectProperty .
+                  BIND("object" AS ?kind)
+                  OPTIONAL { ?p rdfs:range ?range .
+                             OPTIONAL { ?range rdfs:label ?rangeLabel } }
+                }
+                ?p rdfs:domain ?d .
+                <${classIri}> rdfs:subClassOf* ?d .
+                OPTIONAL { ?p rdfs:label ?pLabel }
+              }
+            }`;
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const { data } = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
 
-      SELECT ?p ?pLabel ?kind ?range ?rangeLabel WHERE {
-        GRAPH ?g {
-          {
-            ?p rdf:type owl:DatatypeProperty .
-            BIND("data" AS ?kind)
-          } UNION {
-            ?p rdf:type owl:ObjectProperty .
-            BIND("object" AS ?kind)
-            OPTIONAL { ?p rdfs:range ?range .
-                       OPTIONAL { ?range rdfs:label ?rangeLabel } }
-          }
-          ?p rdfs:domain ?d .
-          <${classIri}> rdfs:subClassOf* ?d .
-          OPTIONAL { ?p rdfs:label ?pLabel }
-        }
-      }`;
+        const dataProps: { iri: string; label: string }[] = [];
+        const objectProps: {
+            iri: string;
+            label: string;
+            range?: { iri: string; label: string };
+        }[] = [];
 
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-		const { data } = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
+        data.results.bindings.forEach((row: any) => {
+            const base = {
+                iri: row.p.value,
+                label: row.pLabel?.value || row.p.value.split(/[#/]/).pop(),
+            };
+            if (row.kind.value === "data") {
+                dataProps.push(base);
+            } else {
+                objectProps.push({
+                    ...base,
+                    range: row.range
+                        ? {
+                            iri: row.range.value,
+                            label:
+                                row.rangeLabel?.value ||
+                                row.range.value.split(/[#/]/).pop(),
+                        }
+                        : undefined,
+                });
+            }
+        });
 
-		const dataProps: { iri: string; label: string }[] = [];
-		const objectProps: {
-			iri: string;
-			label: string;
-			range?: { iri: string; label: string };
-		}[] = [];
-
-		data.results.bindings.forEach((row: any) => {
-			const baseEntry = {
-				iri: row.p.value,
-				label: row.pLabel?.value || row.p.value.split(/[#/]/).pop(),
-			};
-
-			if (row.kind.value === "data") {
-				dataProps.push(baseEntry);
-			} else {
-				const objEntry = {
-					...baseEntry,
-					range: row.range
-						? {
-								iri: row.range.value,
-								label:
-									row.rangeLabel?.value || row.range.value.split(/[#/]/).pop(),
-							}
-						: undefined,
-				};
-				objectProps.push(objEntry);
-			}
-		});
-
-		return { dataProps, objectProps };
-	}
+        return { dataProps, objectProps };
+    }
 
 	/**
 	 * Retourne tous les utilisateurs de la plateforme (core:User) avec
@@ -1050,10 +1035,12 @@ export class OntologyService {
 	 * Supprime totalement un individu : toutes les triples où il apparaît
 	 * comme sujet sont retirées du store.
 	 */
-	async deleteIndividual(iri: string, requesterIri?: string): Promise<void> {
-		const update = `DELETE WHERE { <${iri}> ?p ?o . }`;
-		await this.runUpdate(update);
-	}
+    async deleteIndividual(iri: string, ontologyIri?: string): Promise<void> {
+        const update = ontologyIri
+            ? `DELETE WHERE { GRAPH <${ontologyIri}> { <${iri}> ?p ?o . } }`
+            : `DELETE WHERE { <${iri}> ?p ?o . }`;
+        await this.runUpdate(update);
+    }
 
 	/* ============================================================
 	 *                 CRUD – core:Organization

@@ -38,8 +38,8 @@ export interface CommentNode {
 }
 
 export type Snapshot = {
-	graph: { nodes: any[]; edges: any[] };
-	individuals: IndividualNode[]; // flat list, no children
-	persons: IndividualNode[]; // foaf:Person
-	comments: CommentNode[];
+    graph: { nodes: any[]; edges: any[] };
+    individuals: IndividualNode[];
+    persons: IndividualNode[];
+    comments?: CommentNode[];
 };

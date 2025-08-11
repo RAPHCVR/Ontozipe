@@ -5,10 +5,10 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
 	constructor() {
-		super({
-			jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-			secretOrKey: "qM5P1eXaNufP+5W6EVWwJ86SLUkHUMolnrfsj/3Tz==",
-		});
+        super({
+            jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+            secretOrKey: process.env.JWT_SECRET || "dev-secret",
+        });
 	}
 
 	/**
