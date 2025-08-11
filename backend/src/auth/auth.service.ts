@@ -25,11 +25,17 @@ export class AuthService {
 	constructor(private readonly http: HttpService) {}
 
 	/** ---------- Utils ---------- */
-	private async askBoolean(ask: string): Promise<boolean> {
-		const params = new URLSearchParams({ query: ask });
-		const res = await lastValueFrom(this.http.get(this.fusekiUrl, { params }));
-		return res.data.boolean === true;
-	}
+  private async askBoolean(ask: string): Promise<boolean> {
+        const params = new URLSearchParams({ query: ask });
+        const res = await lastValueFrom(
+              this.http.get(this.fusekiUrl, {
+                    params,
+                    headers: { Accept: "application/sparql-results+json" },
+          })
+        );
+        return res.data.boolean === true;
+  }
+
 
 	private async runUpdate(update: string) {
 		await lastValueFrom(

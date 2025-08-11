@@ -57,7 +57,7 @@ export default function Navbar() {
 							navigate("/login");
 						}}>
 						<span
-							className={`${navItem} md:btn-secondary md:border md:border-white/40`}>
+                            className={`${navItem} md:border md:border-white/40`}>
 							Déconnexion
 						</span>
 					</li>

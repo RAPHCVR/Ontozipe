@@ -126,7 +126,7 @@ export default function OntologyPage() {
             />
             <div className="w-2" />
 
-            <div className="flex-grow card pl-2-important min-h-0">
+            <div className="flex-grow card pl-2 min-h-0">
                 <OntologyGraph
                     graph={snapshot.graph}
                     onClassHover={setHoveredClassId}
@@ -176,7 +176,10 @@ export default function OntologyPage() {
                                     method: "PATCH",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({
-                                        addProps: payload.properties,
+                                        addProps: [
+                                            { predicate: "http://www.w3.org/2000/01/rdf-schema#label", value: payload.label, isLiteral: true },
+                                            ...payload.properties,
+                                        ],
                                         visibleToGroups: payload.visibleToGroups,
                                     }),
                                 }

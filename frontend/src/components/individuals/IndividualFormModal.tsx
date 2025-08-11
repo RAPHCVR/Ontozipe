@@ -87,15 +87,15 @@ const IndividualFormModal: React.FC<{
             .then((r) => r.json())
             .then(setAvailable)
             .catch(console.error);
-    }, [classId, ontologyIri]);
+        }, [api, classId, ontologyIri]);
 
-	useEffect(() => {
-		const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-		api(`${base}/ontology/groups`)
-			.then((r) => r.json())
-			.then((arr: Group[]) => setGroups(arr))
-			.catch(console.error);
-	}, []);
+    useEffect(() => {
+        const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+        api(`${base}/ontology/groups`)
+            .then((r) => r.json())
+            .then((arr: Group[]) => setGroups(arr))
+            .catch(console.error);
+    }, [api]);
 
 	const toggleGroup = (iri: string) =>
 		setSelectedGroups((prev) =>

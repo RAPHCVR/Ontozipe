@@ -102,7 +102,7 @@ yarn dev
 cd frontend && yarn dev  # http://localhost:5173
 
 # Terminal 2
-cd backend && yarn start:dev  # http://localhost:3000
+cd backend && yarn start:dev  # http://localhost:4000
 ```
 
 ---

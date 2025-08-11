@@ -45,9 +45,9 @@ export interface CommentNode {
  * Otherwise treat as IRI (<…>).
  */
 function toRDF(value: string, isLiteral: boolean): string {
-	return isLiteral || !value.startsWith("http")
-		? `"""${value.replace(/"/g, '\\"')}"""`
-		: `<${value}>`;
+    return isLiteral
+        ? `"""${value.replace(/"/g, '\\"')}"""`
+        : `<${value}>`;
 }
 
 import { Injectable, ForbiddenException } from "@nestjs/common";
@@ -70,9 +70,9 @@ export interface Individual {
 }
 
 export interface FullSnapshot {
-	graph: { nodes: NodeData[]; edges: EdgeData[] };
-	individuals: Individual[]; // à plat
-	persons: IndividualNode[]; // tous les foaf:Person avec leurs props
+    graph: { nodes: NodeData[]; edges: EdgeData[] };
+    individuals: IndividualNode[];
+    persons: IndividualNode[];
 }
 
 /** Group descriptor returned by getGroups() */
@@ -354,49 +354,46 @@ export class OntologyService {
     async updateIndividual(
         iri: string,
         addProps: Property[] = [],
-        delProps: Property[] = [],
+        _delProps: Property[] = [],
         requesterIri?: string,
         newVisibleToGroups?: string[],
         ontologyIri?: string
-    ): Promise<void> {
-        if (!(await this.individualExists(iri))) {
-            throw new Error("Individu introuvable");
-        }
-        if (!ontologyIri) {
-            throw new Error("ontologyIri manquant");
-        }
-
+    ) {
+        if (!ontologyIri) throw new Error("ontologyIri manquant");
         const now = new Date().toISOString();
 
-        let deleteTriples = "";
-        for (const p of delProps) {
-            deleteTriples += `<${iri}> <${p.predicate}> ${toRDF(p.value, p.isLiteral)} .\n`;
-        }
+        const mkVal = (v: string, isLit: boolean) =>
+            isLit ? `"""${v.replace(/"/g, '\\"')}"""` : `<${v}>`;
 
-        let insertTriples = "";
-        for (const p of addProps) {
-            insertTriples += `<${iri}> <${p.predicate}> ${toRDF(p.value, p.isLiteral)} .\n`;
-        }
+        // 1) remplacements propriété par propriété (DELETE old, INSERT new)
+        const perPropUpdates = addProps.map((p) => `
+          WITH <${ontologyIri}>
+          DELETE { <${iri}> <${p.predicate}> ?old . }
+          ${p.value === "" || p.value == null
+                    ? ""
+                    : `INSERT { <${iri}> <${p.predicate}> ${mkVal(p.value, p.isLiteral)} . }`}
+          WHERE  { OPTIONAL { <${iri}> <${p.predicate}> ?old . } }
+        `).join(" ;\n");
+        // 2) ACL: remplacement complet si la liste est fournie
+        const aclUpdate = Array.isArray(newVisibleToGroups) ? `
+            WITH <${ontologyIri}>
+            DELETE { <${iri}> <http://example.org/core#visibleTo> ?g . }
+            INSERT { ${newVisibleToGroups.map((g) => `<${iri}> <http://example.org/core#visibleTo> <${g}> .`).join("\n")} }
+            WHERE  { OPTIONAL { <${iri}> <http://example.org/core#visibleTo> ?g . } }
+          ` : "";
 
-        let deleteVis = "";
-        let insertVis = "";
-        if (Array.isArray(newVisibleToGroups)) {
-            deleteVis = `<${iri}> core:visibleTo ?vg .\n`;
-            insertVis = newVisibleToGroups.map((g) => `<${iri}> core:visibleTo <${g}> .\n`).join("");
-        }
-
-        const deleteMeta = `<${iri}> core:updatedBy ?ub ; core:updatedAt ?ua .\n`;
-        const insertMeta = `<${iri}> core:updatedBy <${requesterIri}> ;
-                             core:updatedAt "${now}"^^xsd:dateTime .\n`;
-
-        const update = `
-            PREFIX core: <${this.CORE}>
+        // 3) méta
+        const metaUpdate = `
+            PREFIX core: <http://example.org/core#>
             PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
             WITH <${ontologyIri}>
-            DELETE { ${deleteTriples}${deleteVis}${deleteMeta} }
-            INSERT { ${insertTriples}${insertVis}${insertMeta} }
-            WHERE  { OPTIONAL { ${deleteTriples}${deleteVis}${deleteMeta} } }`;
+            DELETE { <${iri}> core:updatedBy ?ub ; core:updatedAt ?ua . }
+            INSERT { <${iri}> core:updatedBy <${requesterIri}> ;
+                            core:updatedAt "${now}"^^xsd:dateTime . }
+            WHERE  { OPTIONAL { <${iri}> core:updatedBy ?ub ; core:updatedAt ?ua . } }
+          `;
 
+        const update = [perPropUpdates, aclUpdate, metaUpdate].filter(Boolean).join(" ;\n");
         await this.runUpdate(update);
     }
 
@@ -599,125 +596,175 @@ export class OntologyService {
 	 * Renvoie tous les individus (avec leurs propriétés) appartenant à l’ontologie
 	 * demandée et visibles pour l’utilisateur courant.
 	 */
-	async getIndividualsForOntology(
-		userIri: string,
-		ontologyIri: string
-	): Promise<IndividualNode[]> {
-		// 1. Récupère la liste des groupes de l’utilisateur pour l’ACL
-		const userGroups = await this.getUserGroups(userIri);
+    async getIndividualsForOntology(userIri: string, ontologyIri: string): Promise<IndividualNode[]> {
+        const userGroups = await this.getUserGroups(userIri);
+        const groupsList = userGroups.map((g) => `<${g}>`).join(", ");
+        const aclFilter = `
+            EXISTS { ?s core:createdBy <${userIri}> } ||
+            ${userGroups.length > 0 ? `(!BOUND(?vg) || ?vg IN (${groupsList}))` : `(!BOUND(?vg))`}
+          `.trim();
 
-		// 2. Construit dynamiquement le filtre SPARQL sur la visibilité.
-		//   • Ressource visible si :     createdBy = user
-		//                           OU   pas de core:visibleTo
-		//                           OU   l’un des groupes du user figure dans core:visibleTo
-		const groupsList = userGroups.map((g) => `<${g}>`).join(", ");
-		const aclFilter = `
-		  EXISTS { ?s core:createdBy <${userIri}> } ||
-		  ${
-				userGroups.length > 0
-					? `(!BOUND(?vg) || ?vg IN (${groupsList}))`
-					: `(!BOUND(?vg))`
-			}
-		`.trim();
+        const sparql = `
+            PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+            PREFIX core: <${this.CORE}>
+            PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+            PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+            PREFIX schema: <http://schema.org/>
+            PREFIX dct: <http://purl.org/dc/terms/>
+            
+            SELECT ?s ?sLabel ?clsEff ?createdBy ?createdAt ?updatedBy ?updatedAt ?vg
+                   ?pred ?predLabel ?val ?valLabel ?vCls
+            WHERE {
+              GRAPH <${ontologyIri}> {
+                { ?s core:inProject <${ontologyIri}> . }
+                UNION
+                { ?s rdf:type ?cls0 . }
+            
+                OPTIONAL { ?s rdf:type ?cls }
+                BIND(COALESCE(?cls, ?cls0) AS ?clsEff)
+            
+                # Exclure le schéma
+                FILTER NOT EXISTS { ?s a owl:Class }
+                FILTER NOT EXISTS { ?s a owl:ObjectProperty }
+                FILTER NOT EXISTS { ?s a owl:DatatypeProperty }
+                FILTER NOT EXISTS { ?s a owl:Ontology }
+            
+                OPTIONAL { ?s rdfs:label ?sLabel }
+                OPTIONAL { ?s core:visibleTo ?vg }
+                OPTIONAL { ?s core:createdBy ?createdBy }
+                OPTIONAL { ?s core:createdAt ?createdAt }
+                OPTIONAL { ?s core:updatedBy ?updatedBy }
+                OPTIONAL { ?s core:updatedAt ?updatedAt }
+            
+                # Propriétés "utilisateur"
+                ?s ?pred ?val .
+                FILTER(
+                  ?pred != rdf:type &&
+                  ?pred != core:inProject &&
+                  ?pred != core:createdBy &&
+                  ?pred != core:createdAt &&
+                  ?pred != core:updatedBy &&
+                  ?pred != core:updatedAt &&
+                  ?pred != core:visibleTo
+                )
+                OPTIONAL { ?pred rdfs:label ?predLabel }
+              }
+            
+              # Label de la valeur, où qu'elle soit
+              OPTIONAL {
+                { ?val (rdfs:label|foaf:name|skos:prefLabel|schema:name|dct:title) ?_vLabel1 }
+                UNION
+                { GRAPH ?g { ?val (rdfs:label|foaf:name|skos:prefLabel|schema:name|dct:title) ?_vLabel2 } }
+              }
+              BIND(COALESCE(?_vLabel1, ?_vLabel2) AS ?valLabel)
+            
+              # Type de la valeur, si connu (graph courant ou autre)
+              OPTIONAL {
+                { ?val rdf:type ?_vCls1 }
+                UNION
+                { GRAPH ?gx { ?val rdf:type ?_vCls2 } }
+              }
+              BIND(COALESCE(?_vCls1, ?_vCls2) AS ?vCls)
+            
+              FILTER( ${aclFilter} )
+            }`;
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const { data } = await lastValueFrom(this.httpService.get(this.fusekiUrl, { params }));
 
-		const sparql = `
-      PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-      PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-      PREFIX core: <${this.CORE}>
+        type Row = {
+            s: { value: string };
+            sLabel?: { value: string };
+            clsEff?: { value: string };
+            createdBy?: { value: string };
+            createdAt?: { value: string };
+            updatedBy?: { value: string };
+            updatedAt?: { value: string };
+            vg?: { value: string };
+            pred: { value: string };
+            predLabel?: { value: string };
+            val: { value: string; type: string };
+            valLabel?: { value: string };
+            vCls?: { value: string };
+        };
 
-      SELECT ?s ?sLabel ?cls
-             ?createdBy ?createdAt ?updatedBy ?updatedAt ?vg
-             ?pred ?predLabel ?val ?valLabel
-      WHERE {
-        GRAPH ?g {
-          ?s core:inProject <${ontologyIri}> .
-          OPTIONAL { ?s core:visibleTo ?vg }
-          OPTIONAL { ?s core:createdBy ?createdBy }
-          OPTIONAL { ?s core:createdAt ?createdAt }
-          OPTIONAL { ?s core:updatedBy ?updatedBy }
-          OPTIONAL { ?s core:updatedAt ?updatedAt }
-          FILTER( ${aclFilter} )
+        const map = new Map<string, IndividualNode>();
 
-          ?s rdf:type ?cls .
-          OPTIONAL { ?s rdfs:label ?sLabel }
+        (data.results.bindings as Row[]).forEach((row) => {
+            // 1) Sujet: comme avant
+            const id = row.s.value;
+            if (!map.has(id)) {
+                map.set(id, {
+                    id,
+                    label: row.sLabel?.value || id.split(/[#/]/).pop() || "",
+                    classId: row.clsEff?.value || "http://www.w3.org/2002/07/owl#Thing",
+                    properties: [],
+                    children: [],
+                });
+            }
+            const entry = map.get(id)!;
+            if (row.createdBy?.value) entry.createdBy = row.createdBy.value;
+            if (row.createdAt?.value) entry.createdAt = row.createdAt.value;
+            if (row.updatedBy?.value) entry.updatedBy = row.updatedBy.value;
+            if (row.updatedAt?.value) entry.updatedAt = row.updatedAt.value;
+            if (row.vg?.value) {
+                entry.visibleTo ??= [];
+                if (!entry.visibleTo.includes(row.vg.value)) entry.visibleTo.push(row.vg.value);
+            }
+            const isUri = row.val?.type === "uri";
 
-          # Propriétés utilisateur (on exclut les métadonnées et l’ACL)
-          ?s ?pred ?val .
-          FILTER(
-            ?pred != rdf:type &&
-            ?pred != core:inProject &&
-            ?pred != core:createdBy &&
-            ?pred != core:createdAt &&
-            ?pred != core:updatedBy &&
-            ?pred != core:updatedAt &&
-            ?pred != core:visibleTo
-          )
+            entry.properties.push({
+                predicate: row.pred.value,
+                predicateLabel: row.predLabel?.value,
+                value: row.val.value,
+                valueLabel: row.valLabel?.value,
+                isLiteral: !isUri,
+            });
 
-          OPTIONAL { ?pred rdfs:label ?predLabel }
-          OPTIONAL { ?val  rdfs:label ?valLabel }
+            // 2) CIBLE: on l'ajoute au snapshot si c'est un IRI,
+            //    même si elle n'a aucune propriété propre → chip cliquable.
+            if (row.val?.type === "uri" && !map.has(row.val.value)) {
+                map.set(row.val.value, {
+                    id: row.val.value,
+                    label: row.valLabel?.value || row.val.value.split(/[#/]/).pop() || row.val.value,
+                    classId: row.vCls?.value || "http://www.w3.org/2002/07/owl#Thing",
+                    properties: [],
+                    children: [],
+                });
+            }
+        });
+
+        for (const node of map.values()) {
+            if (!node.properties || node.properties.length <= 1) continue;
+
+            const uniq = new Map<string, Property>(); // key = predicate||value
+            for (const p of node.properties) {
+                const key = `${p.predicate}||${p.isLiteral ? "L" : "R"}||${p.value}`;
+                const prev = uniq.get(key);
+
+                if (!prev) {
+                    uniq.set(key, p);
+                } else {
+                    // Conserver la version la plus informative
+                    const better: Property = {
+                        predicate: p.predicate,
+                        predicateLabel: p.predicateLabel || prev.predicateLabel,
+                        value: p.value,
+                        valueLabel: p.valueLabel || prev.valueLabel,
+                        isLiteral: p.isLiteral,
+                    };
+                    uniq.set(key, better);
+                }
+            }
+            node.properties = Array.from(uniq.values());
         }
-      }`;
 
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-
-		const { data } = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
-
-		type Row = {
-			s: { value: string };
-			sLabel?: { value: string };
-			cls: { value: string };
-
-			createdBy?: { value: string };
-			createdAt?: { value: string };
-			updatedBy?: { value: string };
-			updatedAt?: { value: string };
-			vg?: { value: string };
-
-			pred: { value: string };
-			predLabel?: { value: string };
-			val: { value: string };
-			valLabel?: { value: string };
-		};
-
-		const map = new Map<string, IndividualNode>();
-
-		(data.results.bindings as Row[]).forEach((row) => {
-			const id = row.s.value;
-			if (!map.has(id)) {
-				map.set(id, {
-					id,
-					label: row.sLabel?.value || id.split(/[#/]/).pop() || "",
-					classId: row.cls.value,
-					properties: [],
-					children: [],
-				});
-			}
-			const entry = map.get(id)!;
-			if (row.createdBy?.value) entry.createdBy = row.createdBy.value;
-			if (row.createdAt?.value) entry.createdAt = row.createdAt.value;
-			if (row.updatedBy?.value) entry.updatedBy = row.updatedBy.value;
-			if (row.updatedAt?.value) entry.updatedAt = row.updatedAt.value;
-			if (row.vg?.value) {
-				if (!entry.visibleTo) entry.visibleTo = [];
-				if (!entry.visibleTo.includes(row.vg.value))
-					entry.visibleTo.push(row.vg.value);
-			}
-			entry.properties.push({
-				predicate: row.pred.value,
-				predicateLabel: row.predLabel?.value,
-				value: row.val.value,
-				valueLabel: row.valLabel?.value,
-				isLiteral: !row.val.value.startsWith("http"),
-			});
-		});
-
-		return Array.from(map.values());
-	}
+        return Array.from(map.values());
+    }
 
 	async getFullSnapshot(
 		userIri: string,
@@ -895,7 +942,7 @@ export class OntologyService {
 			uLabel?: { value: string };
 			pred: { value: string };
 			predLabel?: { value: string };
-			val: { value: string };
+            val: { value: string; type: string };
 			valLabel?: { value: string };
 			grp?: { value: string };
 			grpLabel?: { value: string };
@@ -926,13 +973,13 @@ export class OntologyService {
 					});
 				}
 			}
-			personMap.get(id)!.properties.push({
-				predicate: row.pred.value,
-				predicateLabel: row.predLabel?.value,
-				value: row.val.value,
-				valueLabel: row.valLabel?.value,
-				isLiteral: !row.val.value.startsWith("http"),
-			});
+            personMap.get(id)!.properties.push({
+                predicate: row.pred.value,
+                predicateLabel: row.predLabel?.value,
+                value: row.val.value,
+                valueLabel: row.valLabel?.value,
+                isLiteral: row.val.type !== "uri",
+            });
 		});
 		return Array.from(personMap.values());
 	}
@@ -942,94 +989,119 @@ export class OntologyService {
 	 * On récupère toutes ses propriétés ainsi que les groupes auxquels il appartient.
 	 * Si aucun utilisateur n’est trouvé, la fonction renvoie null.
 	 */
-	async getPerson(
-		_requesterIri: string, // réservé pour ACL futures
-		personIri: string
-	): Promise<IndividualNode | null> {
-		const sparql = `
-			PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-			PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
-			PREFIX core:  <${this.CORE}>
+    async getPerson(
+        _requesterIri: string, // réservé pour ACL futures
+        personIri: string
+    ): Promise<IndividualNode | null> {
+        const sparql = `
+            PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX core:  <${this.CORE}>
+        
+            SELECT ?uLabel ?pred ?predLabel ?val ?valLabel ?grp ?grpLabel WHERE {
+              BIND(<${personIri}> AS ?u)
+              ?u rdf:type core:User .
+        
+              OPTIONAL { ?u rdfs:label ?uLabel }
+        
+              # Groupes d’appartenance (direct + named graphs)
+              OPTIONAL {
+                { ?grp core:hasMember ?u }
+                UNION { GRAPH ?ng { ?grp core:hasMember ?u } }
+                OPTIONAL { ?grp rdfs:label ?grpLabel }
+              }
+        
+              # Toutes les propriétés de l’utilisateur (sauf rdf:type)
+              OPTIONAL {
+                ?u ?pred ?val .
+                FILTER(?pred != rdf:type)
+                OPTIONAL { ?pred rdfs:label ?predLabel }
+                OPTIONAL { ?val  rdfs:label ?valLabel }
+              }
+            }
+          `;
 
-			SELECT ?uLabel ?pred ?predLabel ?val ?valLabel ?grp ?grpLabel WHERE {
-			  BIND(<${personIri}> AS ?u)
-			  ?u rdf:type core:User .
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const { data } = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
 
-			  OPTIONAL { ?u rdfs:label ?uLabel }
+        type Row = {
+            uLabel?: { value: string };
+            pred?: { value: string };
+            predLabel?: { value: string };
+            val?: { value: string; type: string };
+            valLabel?: { value: string };
+            grp?: { value: string };
+            grpLabel?: { value: string };
+        };
 
-			  # Groupes d’appartenance (direct + named graphs)
-			  OPTIONAL {
-				{ ?grp core:hasMember ?u }
-				UNION { GRAPH ?ng { ?grp core:hasMember ?u } }
-				OPTIONAL { ?grp rdfs:label ?grpLabel }
-			  }
+        if (data.results.bindings.length === 0) return null;
 
-			  # Toutes les propriétés de l’utilisateur (sauf rdf:type)
-			  OPTIONAL {
-				?u ?pred ?val .
-				FILTER(?pred != rdf:type)
-				OPTIONAL { ?pred rdfs:label ?predLabel }
-				OPTIONAL { ?val  rdfs:label ?valLabel }
-			  }
-			}
-		`;
+        const USER_CLASS_IRI = this.CORE + "User";
+        const person: IndividualNode = {
+            id: personIri,
+            label:
+                data.results.bindings[0].uLabel?.value ||
+                personIri.split(/[#/]/).pop() ||
+                "Unknown",
+            classId: USER_CLASS_IRI,
+            properties: [],
+            children: [],
+        };
 
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-		const { data } = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
+        (data.results.bindings as Row[]).forEach((row) => {
+            // Groupes
+            if (row.grp?.value) {
+                if (!person.groups) person.groups = [];
+                if (!person.groups.some((g) => g.iri === row.grp!.value)) {
+                    person.groups.push({
+                        iri: row.grp.value,
+                        label: row.grpLabel?.value,
+                    });
+                }
+            }
 
-		type Row = {
-			uLabel?: { value: string };
-			pred?: { value: string };
-			predLabel?: { value: string };
-			val?: { value: string };
-			valLabel?: { value: string };
-			grp?: { value: string };
-			grpLabel?: { value: string };
-		};
+            // Propriétés
+            if (row.pred && row.val) {
+                const isLiteral = row.val.type !== "uri";
+                person.properties.push({
+                    predicate: row.pred.value,
+                    predicateLabel: row.predLabel?.value,
+                    value: row.val.value,
+                    valueLabel: row.valLabel?.value,
+                    isLiteral,
+                });
+            }
+        });
 
-		if (data.results.bindings.length === 0) return null;
+        // Déduplication (clé = prédicat + nature littérale/IRI + valeur)
+        if (person.properties.length > 1) {
+            const uniq = new Map<string, Property>();
+            for (const p of person.properties) {
+                const key = `${p.predicate}||${p.isLiteral ? "L" : "R"}||${p.value}`;
+                const prev = uniq.get(key);
+                if (!prev) {
+                    uniq.set(key, p);
+                } else {
+                    const better: Property = {
+                        predicate: p.predicate,
+                        predicateLabel: p.predicateLabel || prev.predicateLabel,
+                        value: p.value,
+                        valueLabel: p.valueLabel || prev.valueLabel,
+                        isLiteral: p.isLiteral,
+                    };
+                    uniq.set(key, better);
+                }
+            }
+            person.properties = Array.from(uniq.values());
+        }
 
-		const USER_CLASS_IRI = this.CORE + "User";
-		const person: IndividualNode = {
-			id: personIri,
-			label:
-				data.results.bindings[0].uLabel?.value ||
-				personIri.split(/[#/]/).pop() ||
-				"Unknown",
-			classId: USER_CLASS_IRI,
-			properties: [],
-			children: [],
-		};
-
-		(data.results.bindings as Row[]).forEach((row) => {
-			if (row.grp?.value) {
-				if (!person.groups) person.groups = [];
-				if (!person.groups.some((g) => g.iri === row.grp!.value)) {
-					person.groups.push({
-						iri: row.grp.value,
-						label: row.grpLabel?.value,
-					});
-				}
-			}
-
-			if (row.pred && row.val) {
-				person.properties.push({
-					predicate: row.pred.value,
-					predicateLabel: row.predLabel?.value,
-					value: row.val.value,
-					valueLabel: row.valLabel?.value,
-					isLiteral: !row.val.value.startsWith("http"),
-				});
-			}
-		});
-
-		return person;
-	}
+        return person;
+    }
 
 	/**
 	 * Supprime totalement un individu : toutes les triples où il apparaît

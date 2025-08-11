@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { IndividualNode, Snapshot, CommentNode } from "../../types";
 import { formatLabel } from "../../utils/formatLabel";
 import { useAuth } from "../../auth/AuthContext";
@@ -46,13 +46,28 @@ const IndividualCard: React.FC<{
 	const commonGroups =
 		userGroups.filter((g) => (ind.visibleTo || []).includes(g.iri)) || [];
 
-	const filteredProps =
-		(ind.properties || []).filter(
-			(prop) => !prop.predicate.endsWith("label")
-		) || [];
+    const uniqueProps = useMemo(() => {
+        const m = new Map<string, typeof ind.properties[number]>();
+        for (const p of ind.properties || []) {
+            const key = `${p.predicate}||${p.isLiteral ? "L" : "R"}||${p.value}`;
+            const prev = m.get(key);
+            if (!prev) m.set(key, p);
+            else {
+                // conserve la variante la plus "riche" en libellés
+                if ((!prev.valueLabel && p.valueLabel) || (!prev.predicateLabel && p.predicateLabel)) {
+                    m.set(key, p);
+                }
+            }
+        }
+        return Array.from(m.values());
+    }, [ind.properties]);
 
-	const dataProps = filteredProps.filter((p) => p.isLiteral);
-	const relProps = filteredProps.filter((p) => !p.isLiteral);
+    // Puis utilise uniqueProps à la place de ind.properties
+    const filteredProps =
+        (uniqueProps || []).filter((prop) => !prop.predicate.endsWith("label")) || [];
+
+    const dataProps = filteredProps.filter((p) => p.isLiteral);
+    const relProps  = filteredProps.filter((p) => !p.isLiteral);
 
 	const hasData = dataProps.length > 0 || relProps.length > 0;
 
@@ -236,30 +251,47 @@ const IndividualCard: React.FC<{
 									Relations
 								</h4>
 								<div className="flex flex-wrap gap-1">
-									{relProps.map((prop, idx) => {
-										const target =
-											snapshot.individuals.find((t) => t.id === prop.value) ||
-											snapshot.persons.find((t) => t.id === prop.value);
-										const label = formatLabel(
-											target?.label || prop.valueLabel || prop.value
-										);
-										return (
-											<span key={idx} className="relative group">
-												<button
-													onClick={() => target && onShow(target)}
-													className="bg-emerald-700/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300 text-xs px-2 py-0.5 rounded-full hover:bg-emerald-700/20 transition-colors cursor-pointer">
-													{label}
-												</button>
-												<span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 invisible group-hover:visible opacity-100 text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap z-20 bg-gray-800 text-white">
-													{formatLabel(
-														prop.predicateLabel ||
-															prop.predicate.split(/[#/]/).pop() ||
-															""
-													)}
-												</span>
-											</span>
-										);
-									})}
+                                    {relProps.map((prop, idx) => {
+                                        const target =
+                                            snapshot.individuals.find((t) => t.id === prop.value) ||
+                                            snapshot.persons.find((t) => t.id === prop.value);
+
+                                        const hasData = !!target && (target.properties?.length ?? 0) > 0;
+
+                                        const label = formatLabel(
+                                            target?.label ||
+                                            prop.valueLabel ||
+                                            (prop.value.startsWith("http")
+                                                ? prop.value.split(/[#/]/).pop() || prop.value
+                                                : prop.value)
+                                        );
+
+                                        const chipClass = hasData
+                                            ? "bg-emerald-700/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300 hover:bg-emerald-700/20"
+                                            : "bg-slate-400/10 text-slate-600 dark:bg-slate-400/10 dark:text-slate-300 border border-dashed border-slate-400/50 hover:bg-slate-400/20";
+
+                                        const title = hasData
+                                            ? "Ouvrir les détails (données disponibles)"
+                                            : "Ouvrir les détails (aucune donnée spécifique)";
+
+                                        return (
+                                            <span key={idx} className="relative group">
+                                              <button
+                                                  onClick={() => target && onShow(target)}
+                                                  className={`${chipClass} text-xs px-2 py-0.5 rounded-full transition-colors cursor-pointer`}
+                                                  title={title}
+                                              >
+                                                {hasData ? "● " : "○ "}
+                                                  {label}
+                                              </button>
+                                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 invisible group-hover:visible opacity-100 text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap z-20 bg-gray-800 text-white">
+                                                {formatLabel(
+                                                    prop.predicateLabel || prop.predicate.split(/[#/]/).pop() || ""
+                                                )}
+                                              </span>
+                                            </span>
+                                        );
+                                    })}
 								</div>
 							</div>
 						)}
