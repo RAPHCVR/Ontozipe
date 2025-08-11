@@ -13,10 +13,12 @@ const FOAF = "http://xmlns.com/foaf/0.1/";
 
 @Injectable()
 export class AuthService {
-	private fusekiUrl =
-		process.env.FUSEKI_SPARQL || "http://localhost:3030/autonomy/sparql";
-	private fusekiUpdate = this.fusekiUrl.replace("/sparql", "/update");
-	private FUSEKI_USER = process.env.FUSEKI_USER || "admin";
+    private readonly fusekiBase = (
+        process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy"
+    ).replace(/\/$/, "");
+    private readonly fusekiUrl = `${this.fusekiBase}/sparql`;
+    private readonly fusekiUpdate = `${this.fusekiBase}/update`;
+    private FUSEKI_USER = process.env.FUSEKI_USER || "admin";
 	private FUSEKI_PASS = process.env.FUSEKI_PASSWORD || "Pass123";
 	private JWT_SECRET = "qM5P1eXaNufP+5W6EVWwJ86SLUkHUMolnrfsj/3Tz==";
 

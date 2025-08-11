@@ -77,10 +77,11 @@ export interface FullSnapshot {
 
 /** Group descriptor returned by getGroups() */
 export interface GroupInfo {
-	iri: string;
-	label?: string;
-	createdBy: string;
-	members: string[];
+    iri: string;
+    label?: string;
+    createdBy: string;
+    members: string[];
+    organizationIri?: string;
 }
 
 /** Organization descriptor */
@@ -93,14 +94,17 @@ export interface OrganizationInfo {
 
 @Injectable()
 export class OntologyService {
-	private fusekiUrl = "http://localhost:3030/autonomy/sparql";
-	private fusekiUpdateUrl = "http://localhost:3030/autonomy/update";
-	private fuseki = process.env.FUSEKI_URL ?? "http://localhost:3030/autonomy";
+    private readonly fusekiBase = (
+        process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy"
+    ).replace(/\/$/, "");
+    private readonly fusekiUrl = `${this.fusekiBase}/sparql`;
+    private readonly fusekiUpdateUrl = `${this.fusekiBase}/update`;
+    private readonly fuseki = this.fusekiBase;
 
-	private adminAuth = {
-		username: "admin",
-		password: process.env.FUSEKI_ADMIN_PASS ?? "Pass123",
-	};
+    private adminAuth = {
+        username: process.env.FUSEKI_USER || "admin",
+        password: process.env.FUSEKI_PASSWORD || "Pass123",
+    };
 	private FUSEKI_USER = process.env.FUSEKI_USER || "admin";
 	private FUSEKI_PASS = process.env.FUSEKI_PASSWORD || "Pass123";
 
@@ -1436,60 +1440,62 @@ export class OntologyService {
 	 * Pour chaque groupe on renvoie : IRI, label, créateur et la liste
 	 * complète des membres (IRIs).
 	 */
-	async getGroups(userIri: string): Promise<GroupInfo[]> {
-		const sparql = `
-      PREFIX core: <${this.CORE}>
-      PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    async getGroups(userIri: string): Promise<GroupInfo[]> {
+        const sparql = `
+            PREFIX core: <${this.CORE}>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT ?g ?lbl ?creator ?member ?org WHERE {
+              ?g a core:Group ;
+                 core:createdBy ?creator ;
+                 core:hasMember <${userIri}> .
+              OPTIONAL { ?g rdfs:label ?lbl }
+              OPTIONAL { ?g core:hasMember ?member }
+              OPTIONAL { ?g core:inOrganization ?org }
+            }
+            `;
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const { data } = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
 
-      SELECT ?g ?lbl ?creator ?member WHERE {
-        ?g a core:Group ;
-           core:createdBy ?creator ;
-           core:hasMember <${userIri}> .
-        OPTIONAL { ?g rdfs:label ?lbl }
-        OPTIONAL { ?g core:hasMember ?member }      # agrège tous les membres
-      }
-    `;
+        type Row = {
+            g: { value: string };
+            lbl?: { value: string };
+            creator: { value: string };
+            member?: { value: string };
+            org?: { value: string };
+        };
 
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
+        const map = new Map<string, GroupInfo>();
+        (data.results.bindings as Row[]).forEach((row) => {
+            const iri = row.g.value;
+            if (!map.has(iri)) {
+                map.set(iri, {
+                    iri,
+                    label: row.lbl?.value,
+                    createdBy: row.creator.value,
+                    members: [],
+                    organizationIri: row.org?.value,
+                });
+            }
+            if (row.member) {
+                const grp = map.get(iri)!;
+                if (!grp.members.includes(row.member.value))
+                    grp.members.push(row.member.value);
+            }
+            // si la valeur org arrive sur une ligne suivante, garder la dernière vue
+            if (row.org?.value) {
+                map.get(iri)!.organizationIri = row.org.value;
+            }
+        });
 
-		const { data } = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
-
-		type Row = {
-			g: { value: string };
-			lbl?: { value: string };
-			creator: { value: string };
-			member?: { value: string };
-		};
-
-		// regroupe les bindings par groupe
-		const map = new Map<string, GroupInfo>();
-
-		(data.results.bindings as Row[]).forEach((row) => {
-			const iri = row.g.value;
-			if (!map.has(iri)) {
-				map.set(iri, {
-					iri,
-					label: row.lbl?.value,
-					createdBy: row.creator.value,
-					members: [],
-				});
-			}
-			if (row.member) {
-				const grp = map.get(iri)!;
-				if (!grp.members.includes(row.member.value))
-					grp.members.push(row.member.value);
-			}
-		});
-
-		return Array.from(map.values()).sort((a, b) =>
-			(a.label || a.iri).localeCompare(b.label || b.iri)
-		);
-	}
+        return Array.from(map.values()).sort((a, b) =>
+            (a.label || a.iri).localeCompare(b.label || b.iri)
+        );
+    }
 	/** Crée un groupe (rattachement à une organisation) et retourne son IRI */
 	async createGroup(
 		label: string,
@@ -1573,21 +1579,43 @@ WHERE  {
 		await this.runUpdate(update);
 	}
 	/** Change le label d'un groupe */
-	async updateGroupLabel(
-		requesterIri: string,
-		groupIri: string,
-		newLabel: string
-	): Promise<void> {
-		if (!(await this.isGroupOwner(requesterIri, groupIri))) {
-			throw new ForbiddenException("Vous n’êtes pas propriétaire de ce groupe");
-		}
-		const update = `
-			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-			DELETE { <${groupIri}> rdfs:label ?l . }
-			INSERT { <${groupIri}> rdfs:label """${newLabel.replace(/"/g, '\\"')}""" . }
-			WHERE  { OPTIONAL { <${groupIri}> rdfs:label ?l . } }`;
-		await this.runUpdate(update);
-	}
+    async updateGroupLabel(
+        requesterIri: string,
+        groupIri: string,
+        newLabel?: string
+    ): Promise<void> {
+        if (!(await this.isGroupOwner(requesterIri, groupIri))) {
+            throw new ForbiddenException("Vous n’êtes pas propriétaire de ce groupe");
+        }
+        if (newLabel === undefined) return;
+
+        const update = `
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            DELETE { <${groupIri}> rdfs:label ?l . }
+            INSERT { <${groupIri}> rdfs:label """${newLabel.replace(/"/g, '\\"')}""" . }
+            WHERE  { OPTIONAL { <${groupIri}> rdfs:label ?l . } }`;
+        await this.runUpdate(update);
+    }
+
+    async updateGroupOrganization(
+        requesterIri: string,
+        groupIri: string,
+        newOrgIri: string
+    ): Promise<void> {
+        if (!(await this.isGroupOwner(requesterIri, groupIri))) {
+            throw new ForbiddenException("Vous n’êtes pas propriétaire de ce groupe");
+        }
+        const update = `
+            PREFIX core: <${this.CORE}>
+            # Supprime le rattachement existant (défaut + named graphs)
+            DELETE { <${groupIri}> core:inOrganization ?o . }
+            WHERE  { <${groupIri}> core:inOrganization ?o . } ;
+            DELETE { GRAPH ?g { <${groupIri}> core:inOrganization ?o . } }
+            WHERE  { GRAPH ?g { <${groupIri}> core:inOrganization ?o . } } ;
+            # Insère le nouveau rattachement dans le graphe par défaut
+            INSERT DATA { <${groupIri}> core:inOrganization <${newOrgIri}> . }`;
+        await this.runUpdate(update);
+    }
 
 	/** Supprime complètement un groupe */
 	async deleteGroup(requesterIri: string, groupIri: string): Promise<void> {

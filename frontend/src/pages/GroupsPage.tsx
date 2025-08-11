@@ -7,10 +7,11 @@ import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
 
 type Group = {
-	iri: string;
-	label: string;
-	members?: string[];
-	createdBy: string; // IRI du créateur (renvoyé par l’API)
+    iri: string;
+    label: string;
+    members?: string[];
+    createdBy: string;
+    organizationIri?: string;
 };
 
 type GroupDetails = Group & { members: string[] };
@@ -25,17 +26,20 @@ export default function GroupsPage() {
 	const [showNew, setShowNew] = useState(false);
 	const [selected, setSelected] = useState<GroupDetails | null>(null);
 
-	const load = () =>
-		api("http://localhost:4000/ontology/groups")
-			.then((r) => r.json())
-			.then((data) =>
-				setGroups(
-					data.map((g: any) => ({
-						...g,
-						members: g.members ?? [],
-					}))
-				)
-			);
+    const load = () =>
+        api("http://localhost:4000/ontology/groups")
+            .then((r) => r.json())
+            .then((data) =>
+                setGroups(
+                    data.map((g: any) => ({
+                        iri: g.iri,
+                        label: g.label,
+                        createdBy: g.createdBy,
+                        members: g.members ?? [],
+                        organizationIri: g.organizationIri,
+                    }))
+                )
+            );
 
 	useEffect(() => {
 		if (!currentUserIri) return;

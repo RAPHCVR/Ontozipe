@@ -59,8 +59,9 @@ interface CreateGroupDto {
 	organizationIri: string; // IRI de l’organisation à laquelle appartient le groupe
 	members?: string[];
 }
-interface UpdateGroupLabelDto {
-	label: string;
+interface UpdateGroupDto {
+    label?: string;
+    organizationIri?: string;
 }
 interface AddMemberDto {
 	userIri: string;
@@ -366,20 +367,39 @@ export class OntologyController {
 		);
 	}
 
-	@Patch("groups/:iri")
-	updateGroupLabel(
-		@Req() req: AuthRequest,
-		@Param("iri") iri: string,
-		@Body() dto: UpdateGroupLabelDto
-	) {
-		console.log("updateGroupLabel");
+    @Patch("groups/:iri")
+    async updateGroup(
+        @Req() req: AuthRequest,
+        @Param("iri") iri: string,
+        @Body() dto: UpdateGroupDto
+    ) {
+        const groupIri = decodeURIComponent(iri);
 
-		return this.ontologyService.updateGroupLabel(
-			req.user.sub,
-			decodeURIComponent(iri),
-			dto.label
-		);
-	}
+        // Au moins un champ doit être présent
+        if (dto.label === undefined && dto.organizationIri === undefined) {
+            throw new BadRequestException("Aucun champ à mettre à jour");
+        }
+
+        // Si label est présent, on met à jour le libellé
+        if (dto.label !== undefined) {
+            await this.ontologyService.updateGroupLabel(
+                req.user.sub,
+                groupIri,
+                dto.label
+            );
+        }
+
+        // Si organizationIri est présent, on rattache à cette organisation
+        if (dto.organizationIri !== undefined) {
+            await this.ontologyService.updateGroupOrganization(
+                req.user.sub,
+                groupIri,
+                dto.organizationIri
+            );
+        }
+
+        return { ok: true };
+    }
 
 	@Post("groups/:iri/members")
 	addGroupMember(

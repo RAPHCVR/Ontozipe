@@ -1,6 +1,5 @@
 services:
   fuseki:
-    build: ./fuseki
     image: stain/jena-fuseki
     container_name: fuseki
     ports:
