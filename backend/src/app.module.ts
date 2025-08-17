@@ -4,18 +4,20 @@ import { AuthModule } from "./auth/auth.module";
 import { HttpModule } from "@nestjs/axios";
 import * as http from "http";
 import * as https from "https";
+import { LlmModule } from "./llm/llm.module";
 
 @Module({
-	imports: [
-		HttpModule.registerAsync({
-			useFactory: () => ({
-				timeout: 10000,
-				httpAgent: new http.Agent({ keepAlive: false }), // <—
-				httpsAgent: new https.Agent({ keepAlive: false }), // <—
-			}),
-		}),
-		AuthModule,
-		OntologyModule,
-	],
+    imports: [
+        HttpModule.registerAsync({
+            useFactory: () => ({
+                timeout: 10000,
+                httpAgent: new http.Agent({ keepAlive: false }),
+                httpsAgent: new https.Agent({ keepAlive: false }),
+            }),
+        }),
+        AuthModule,
+        OntologyModule,
+        LlmModule,
+    ],
 })
 export class AppModule {}
