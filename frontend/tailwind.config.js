@@ -3,6 +3,5 @@ module.exports = {
 	darkMode: "media",
 	theme: { extend: {} },
 	plugins: [
-        require('@tailwindcss/typography'), // Pour le style Markdown
     ],
 };

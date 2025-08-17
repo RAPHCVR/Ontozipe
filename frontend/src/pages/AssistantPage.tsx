@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { useApi } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
+import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 type Ontology = { iri: string; label?: string };
@@ -50,6 +51,10 @@ export default function AssistantPage() {
 
             onmessage(event) {
                 const chunkContent = JSON.parse(event.data);
+
+                if (chunkContent === "[DONE]") {
+                    return;
+                }
 
                 setMessages((prev) => {
                     const lastMsg = prev[prev.length - 1];
@@ -122,13 +127,13 @@ export default function AssistantPage() {
                 ))}
             </div>
 
-            <div className="flex items-start gap-2">
+            <div className="flex items-end gap-2">
                 <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Posez votre question (Shift+Entrée pour nouvelle ligne)…"
                     rows={2}
-                    className="flex-1 text-sm border rounded px-3 py-2 dark:bg-slate-800 dark:border-slate-600 resize-none"
+                    className="flex-1 text-sm border rounded-md px-3 py-2 dark:bg-slate-800 dark:border-slate-600 resize-none"
                     onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
@@ -139,10 +144,14 @@ export default function AssistantPage() {
                 <button
                     onClick={send}
                     disabled={sending || !input.trim()}
-                    className="btn-primary disabled:opacity-50 h-[38px]"
-                    title="Envoyer"
+                    className="btn-primary disabled:opacity-50 h-[42px] w-[42px] flex-shrink-0 !p-0 flex items-center justify-center rounded-md"
+                    aria-label="Envoyer"
                 >
-                    {sending ? "..." : "Envoyer"}
+                    {sending ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white" />
+                    ) : (
+                        <PaperAirplaneIcon className="h-5 w-5" />
+                    )}
                 </button>
             </div>
             <p className="text-xs text-gray-500">
