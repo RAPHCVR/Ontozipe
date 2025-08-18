@@ -1,4 +1,5 @@
 import axios from "axios";
+import { escapeSparqlLiteral } from "../utils/sparql.utils";
 
 export interface Property {
     predicate: string;
@@ -46,7 +47,7 @@ export interface CommentNode {
  */
 function toRDF(value: string, isLiteral: boolean): string {
     return isLiteral
-        ? `"""${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"""`
+        ? `"""${escapeSparqlLiteral(value)}"""`
         : `<${value}>`;
 }
 
@@ -122,15 +123,6 @@ export class OntologyService {
     private readonly ROLE_REGULAR = this.CORE + "RegularRole";
 
     constructor(private readonly httpService: HttpService) {}
-
-    /**
-     * Fonction d'échappement sécurisée pour les littéraux SPARQL.
-     * Prévient les injections en neutralisant les caractères spéciaux dans les chaînes.
-     */
-    private _escape(literalValue: string): string {
-        if (typeof literalValue !== 'string') return '';
-        return literalValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    }
 
     /**
      * Méthode centrale pour vérifier les droits d'écriture sur une ontologie.
@@ -336,7 +328,7 @@ export class OntologyService {
         const now = new Date().toISOString();
 
         let triples = `<${node.id}> rdf:type <${node.classId}> ;\n`;
-        triples += `\trdfs:label """${this._escape(node.label)}""" ;\n`;
+        triples += `\trdfs:label """${escapeSparqlLiteral(node.label)}""" ;\n`;
         triples += `\tcore:inProject <${ontologyIri}> ;\n`;
         triples += `\tcore:createdBy <${requesterIri}> ;\n`;
         triples += `\tcore:createdAt "${now}"^^xsd:dateTime ;\n`;
@@ -389,7 +381,7 @@ export class OntologyService {
         const now = new Date().toISOString();
 
         const mkVal = (v: string, isLit: boolean) =>
-            isLit ? `"""${this._escape(v)}"""` : `<${v}>`;
+            isLit ? `"""${escapeSparqlLiteral(v)}"""` : `<${v}>`;
 
         // 1) remplacements propriété par propriété (DELETE old, INSERT new)
         const perPropUpdates = addProps.map((p) => `
@@ -476,7 +468,7 @@ export class OntologyService {
         }
         const now = new Date().toISOString();
         let triples = `<${id}> a core:Comment ;
-			core:body """${this._escape(body)}""" ;
+			core:body """${escapeSparqlLiteral(body)}""" ;
 			core:onResource <${onResource}> ;
 			${replyTo ? `core:replyTo <${replyTo}> ;` : ""}
 			core:createdBy <${requesterIri}> ;
@@ -515,7 +507,7 @@ export class OntologyService {
 
         if (newBody !== undefined) {
             deletePart += `<${iri}> core:body ?b .\n`;
-            insertPart += `<${iri}> core:body """${this._escape(newBody)}""" .\n`;
+            insertPart += `<${iri}> core:body """${escapeSparqlLiteral(newBody)}""" .\n`;
         }
         if (Array.isArray(visibleTo)) {
             deletePart += `<${iri}> core:visibleTo ?g .\n`;
@@ -1300,7 +1292,7 @@ export class OntologyService {
 			INSERT DATA {
 			  GRAPH <${this.PROJECTS_GRAPH}> {
 			    <${iri}> a core:Organization ;
-			             rdfs:label """${this._escape(label)}""" ;
+			             rdfs:label """${escapeSparqlLiteral(label)}""" ;
 			             core:ownedBy <${ownerIri}> ;
 			             core:createdBy <${requesterIri}> ;
 			             core:createdAt "${now}"^^xsd:dateTime .
@@ -1325,7 +1317,7 @@ export class OntologyService {
         let insertPart = "";
         if (newLabel !== undefined) {
             deletePart += `<${orgIri}> rdfs:label ?l .\n`;
-            insertPart += `<${orgIri}> rdfs:label """${this._escape(newLabel)}""" .\n`;
+            insertPart += `<${orgIri}> rdfs:label """${escapeSparqlLiteral(newLabel)}""" .\n`;
         }
         if (newOwner !== undefined) {
             deletePart += `<${orgIri}> core:ownedBy ?o .\n`;
@@ -1457,7 +1449,7 @@ export class OntologyService {
           INSERT DATA {
             GRAPH <${this.PROJECTS_GRAPH}> {
               <${iri}> a core:OntologyProject , owl:Ontology ;
-                       rdfs:label """${this._escape(label)}""" ;
+                       rdfs:label """${escapeSparqlLiteral(label)}""" ;
                        core:createdBy <${requesterIri}> .
               ${groups.map((g) => `<${iri}> core:visibleTo <${g}> .`).join("\n      ")}
             }
@@ -1493,7 +1485,7 @@ export class OntologyService {
 
         if (newLabel !== undefined) {
             deletePart += `<${iri}> rdfs:label ?lbl .\n`;
-            insertPart += `<${iri}> rdfs:label """${this._escape(newLabel)}""" .\n`;
+            insertPart += `<${iri}> rdfs:label """${escapeSparqlLiteral(newLabel)}""" .\n`;
         }
 
         if (Array.isArray(visibleToGroups)) {
@@ -1600,7 +1592,7 @@ export class OntologyService {
         const iri = `http://example.org/group/${slug}-${Date.now()}`;
         if (!members.includes(creatorIri)) members.push(creatorIri);
         let triples = `<${iri}> a core:Group ;
-			rdfs:label """${this._escape(label)}""" ;
+			rdfs:label """${escapeSparqlLiteral(label)}""" ;
 			core:inOrganization <${organizationIri}> ;
 			core:createdBy <${creatorIri}> ;
 			core:createdAt "${new Date().toISOString()}"^^xsd:dateTime .\n`;
@@ -1662,7 +1654,7 @@ export class OntologyService {
         const update = `
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             DELETE { <${groupIri}> rdfs:label ?l . }
-            INSERT { <${groupIri}> rdfs:label """${this._escape(newLabel)}""" . }
+            INSERT { <${groupIri}> rdfs:label """${escapeSparqlLiteral(newLabel)}""" . }
             WHERE  { OPTIONAL { <${groupIri}> rdfs:label ?l . } }`;
         await this.runUpdate(update);
     }

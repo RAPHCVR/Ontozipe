@@ -2,16 +2,11 @@ import { Injectable, BadRequestException } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { lastValueFrom, Observable, Observer } from "rxjs";
 import { ChatOllama } from "@langchain/ollama";
-import {
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    SystemMessage,
-    ToolMessage,
-} from "@langchain/core/messages";
+import { AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { SYSTEM_PROMPT_FR } from "./prompt";
+import { escapeSparqlLiteral } from "../utils/sparql.utils"; // <-- IMPORTATION
 
 // Types
 type HistoryItem = { role: "user" | "assistant" | "system"; content: string };
@@ -25,20 +20,8 @@ export class LlmService {
 
     // Constantes
     private readonly CORE = "http://example.org/core#";
-    private readonly FUSEKI_BASE = (process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(
-        /\/$/,
-        ""
-    );
+    private readonly FUSEKI_BASE = (process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(/\/$/,"");
     private readonly FUSEKI_SPARQL = `${this.FUSEKI_BASE}/sparql`;
-
-    /**
-     * Fonction d'échappement sécurisée pour les littéraux SPARQL.
-     * Partagée avec OntologyService pour une protection cohérente.
-     */
-    private _escape(literalValue: string): string {
-        if (typeof literalValue !== 'string') return '';
-        return literalValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    }
 
     // --- Méthodes privées de configuration et d'accès aux données ---
 
@@ -92,28 +75,28 @@ export class LlmService {
                 : `(!BOUND(?vg) || EXISTS { ?s <${this.CORE}createdBy> <${userIri}> })`;
 
         const sparql = `
-      PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-      PREFIX core: <${this.CORE}>
-      SELECT DISTINCT ?s ?lbl WHERE {
-        GRAPH <${ontologyIri}> {
-          ?s ?p ?o .
-          FILTER(isIRI(?s))
-          OPTIONAL { ?s rdfs:label ?lbl }
-          OPTIONAL { ?s core:visibleTo ?vg }
-          FILTER(
-            CONTAINS(LCASE(STR(COALESCE(?lbl, ""))), LCASE("${this._escape(term)}"))
-            ||
-            EXISTS {
-              ?s ?p2 ?lit .
-              FILTER(isLiteral(?lit) && CONTAINS(LCASE(STR(?lit)), LCASE("${this._escape(term)}")))
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          PREFIX core: <${this.CORE}>
+          SELECT DISTINCT ?s ?lbl WHERE {
+            GRAPH <${ontologyIri}> {
+              ?s ?p ?o .
+              FILTER(isIRI(?s))
+              OPTIONAL { ?s rdfs:label ?lbl }
+              OPTIONAL { ?s core:visibleTo ?vg }
+              FILTER(
+                CONTAINS(LCASE(STR(COALESCE(?lbl, ""))), LCASE("${escapeSparqlLiteral(term)}"))
+                ||
+                EXISTS {
+                  ?s ?p2 ?lit .
+                  FILTER(isLiteral(?lit) && CONTAINS(LCASE(STR(?lit)), LCASE("${escapeSparqlLiteral(term)}")))
+                }
+              )
+              FILTER( ${aclFilter} )
             }
-          )
-          FILTER( ${aclFilter} )
-        }
-      }
-      ORDER BY LCASE(STR(?lbl))
-      LIMIT ${Math.max(1, Math.min(50, limit))}
-    `;
+          }
+          ORDER BY LCASE(STR(?lbl))
+          LIMIT ${Math.max(1, Math.min(50, limit))}
+        `;
         const params = new URLSearchParams({
             query: sparql,
             format: "application/sparql-results+json",
@@ -242,6 +225,45 @@ export class LlmService {
         return [searchEntitiesTool, getEntityTool];
     }
 
+    private async _resolveToolCalls(params: {
+        llmWithTools: ChatOllama;
+        messages: BaseMessage[];
+        userIri: string;
+        ontologyIri?: string;
+    }): Promise<BaseMessage[]> {
+        const { llmWithTools, messages, userIri, ontologyIri } = params;
+        let ai = await llmWithTools.invoke(messages);
+        let safety = 0;
+        const currentMessages = [...messages];
+
+        while (ai.tool_calls && ai.tool_calls.length > 0 && safety < 4) {
+            for (const tc of ai.tool_calls) {
+                if (!tc.id) continue;
+                let result = "";
+                const onto = (tc.args.ontologyIri as string) || ontologyIri || "";
+
+                if (tc.name === "search_entities") {
+                    const args = tc.args as { query: string; limit?: number };
+                    const list = await this.searchEntities(args.query, onto, userIri, args.limit ?? 10);
+                    result = JSON.stringify({ hits: list, ontologyIri: onto });
+                } else if (tc.name === "get_entity") {
+                    const args = tc.args as { iri: string };
+                    const data = await this.getEntityDetails(args.iri, onto);
+                    result = JSON.stringify({ entity: data, ontologyIri: onto });
+                } else {
+                    result = JSON.stringify({ error: `Outil inconnu: ${tc.name}` });
+                }
+                currentMessages.push(new ToolMessage({ content: result, tool_call_id: tc.id }));
+            }
+            // Ré-invoque le modèle avec les résultats des outils
+            ai = await llmWithTools.invoke(currentMessages);
+            safety += 1;
+        }
+        // Ajoute la dernière réponse de l'IA (qui peut contenir la réponse finale ou d'autres appels)
+        currentMessages.push(ai);
+        return currentMessages;
+    }
+
     // --- Méthodes publiques ---
 
     /**
@@ -265,7 +287,7 @@ export class LlmService {
                     const tools = this._buildTools(userIri, ontologyIri);
                     const llmWithTools = llm.bindTools(tools);
 
-                    const messages: BaseMessage[] = [
+                    const initialMessages: BaseMessage[] = [
                         new SystemMessage(
                             (ontologyIri
                                 ? `${SYSTEM_PROMPT_FR}\nContexte: l'ontologie active est <${ontologyIri}>.`
@@ -275,44 +297,23 @@ export class LlmService {
                         new HumanMessage(question),
                     ];
 
-                    // Première invocation pour potentiellement appeler des outils
-                    let ai = await llmWithTools.invoke(messages);
-                    let safety = 0;
-
-                    // Boucle pour gérer les appels d'outils
-                    while (ai.tool_calls && ai.tool_calls.length > 0 && safety < 4) {
-                        for (const tc of ai.tool_calls) {
-                            if (!tc.id) continue;
-                            let result = "";
-                            if (tc.name === "search_entities") {
-                                const args = tc.args as { query: string; ontologyIri?: string; limit?: number };
-                                const onto = args.ontologyIri || ontologyIri || "";
-                                const list = await this.searchEntities(args.query, onto, userIri, args.limit ?? 10);
-                                result = JSON.stringify({ hits: list, ontologyIri: onto });
-                            } else if (tc.name === "get_entity") {
-                                const args = tc.args as { iri: string; ontologyIri?: string };
-                                const onto = args.ontologyIri || ontologyIri || "";
-                                const data = await this.getEntityDetails(args.iri, onto);
-                                result = JSON.stringify({ entity: data, ontologyIri: onto });
-                            } else {
-                                result = JSON.stringify({ error: `Outil inconnu: ${tc.name}` });
-                            }
-                            messages.push(new ToolMessage({ content: result, tool_call_id: tc.id }));
-                        }
-                        // Ré-invoque le modèle avec les résultats des outils
-                        ai = await llmWithTools.invoke(messages);
-                        safety += 1;
-                    }
+                    // Appel à la nouvelle méthode privée
+                    const finalMessages = await this._resolveToolCalls({
+                        llmWithTools,
+                        messages: initialMessages,
+                        userIri,
+                        ontologyIri,
+                    });
 
                     // Une fois les outils utilisés, on streame la réponse finale
-                    const stream = await llm.stream(messages);
+                    const stream = await llm.stream(finalMessages);
 
                     for await (const chunk of stream) {
                         if (chunk.content) {
                             observer.next({ data: chunk.content as string });
                         }
                     }
-                    observer.next({ data: "[DONE]" }); // Signal de fin standard pour SSE
+                    observer.next({ data: "[DONE]" });
                     observer.complete();
                 } catch (error) {
                     observer.error(error);
@@ -338,7 +339,7 @@ export class LlmService {
         const tools = this._buildTools(userIri, ontologyIri);
         const llmWithTools = llm.bindTools(tools);
 
-        const messages: BaseMessage[] = [
+        const initialMessages: BaseMessage[] = [
             new SystemMessage(
                 (ontologyIri
                     ? `${SYSTEM_PROMPT_FR}\nContexte: l'ontologie active est <${ontologyIri}>.`
@@ -348,34 +349,18 @@ export class LlmService {
             new HumanMessage(question),
         ];
 
-        let ai = await llmWithTools.invoke(messages);
-        let safety = 0;
+        // Appel à la nouvelle méthode privée
+        const finalMessages = await this._resolveToolCalls({
+            llmWithTools,
+            messages: initialMessages,
+            userIri,
+            ontologyIri,
+        });
 
-        while (ai.tool_calls && ai.tool_calls.length > 0 && safety < 4) {
-            for (const tc of ai.tool_calls) {
-                if (!tc.id) continue;
-                let result = "";
-                if (tc.name === "search_entities") {
-                    const args = tc.args as { query: string; ontologyIri?: string; limit?: number };
-                    const onto = args.ontologyIri || ontologyIri || "";
-                    const list = await this.searchEntities(args.query, onto, userIri, args.limit ?? 10);
-                    result = JSON.stringify({ hits: list, ontologyIri: onto });
-                } else if (tc.name === "get_entity") {
-                    const args = tc.args as { iri: string; ontologyIri?: string };
-                    const onto = args.ontologyIri || ontologyIri || "";
-                    const data = await this.getEntityDetails(args.iri, onto);
-                    result = JSON.stringify({ entity: data, ontologyIri: onto });
-                } else {
-                    result = JSON.stringify({ error: `Outil inconnu: ${tc.name}` });
-                }
-                messages.push(new ToolMessage({ content: result, tool_call_id: tc.id }));
-            }
-            // Ré-invoque le modèle avec le contexte des outils
-            ai = await llmWithTools.invoke(messages);
-            safety += 1;
-        }
+        // La dernière réponse dans le tableau est celle de l'IA
+        const finalAiResponse = finalMessages[finalMessages.length - 1];
 
-        const answer = (ai.content as string) || "Je n’ai pas pu formuler de réponse.";
+        const answer = (finalAiResponse.content as string) || "Je n’ai pas pu formuler de réponse.";
         return { answer };
     }
 }
