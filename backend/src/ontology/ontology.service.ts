@@ -126,12 +126,17 @@ export class OntologyService {
 
     /**
      * Méthode centrale pour vérifier les droits d'écriture sur une ontologie.
-     * Lève une ForbiddenException si l'utilisateur n'est pas le propriétaire du projet.
-     * Ce mécanisme de contrôle d'accès (ACL) est crucial pour la sécurité.
+     * Lève une ForbiddenException si l'utilisateur n'a pas les permissions requises.
+     * Règle : un SuperAdmin peut tout faire. Sinon, il faut être propriétaire du projet.
      */
-    private async _checkWritePermission(userIri: string, ontologyIri: string): Promise<void> {
-        const isOwner = await this.isOwner(userIri, ontologyIri);
-        if (!isOwner) {
+    private async _enforceWritePermission(userIri: string, ontologyIri: string): Promise<void> {
+        const isSuperAdmin = await this.isSuperAdmin(userIri);
+        if (isSuperAdmin) {
+            return; // Le SuperAdmin a tous les droits.
+        }
+
+        const isProjectOwner = await this.isOwner(userIri, ontologyIri);
+        if (!isProjectOwner) {
             throw new ForbiddenException("Accès refusé. Vous n'avez pas les droits d'écriture sur cette ontologie.");
         }
     }
@@ -319,7 +324,7 @@ export class OntologyService {
         ontologyIri: string,
         visibleToGroups: string[] = []
     ): Promise<void> {
-        await this._checkWritePermission(requesterIri, ontologyIri);
+        await this._enforceWritePermission(requesterIri, ontologyIri);
 
         if (await this.individualExists(node.id)) {
             throw new Error("IRI already exists");
@@ -376,7 +381,7 @@ export class OntologyService {
     ) {
         if (!ontologyIri) throw new BadRequestException("ontologyIri manquant");
 
-        await this._checkWritePermission(requesterIri, ontologyIri);
+        await this._enforceWritePermission(requesterIri, ontologyIri);
 
         const now = new Date().toISOString();
 
@@ -422,7 +427,7 @@ export class OntologyService {
      * comme sujet sont retirées du store.
      */
     async deleteIndividual(iri: string, ontologyIri: string, requesterIri: string): Promise<void> {
-        await this._checkWritePermission(requesterIri, ontologyIri);
+        await this._enforceWritePermission(requesterIri, ontologyIri);
 
         const update = `DELETE WHERE { GRAPH <${ontologyIri}> { <${iri}> ?p ?o . } }`;
         await this.runUpdate(update);
@@ -453,7 +458,7 @@ export class OntologyService {
         requesterIri: string,
         ontologyIri: string
     ): Promise<void> {
-        await this._checkWritePermission(requesterIri, ontologyIri);
+        await this._enforceWritePermission(requesterIri, ontologyIri);
 
         if (await this.commentExistsInGraph(id, ontologyIri)) {
             throw new Error("Comment ID already exists in this ontology");
@@ -496,7 +501,7 @@ export class OntologyService {
         requesterIri: string,
         ontologyIri: string
     ): Promise<void> {
-        await this._checkWritePermission(requesterIri, ontologyIri);
+        await this._enforceWritePermission(requesterIri, ontologyIri);
 
         if (!(await this.commentExistsInGraph(iri, ontologyIri))) {
             throw new Error("Comment not found");
@@ -532,7 +537,7 @@ export class OntologyService {
 
     /** Supprime complètement un commentaire. */
     async deleteComment(iri: string, ontologyIri: string, requesterIri: string): Promise<void> {
-        await this._checkWritePermission(requesterIri, ontologyIri);
+        await this._enforceWritePermission(requesterIri, ontologyIri);
 
         const update = `DELETE WHERE { GRAPH <${ontologyIri}> { <${iri}> ?p ?o . } }`;
         await this.runUpdate(update);
@@ -858,10 +863,10 @@ export class OntologyService {
         return { nodes: Array.from(nodesMap.values()), edges };
     }
 
-	/**
-	 * Retourne les DataProperties & ObjectProperties applicables à une classe
-	 * (via rdfs:domain sur la classe ou l’une de ses super‑classes).
-	 */
+    /**
+     * Retourne les DataProperties & ObjectProperties applicables à une classe
+     * (via rdfs:domain sur la classe ou l’une de ses super‑classes).
+     */
     async getClassProperties(
         classIri: string,
         userIri: string,
@@ -1020,11 +1025,11 @@ export class OntologyService {
         return Array.from(personMap.values());
     }
 
-	/**
-	 * Retourne la fiche détaillée d’un utilisateur précis (core:User).
-	 * On récupère toutes ses propriétés ainsi que les groupes auxquels il appartient.
-	 * Si aucun utilisateur n’est trouvé, la fonction renvoie null.
-	 */
+    /**
+     * Retourne la fiche détaillée d’un utilisateur précis (core:User).
+     * On récupère toutes ses propriétés ainsi que les groupes auxquels il appartient.
+     * Si aucun utilisateur n’est trouvé, la fonction renvoie null.
+     */
     async getPerson(
         _requesterIri: string,
         personIri: string
@@ -1139,10 +1144,10 @@ export class OntologyService {
         return person;
     }
 
-        /* ============================================================
-     *                 CRUD – core:Organization
-     * ============================================================
-     */
+    /* ============================================================
+ *                 CRUD – core:Organization
+ * ============================================================
+ */
 
     /** Liste toutes les organisations (label + owner) */
     async getOrganizations(): Promise<OrganizationInfo[]> {
@@ -1478,7 +1483,7 @@ export class OntologyService {
         newLabel?: string,
         visibleToGroups?: string[]
     ): Promise<void> {
-        await this._checkWritePermission(requesterIri, iri);
+        await this._enforceWritePermission(requesterIri, iri);
 
         let deletePart = "";
         let insertPart = "";
@@ -1506,7 +1511,7 @@ export class OntologyService {
 
     /** Supprime définitivement un projet (et toutes ses triples sujet) */
     async deleteProject(requesterIri: string, iri: string): Promise<void> {
-        await this._checkWritePermission(requesterIri, iri);
+        await this._enforceWritePermission(requesterIri, iri);
 
         const deleteMeta = `DELETE WHERE { GRAPH <${this.PROJECTS_GRAPH}> { <${iri}> ?p ?o . } }`;
         await this.runUpdate(deleteMeta);
@@ -1515,10 +1520,10 @@ export class OntologyService {
         await this.runUpdate(clearData);
     }
 
-        /* ============================================================
-     *                   Groupes  –  core:Group
-     * ============================================================
-     */
+    /* ============================================================
+ *                   Groupes  –  core:Group
+ * ============================================================
+ */
 
     /**
      * Retourne la liste des groupes auxquels appartient l’utilisateur.

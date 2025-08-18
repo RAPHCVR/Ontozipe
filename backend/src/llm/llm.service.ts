@@ -6,7 +6,7 @@ import { AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage } from
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { SYSTEM_PROMPT_FR } from "./prompt";
-import { escapeSparqlLiteral } from "../utils/sparql.utils"; // <-- IMPORTATION
+import { escapeSparqlLiteral } from "../utils/sparql.utils";
 
 // Types
 type HistoryItem = { role: "user" | "assistant" | "system"; content: string };
@@ -264,6 +264,43 @@ export class LlmService {
         return currentMessages;
     }
 
+    /**
+     * Méthode privée qui mutualise la préparation du LLM, des messages et la résolution des outils.
+     */
+    private async _prepareAndInvoke(params: {
+        userIri: string;
+        question: string;
+        ontologyIri?: string;
+        history?: HistoryItem[];
+    }): Promise<{ llm: ChatOllama, finalMessages: BaseMessage[] }> {
+        const { userIri, question, ontologyIri, history } = params;
+
+        const llm = this.buildModel();
+        const tools = this._buildTools(userIri, ontologyIri);
+        const llmWithTools = llm.bindTools(tools);
+
+        const initialMessages: BaseMessage[] = [
+            new SystemMessage(
+                (ontologyIri
+                    ? `${SYSTEM_PROMPT_FR}\nContexte: l'ontologie active est <${ontologyIri}>.`
+                    : SYSTEM_PROMPT_FR) as string
+            ),
+            ...this.toLangchainHistory(history),
+            new HumanMessage(question),
+        ];
+
+        // Appel à la méthode de résolution des outils
+        const finalMessages = await this._resolveToolCalls({
+            llmWithTools,
+            messages: initialMessages,
+            userIri,
+            ontologyIri,
+        });
+
+        return { llm, finalMessages };
+    }
+
+
     // --- Méthodes publiques ---
 
     /**
@@ -275,37 +312,17 @@ export class LlmService {
         ontologyIri?: string;
         history?: HistoryItem[];
     }): Observable<MessageEvent> {
-        const { userIri, question, ontologyIri, history } = params;
-        if (!question || !question.trim()) {
+        if (!params.question || !params.question.trim()) {
             throw new BadRequestException("Question vide");
         }
 
         return new Observable((observer: Observer<MessageEvent>) => {
             const run = async () => {
                 try {
-                    const llm = this.buildModel();
-                    const tools = this._buildTools(userIri, ontologyIri);
-                    const llmWithTools = llm.bindTools(tools);
+                    // 1. Préparer le modèle et les messages
+                    const { llm, finalMessages } = await this._prepareAndInvoke(params);
 
-                    const initialMessages: BaseMessage[] = [
-                        new SystemMessage(
-                            (ontologyIri
-                                ? `${SYSTEM_PROMPT_FR}\nContexte: l'ontologie active est <${ontologyIri}>.`
-                                : SYSTEM_PROMPT_FR) as string
-                        ),
-                        ...this.toLangchainHistory(history),
-                        new HumanMessage(question),
-                    ];
-
-                    // Appel à la nouvelle méthode privée
-                    const finalMessages = await this._resolveToolCalls({
-                        llmWithTools,
-                        messages: initialMessages,
-                        userIri,
-                        ontologyIri,
-                    });
-
-                    // Une fois les outils utilisés, on streame la réponse finale
+                    // 2. Une fois les outils utilisés, on streame la réponse finale
                     const stream = await llm.stream(finalMessages);
 
                     for await (const chunk of stream) {
@@ -332,35 +349,17 @@ export class LlmService {
         ontologyIri?: string;
         history?: HistoryItem[];
     }): Promise<{ answer: string }> {
-        const { userIri, question, ontologyIri, history } = params;
-        if (!question || !question.trim()) throw new BadRequestException("Question vide");
+        if (!params.question || !params.question.trim()) {
+            throw new BadRequestException("Question vide");
+        }
 
-        const llm = this.buildModel();
-        const tools = this._buildTools(userIri, ontologyIri);
-        const llmWithTools = llm.bindTools(tools);
+        // 1. Préparer le modèle et les messages
+        const { finalMessages } = await this._prepareAndInvoke(params);
 
-        const initialMessages: BaseMessage[] = [
-            new SystemMessage(
-                (ontologyIri
-                    ? `${SYSTEM_PROMPT_FR}\nContexte: l'ontologie active est <${ontologyIri}>.`
-                    : SYSTEM_PROMPT_FR) as string
-            ),
-            ...this.toLangchainHistory(history),
-            new HumanMessage(question),
-        ];
-
-        // Appel à la nouvelle méthode privée
-        const finalMessages = await this._resolveToolCalls({
-            llmWithTools,
-            messages: initialMessages,
-            userIri,
-            ontologyIri,
-        });
-
-        // La dernière réponse dans le tableau est celle de l'IA
+        // 2. La dernière réponse dans le tableau est celle de l'IA
         const finalAiResponse = finalMessages[finalMessages.length - 1];
-
         const answer = (finalAiResponse.content as string) || "Je n’ai pas pu formuler de réponse.";
+
         return { answer };
     }
 }

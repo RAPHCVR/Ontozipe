@@ -16,6 +16,16 @@ import {
 import { Request, Express } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { FileInterceptor } from "@nestjs/platform-express";
+import {
+    IsArray,
+    IsBoolean,
+    IsUrl,
+    IsNotEmpty,
+    IsOptional,
+    IsString,
+    ValidateNested,
+} from "class-validator";
+import { Type } from "class-transformer";
 
 import {
     FullSnapshot,
@@ -23,72 +33,176 @@ import {
     NodeData,
     EdgeData,
     IndividualNode,
-    Property,
 } from "./ontology.service";
 
-interface CreateIndividualDto extends IndividualNode {
+/* ---------- DTOs imbriqués ---------- */
+
+class PropertyDto {
+    @IsUrl()
+    predicate!: string;
+
+    @IsOptional() @IsString()
+    predicateLabel?: string;
+
+    @IsString() // `value` peut être une chaîne vide, donc pas de `@IsNotEmpty`
+    value!: string;
+
+    @IsOptional() @IsString()
+    valueLabel?: string;
+
+    @IsBoolean()
+    isLiteral!: boolean;
+}
+
+/* ---------- DTOs principaux ---------- */
+
+class CreateIndividualDto {
+    @IsUrl()
+    id!: string;
+
+    @IsString() @IsNotEmpty()
+    label!: string;
+
+    @IsUrl()
+    classId!: string;
+
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => PropertyDto)
+    properties!: PropertyDto[];
+
     /** IRI of the ontology graph where the individual will be stored */
-    ontologyIri: string;
+    @IsUrl()
+    ontologyIri!: string;
+
     /** IRIs of the groups allowed to view this individual */
+    @IsOptional()
+    @IsArray()
+    @IsUrl({}, { each: true })
     visibleToGroups?: string[];
 }
-interface UpdateIndividualDto {
-    addProps?: Property[];
-    delProps?: Property[];
+
+class UpdateIndividualDto {
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => PropertyDto)
+    addProps?: PropertyDto[];
+
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => PropertyDto)
+    delProps?: PropertyDto[];
+
     /** Remplace complètement la liste des groupes autorisés (optionnel) */
+    @IsOptional()
+    @IsArray()
+    @IsUrl({}, { each: true })
     visibleToGroups?: string[];
 }
 
 /* ---------- OntologyProject DTOs ---------- */
-interface CreateProjectDto {
-    iri: string;
-    label: string;
+class CreateProjectDto {
+    @IsUrl()
+    iri!: string;
+
+    @IsString() @IsNotEmpty()
+    label!: string;
+
+    @IsOptional()
+    @IsArray()
+    @IsUrl({}, { each: true })
     visibleToGroups?: string[];
-    /** RDF/Turtle content used to initialise the dataset (optional) */
-    initRdf?: string;
 }
-interface UpdateProjectDto {
+
+class UpdateProjectDto {
+    @IsOptional() @IsString() @IsNotEmpty()
     label?: string;
+
+    @IsOptional()
+    @IsArray()
+    @IsUrl({}, { each: true })
     visibleToGroups?: string[];
 }
 
 /* ---------- Group DTOs ---------- */
-interface CreateGroupDto {
-    label: string;
-    organizationIri: string; // IRI de l’organisation à laquelle appartient le groupe
+class CreateGroupDto {
+    @IsString() @IsNotEmpty()
+    label!: string;
+
+    @IsUrl()
+    organizationIri!: string; // IRI de l’organisation à laquelle appartient le groupe
+
+    @IsOptional()
+    @IsArray()
+    @IsUrl({}, { each: true })
     members?: string[];
 }
-interface UpdateGroupDto {
+
+class UpdateGroupDto {
+    @IsOptional() @IsString() @IsNotEmpty()
     label?: string;
+
+    @IsOptional() @IsUrl()
     organizationIri?: string;
 }
-interface AddMemberDto {
-    userIri: string;
+
+class AddMemberDto {
+    @IsUrl()
+    userIri!: string;
 }
 
 /* ---------- Organization DTOs ---------- */
-interface CreateOrganizationDto {
-    label: string;
-    ownerIri: string; // user who becomes admin of the org
+class CreateOrganizationDto {
+    @IsString() @IsNotEmpty()
+    label!: string;
+
+    @IsUrl()
+    ownerIri!: string; // user who becomes admin of the org
 }
-interface UpdateOrganizationDto {
+
+class UpdateOrganizationDto {
+    @IsOptional() @IsString() @IsNotEmpty()
     label?: string;
+
+    @IsOptional() @IsUrl()
     ownerIri?: string;
 }
 
 /* ---------- Comment DTOs ---------- */
-interface CreateCommentDto {
-    id: string;
-    body: string;
-    onResource: string; // IRI de la ressource cible (obligatoire)
+class CreateCommentDto {
+    @IsString() @IsNotEmpty() // ex: urn:uuid:c2a6ac3d-7-44f2-9549-16e7a27be9f8
+    id!: string;
+
+    @IsString() @IsNotEmpty()
+    body!: string;
+
+    @IsUrl()
+    onResource!: string; // IRI de la ressource cible (obligatoire)
+
+    @IsOptional() @IsUrl()
     replyTo?: string; // IRI du commentaire parent (optionnel)
-    ontologyIri: string;
+
+    @IsUrl()
+    ontologyIri!: string;
+
+    @IsOptional()
+    @IsArray()
+    @IsUrl({}, { each: true })
     visibleToGroups?: string[];
 }
-interface UpdateCommentDto {
+class UpdateCommentDto {
+    @IsOptional() @IsString()
     newBody?: string;
+
+    @IsOptional()
+    @IsArray()
+    @IsUrl({}, { each: true })
     visibleToGroups?: string[];
-    ontologyIri: string;
+
+    @IsUrl()
+    ontologyIri!: string;
 }
 
 type AuthRequest = Request & {
@@ -122,7 +236,7 @@ export class OntologyController {
         console.log("createIndividual");
 
         return this.ontologyService.createIndividual(
-            dto, // IndividualNode (+ extra fields)
+            dto as unknown as IndividualNode,
             req.user.sub, // requesterIri (creator)
             dto.ontologyIri, // ontology IRI
             dto.visibleToGroups ?? [] // ACL
@@ -213,7 +327,7 @@ export class OntologyController {
     ) // 10 Mio max
     async createProject(
         @Req() req: AuthRequest,
-        @Body() dto: { iri: string; label: string; visibleToGroups?: string[] },
+        @Body() dto: CreateProjectDto,
         @UploadedFile() file?: Express.Multer.File
     ) {
         console.log("createProject");
@@ -318,14 +432,14 @@ export class OntologyController {
     addOrganizationMember(
         @Req() req: AuthRequest,
         @Param("iri") iri: string,
-        @Body("userIri") userIri: string
+        @Body() dto: AddMemberDto
     ) {
         console.log("addOrganizationMember");
 
         return this.ontologyService.addOrganizationMember(
             req.user.sub,
             decodeURIComponent(iri),
-            userIri
+            dto.userIri
         );
     }
 

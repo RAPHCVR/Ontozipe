@@ -2,12 +2,32 @@ import { Body, Controller, Req, UseGuards, Post, Res } from "@nestjs/common";
 import { Response } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { LlmService } from "./llm.service";
+import { IsArray, IsIn, IsUrl, IsNotEmpty, IsOptional, IsString, ValidateNested } from "class-validator";
+import { Type } from "class-transformer";
 
 // ... DTOs et types ...
+
+class HistoryItemDto {
+    @IsIn(["user", "assistant", "system"])
+    role!: "user" | "assistant" | "system";
+
+    @IsString()
+    content!: string;
+}
 class AskDto {
+    @IsString()
+    @IsNotEmpty()
     question!: string;
+
+    @IsOptional()
+    @IsUrl()
     ontologyIri?: string;
-    history?: { role: "user" | "assistant" | "system"; content: string }[];
+
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => HistoryItemDto)
+    history?: HistoryItemDto[];
 }
 
 type AuthRequest = Request & {
