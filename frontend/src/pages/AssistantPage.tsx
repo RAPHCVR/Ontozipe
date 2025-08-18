@@ -5,13 +5,28 @@ import remarkGfm from "remark-gfm";
 import { useApi } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
-import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
+import { PaperAirplaneIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 type Ontology = { iri: string; label?: string };
+type AgentStep = { type: 'tool_call'; name: string; args: any; result?: string; };
+
+/**
+ * Tente de parser une chaîne de caractères comme du JSON et de la formater joliment.
+ * Si ce n'est pas du JSON, retourne la chaîne originale.
+ */
+const formatObservation = (observation?: string): string => {
+    if (!observation) return "";
+    try {
+        const parsed = JSON.parse(observation);
+        return JSON.stringify(parsed, null, 2);
+    } catch (e) {
+        return observation;
+    }
+};
+
 
 export default function AssistantPage() {
-    // ... hooks useState, useMemo, etc. ...
     const api = useApi();
     const { token } = useAuth();
     const [ontos, setOntos] = useState<Ontology[]>([]);
@@ -23,6 +38,7 @@ export default function AssistantPage() {
             content: "Bonjour, je suis l’assistant OntoZIPE. Posez-moi une question sur votre ontologie.",
         },
     ]);
+    const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const base = useMemo(() => (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, ""), []);
@@ -34,9 +50,10 @@ export default function AssistantPage() {
         const q = input.trim();
         if (!q || sending) return;
 
-        const history = messages.slice(1);
+        const history = messages.slice(1); // Exclure le message de bienvenue initial
         const questionMsg: ChatMsg = { role: "user", content: q };
 
+        setAgentSteps([]); // Réinitialise les étapes de l'agent pour la nouvelle question
         setMessages((prev) => [...prev, questionMsg, { role: "assistant", content: "" }]);
         setInput("");
         setSending(true);
@@ -49,40 +66,75 @@ export default function AssistantPage() {
             },
             body: JSON.stringify({ question: q, ontologyIri: activeIri || undefined, history }),
 
-            onmessage(event) {
-                const chunkContent = JSON.parse(event.data);
-
-                if (chunkContent === "[DONE]") {
-                    return;
+            async onopen(response) {
+                if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
+                    throw new Error(`Failed to open SSE connection: ${response.status} ${response.statusText}`);
                 }
-
-                setMessages((prev) => {
-                    const lastMsg = prev[prev.length - 1];
-                    const newLastMsg = { ...lastMsg, content: lastMsg.content + chunkContent };
-                    return [...prev.slice(0, -1), newLastMsg];
-                });
             },
 
-            onclose() {
-                setSending(false);
+            onmessage(event) {
+                if (!event.data) return;
+
+                try {
+                    const parsedEvent = JSON.parse(event.data);
+                    const { type, data } = parsedEvent;
+
+                    switch (type) {
+                        case 'tool_call':
+                            setAgentSteps(prev => [...prev, { type: 'tool_call', name: data.name, args: data.args }]);
+                            break;
+
+                        case 'tool_result':
+                            setAgentSteps(prev => {
+                                const lastStep = prev[prev.length - 1];
+                                if (lastStep && lastStep.name === data.name) {
+                                    const updatedStep = { ...lastStep, result: data.observation };
+                                    return [...prev.slice(0, -1), updatedStep];
+                                }
+                                return prev;
+                            });
+                            break;
+
+                        case 'chunk':
+                            setMessages((prev) => {
+                                const lastMsg = prev[prev.length - 1];
+                                const newLastMsg = { ...lastMsg, content: lastMsg.content + data };
+                                return [...prev.slice(0, -1), newLastMsg];
+                            });
+                            break;
+
+                        case 'error':
+                            console.error("Received error from server:", data);
+                            setMessages((prev) => {
+                                const lastMsg = prev[prev.length - 1];
+                                const errorMsg = { ...lastMsg, content: `Erreur du serveur: ${data}` };
+                                return [...prev.slice(0, -1), errorMsg];
+                            });
+                            break;
+                    }
+                } catch (e) {
+                    console.error("Failed to parse SSE data chunk:", event.data, e);
+                }
             },
+
+            onclose() { setSending(false); },
 
             onerror(err) {
+                console.error("SSE connection error:", err);
                 setMessages((prev) => {
                     const lastMsg = prev[prev.length - 1];
-                    const errorMsg = { ...lastMsg, content: "Une erreur de communication est survenue." };
+                    const errorMsg = { ...lastMsg, content: "Une erreur de connexion est survenue." };
                     return [...prev.slice(0, -1), errorMsg];
                 });
                 setSending(false);
-                throw err; // Arrête les tentatives de reconnexion
+                throw err;
             },
         });
     };
 
     const containerRef = useRef<HTMLDivElement>(null);
-    useEffect(() => { if (containerRef.current) { containerRef.current.scrollTop = containerRef.current.scrollHeight; } }, [messages]);
+    useEffect(() => { if (containerRef.current) { containerRef.current.scrollTop = containerRef.current.scrollHeight; } }, [messages, agentSteps]);
 
-    // ... Le JSX reste identique ...
     return (
         <div className="container mx-auto max-w-5xl w-full flex flex-col gap-4">
             <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-2 mt-4">
@@ -111,17 +163,50 @@ export default function AssistantPage() {
                 {messages.map((m, idx) => (
                     <div
                         key={idx}
-                        className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                        className={`flex ${m.role === "user" ? "justify-end" : "flex-col items-start"}`}
                     >
+                        {/* Affiche les étapes de l'agent juste avant le dernier message de l'assistant */}
+                        {m.role === 'assistant' && idx === messages.length - 1 && agentSteps.length > 0 && (
+                            <div className="mb-2 w-full max-w-[80%]">
+                                <details className="rounded-lg bg-gray-100 dark:bg-slate-800 p-2">
+                                    <summary className="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-400">
+                                        Raisonnement de l'agent...
+                                    </summary>
+                                    <div className="mt-2 space-y-2">
+                                        {agentSteps.map((step, stepIdx) => (
+                                            <div key={stepIdx} className="text-xs p-2 rounded bg-white dark:bg-slate-700">
+                                                <p className="font-bold text-indigo-500 flex items-center gap-1">
+                                                    <Cog6ToothIcon className="h-4 w-4" /> Appel de l'outil: {step.name}
+                                                </p>
+                                                <pre className="whitespace-pre-wrap break-words bg-gray-50 dark:bg-slate-800 p-1 rounded mt-1 text-gray-700 dark:text-gray-300">
+                                                    <code>{JSON.stringify(step.args, null, 2)}</code>
+                                                </pre>
+                                                {step.result ? (
+                                                    <div className="mt-1 border-t border-gray-200 dark:border-slate-600 pt-1">
+                                                        <p className="font-semibold">Résultat :</p>
+                                                        <pre className="whitespace-pre-wrap break-words text-gray-600 dark:text-gray-400">
+                                                            <code>{formatObservation(step.result)}</code>
+                                                        </pre>
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-1 text-gray-500 animate-pulse">Observation en cours...</div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </details>
+                            </div>
+                        )}
+
                         <div
                             className={
                                 "prose dark:prose-invert rounded-lg px-3 py-2 max-w-[80%] " +
                                 (m.role === "user"
-                                    ? "bg-indigo-600 text-white prose-p:text-white prose-strong:text-white"
+                                    ? "bg-indigo-600 text-white prose-p:text-white prose-strong:text-white self-end"
                                     : "bg-gray-100 dark:bg-slate-800")
                             }
                         >
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content || "..."}</ReactMarkdown>
                         </div>
                     </div>
                 ))}
@@ -155,8 +240,7 @@ export default function AssistantPage() {
                 </button>
             </div>
             <p className="text-xs text-gray-500">
-                Astuce: l’assistant sait utiliser des outils pour chercher des individus
-                dans l’ontologie sélectionnée et lire leurs propriétés avant de répondre.
+                L'assistant peut utiliser des outils pour interroger l'ontologie sélectionnée.
             </p>
         </div>
     );
