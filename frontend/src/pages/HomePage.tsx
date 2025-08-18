@@ -24,7 +24,7 @@ export default function HomePage() {
 
 	const load = () => {
 		setLoading(true);
-		return api("http://localhost:4000/ontology/projects")
+		return api("/ontology/projects")
 			.then((r) => r.json())
 			.then(setOntos)
 			.catch((err) => {
@@ -51,7 +51,7 @@ export default function HomePage() {
 		(async () => {
 			try {
 				const res = await api(
-					`http://localhost:4000/ontology/persons/${encodeURIComponent(
+					`/ontology/persons/${encodeURIComponent(
 						currentUserIri
 					)}`
 				);
@@ -197,7 +197,7 @@ export default function HomePage() {
 						fd.append("label", newLabel.trim());
 						if (rdfFile) fd.append("file", rdfFile);
 
-						api("http://localhost:4000/ontology/projects", {
+						api("/ontology/projects", {
 							method: "POST",
 							body: fd,
 						})

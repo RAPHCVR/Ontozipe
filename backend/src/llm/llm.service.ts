@@ -31,7 +31,16 @@ export class LlmService {
     );
     private readonly FUSEKI_SPARQL = `${this.FUSEKI_BASE}/sparql`;
 
-    // --- Méthodes privées de configuration et d'accès aux données (inchangées) ---
+    /**
+     * Fonction d'échappement sécurisée pour les littéraux SPARQL.
+     * Partagée avec OntologyService pour une protection cohérente.
+     */
+    private _escape(literalValue: string): string {
+        if (typeof literalValue !== 'string') return '';
+        return literalValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    }
+
+    // --- Méthodes privées de configuration et d'accès aux données ---
 
     private buildModel() {
         const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
@@ -68,10 +77,6 @@ export class LlmService {
         return res.data.results.bindings.map((b: any) => b.g.value);
     }
 
-    private esc(str: string) {
-        return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-    }
-
     private async searchEntities(
         term: string,
         ontologyIri: string,
@@ -96,11 +101,11 @@ export class LlmService {
           OPTIONAL { ?s rdfs:label ?lbl }
           OPTIONAL { ?s core:visibleTo ?vg }
           FILTER(
-            CONTAINS(LCASE(STR(COALESCE(?lbl, ""))), LCASE("${this.esc(term)}"))
+            CONTAINS(LCASE(STR(COALESCE(?lbl, ""))), LCASE("${this._escape(term)}"))
             ||
             EXISTS {
               ?s ?p2 ?lit .
-              FILTER(isLiteral(?lit) && CONTAINS(LCASE(STR(?lit)), LCASE("${this.esc(term)}")))
+              FILTER(isLiteral(?lit) && CONTAINS(LCASE(STR(?lit)), LCASE("${this._escape(term)}")))
             }
           )
           FILTER( ${aclFilter} )

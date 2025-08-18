@@ -27,7 +27,7 @@ export default function GroupsPage() {
 	const [selected, setSelected] = useState<GroupDetails | null>(null);
 
     const load = () =>
-        api("http://localhost:4000/ontology/groups")
+        api("/ontology/groups")
             .then((r) => r.json())
             .then((data) =>
                 setGroups(
@@ -46,7 +46,7 @@ export default function GroupsPage() {
 
 		(async () => {
 			try {
-				const res = await api("http://localhost:4000/ontology/persons");
+				const res = await api("/ontology/persons");
 				const data = await res.json();
 				const me = data.find(
 					(p: any) => p.iri === currentUserIri || p.id === currentUserIri
@@ -99,7 +99,7 @@ export default function GroupsPage() {
 										className="text-red-600 text-sm"
 										onClick={() =>
 											api(
-												`http://localhost:4000/ontology/groups/${encodeURIComponent(
+												`/ontology/groups/${encodeURIComponent(
 													g.iri
 												)}`,
 												{ method: "DELETE" }
@@ -173,8 +173,8 @@ function GroupFormModal({
 	useEffect(() => {
 		(async () => {
 			const url = isSuperAdmin
-				? "http://localhost:4000/ontology/organizations"
-				: "http://localhost:4000/ontology/organizations?mine=true";
+				? "/ontology/organizations"
+				: "/ontology/organizations?mine=true";
 			const res = await api(url);
 			const data = await res.json();
 			console.log("Organisations:", isSuperAdmin, data);
@@ -196,7 +196,7 @@ function GroupFormModal({
 		if (!selectedOrg) return;
 		(async () => {
 			const res = await api(
-				`http://localhost:4000/ontology/organizations/${enc(
+				`/ontology/organizations/${enc(
 					selectedOrg
 				)}/members`
 			);
@@ -224,7 +224,7 @@ function GroupFormModal({
 	}, [selectedOrg]);
 
 	const save = () =>
-		api("http://localhost:4000/ontology/groups", {
+		api("/ontology/groups", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
@@ -337,8 +337,8 @@ function GroupDetailsModal({
 	useEffect(() => {
 		(async () => {
 			const url = isSuperAdmin
-				? "http://localhost:4000/ontology/organizations"
-				: "http://localhost:4000/ontology/organizations?mine=true";
+				? "/ontology/organizations"
+				: "/ontology/organizations?mine=true";
 			const res = await api(url);
 			const data = await res.json();
 			setOrganizations(
@@ -360,7 +360,7 @@ function GroupDetailsModal({
 		}
 		(async () => {
 			const res = await api(
-				`http://localhost:4000/ontology/organizations/${enc(
+				`/ontology/organizations/${enc(
 					selectedOrg
 				)}/members`
 			);
@@ -384,7 +384,7 @@ function GroupDetailsModal({
 	const patchLabel = async () => {
 		if (label === group.label) return;
 		await api(
-			`http://localhost:4000/ontology/groups/${encodeURIComponent(group.iri)}`,
+			`/ontology/groups/${encodeURIComponent(group.iri)}`,
 			{
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
@@ -395,7 +395,7 @@ function GroupDetailsModal({
 
 	const addMember = async (personIri: string) => {
 		await api(
-			`http://localhost:4000/ontology/groups/${encodeURIComponent(
+			`/ontology/groups/${encodeURIComponent(
 				group.iri
 			)}/members`,
 			{
@@ -409,7 +409,7 @@ function GroupDetailsModal({
 
 	const removeMember = async (personIri: string) => {
 		await api(
-			`http://localhost:4000/ontology/groups/${encodeURIComponent(
+			`/ontology/groups/${encodeURIComponent(
 				group.iri
 			)}/members/${encodeURIComponent(personIri)}`,
 			{ method: "DELETE" }
@@ -423,7 +423,7 @@ function GroupDetailsModal({
 				if (label !== group.label) await patchLabel();
 				if (selectedOrg && selectedOrg !== group.organizationIri) {
 					await api(
-						`http://localhost:4000/ontology/groups/${encodeURIComponent(
+						`/ontology/groups/${encodeURIComponent(
 							group.iri
 						)}`,
 						{
@@ -539,7 +539,7 @@ function GroupDetailsModal({
 							className="btn-secondary text-red-600 border-red-400 hover:bg-red-50"
 							onClick={async () => {
 								await api(
-									`http://localhost:4000/ontology/groups/${encodeURIComponent(
+									`/ontology/groups/${encodeURIComponent(
 										group.iri
 									)}`,
 									{ method: "DELETE" }
