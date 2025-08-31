@@ -6,6 +6,8 @@ import { Runnable } from "@langchain/core/runnables";
 import { tool, StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import { escapeSparqlLiteral } from "../utils/sparql.utils";
+import { ChatOpenAI } from "@langchain/openai";
+import { getMostConnectedNodes, searchNodesByKeywords, batchGetEntityDetails } from "./queries";
 
 @Injectable()
 export class LlmService {
@@ -17,7 +19,7 @@ export class LlmService {
     /** Empêche l'exécution simultanée de requêtes avec la même clé d'idempotence. */
     private readonly inflightRequests = new Set<string>();
 
-    private buildModel(): ChatOllama {
+    private buildModel2(): ChatOllama {
         const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11343";
         const model = process.env.OLLAMA_MODEL || "llama3";
         const headers =
@@ -32,6 +34,15 @@ export class LlmService {
             headers,
             numPredict: 256, // Forcer des sorties plus courtes
         });
+    }
+
+    private buildModel(): ChatOpenAI {
+        const openAIApiKey = process.env.OPENAI_API_KEY;
+        if (!openAIApiKey) {
+            throw new Error("OPENAI_API_KEY is not set in environment variables");
+        }
+        const model = process.env.OPENAI_MODEL || "gpt-5-mini";
+        return new ChatOpenAI({ openAIApiKey, modelName: model });
     }
 
     private async getUserGroups(userIri: string): Promise<string[]> {
@@ -156,11 +167,116 @@ export class LlmService {
                 }),
             }
         );
-        return [searchTool, getTool];
+
+        const getMostConnectedNodesTool = tool(
+            async ({ ontologyIri: onto }: { ontologyIri?: string }) => {
+                const ontoEff = onto || ontologyIri || "";
+                if (!ontoEff) {
+                    return "Erreur : l'IRI de l'ontologie est manquant pour la recherche des nœuds les plus connectés. Demandez à l'utilisateur de la préciser.";
+                }
+                try {
+                    const nodes = await getMostConnectedNodes(this.http, this.FUSEKI_SPARQL, ontoEff);
+                    if (nodes.length === 0) {
+                        return `Aucun nœud trouvé dans l'ontologie <${ontoEff}>.`;
+                    }
+                    return JSON.stringify({ 
+                        nodes: nodes.map(n => ({ uri: n.uri, connectionCount: n.connectionCount })),
+                        totalFound: nodes.length,
+                        ontologyIri: ontoEff
+                    });
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+                    return `Erreur lors de la récupération des nœuds les plus connectés: ${errorMessage}`;
+                }
+            }, {
+                name: "get_most_connected_nodes",
+                description: "Récupère les 10 nœuds ayant le plus de connexions (prédicats entrants et sortants) dans une ontologie donnée.",
+                schema: z.object({
+                    ontologyIri: z.string().optional().describe("IRI du graph d'ontologie"),
+                }),
+            }
+        );
+
+        const searchNodesByKeywordsTool = tool(
+            async ({ keywords, ontologyIri: onto }: { keywords: string[], ontologyIri: string }) => {
+                if (!onto) {
+                    return "Erreur : l'IRI de l'ontologie est obligatoire pour la recherche par mots-clés.";
+                }
+                if (!keywords || keywords.length === 0) {
+                    return "Erreur : au moins un mot-clé est requis pour la recherche.";
+                }
+                try {
+                    const results = await searchNodesByKeywords(this.http, this.FUSEKI_SPARQL, onto, keywords);
+                    if (results.length === 0) {
+                        return `Aucun nœud trouvé correspondant aux mots-clés [${keywords.join(', ')}] dans l'ontologie <${onto}>.`;
+                    }
+                    return JSON.stringify({
+                        results: results.map(r => ({ uri: r.uri, matchedKeywords: r.matchedKeywords })),
+                        totalFound: results.length,
+                        searchKeywords: keywords,
+                        ontologyIri: onto
+                    });
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+                    return `Erreur lors de la recherche par mots-clés: ${errorMessage}`;
+                }
+            }, {
+                name: "search_nodes_by_keywords",
+                description: "Recherche dans tous les nœuds d'une ontologie en utilisant une liste de mots-clés. Cherche dans les URIs, propriétés, valeurs, labels et commentaires. Retourne les nœuds matchés triés par nombre de mots-clés trouvés.",
+                schema: z.object({
+                    keywords: z.array(z.string()).describe("Liste des mots-clés à rechercher"),
+                    ontologyIri: z.string().describe("IRI du graph d'ontologie dans lequel effectuer la recherche"),
+                }),
+            }
+        );
+
+        const getBatchEntityDetailsTool = tool(
+            async ({ uris, ontologyIri: onto }: { uris: string[], ontologyIri?: string }) => {
+                const ontoEff = onto || ontologyIri || "";
+                if (!ontoEff) {
+                    return "Erreur : l'IRI de l'ontologie est obligatoire pour récupérer les détails des entités.";
+                }
+                if (!uris || uris.length === 0) {
+                    return "Erreur : au moins une URI est requise pour récupérer les détails.";
+                }
+                try {
+                    const entitiesMap = await batchGetEntityDetails(this.http, this.FUSEKI_SPARQL, ontoEff, uris);
+                    
+                    // Convertir la Map en objet pour la sérialisation JSON
+                    const entities = Array.from(entitiesMap.entries()).map(([uri, details]) => ({
+                        uri,
+                        ...details
+                    }));
+                    
+                    if (entities.length === 0) {
+                        return `Aucun détail trouvé pour les URIs [${uris.join(', ')}] dans l'ontologie <${ontoEff}>.`;
+                    }
+                    
+                    return JSON.stringify({
+                        entities,
+                        totalRequested: uris.length,
+                        totalFound: entities.length,
+                        ontologyIri: ontoEff
+                    });
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+                    return `Erreur lors de la récupération des détails des entités: ${errorMessage}`;
+                }
+            }, {
+                name: "get_batch_entity_details",
+                description: "Récupère les détails (types, propriétés, labels) de plusieurs entités en une seule requête. Plus efficace que d'appeler get_entity individuellement pour chaque entité.",
+                schema: z.object({
+                    uris: z.array(z.string()).describe("Liste des URIs des entités dont on veut récupérer les détails"),
+                    ontologyIri: z.string().optional().describe("IRI du graph d'ontologie"),
+                }),
+            }
+        );
+        
+        return [searchTool, getTool, getMostConnectedNodesTool, searchNodesByKeywordsTool, getBatchEntityDetailsTool];
     }
 
     public prepareAgentExecutor(params: { userIri: string; ontologyIri?: string }): {
-        llm: ChatOllama;
+        llm: ChatOpenAI;
         llmWithTools: Runnable;
         tools: StructuredTool[];
     } {
