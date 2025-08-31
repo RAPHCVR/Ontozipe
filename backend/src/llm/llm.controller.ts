@@ -95,17 +95,17 @@ export class LlmController {
                             messages.push(aiResponse);
                             const toolMessages = await Promise.all(
                                 aiResponse.tool_calls.map(async (toolCall: ToolCall) => {
-                                    sendSse(res, { type: "tool_call", data: { name: toolCall.name, args: toolCall.args } });
+                                    sendSse(res, { type: "tool_call", data: { id: toolCall.id, name: toolCall.name, args: toolCall.args } });
                                     const tool = tools.find((t) => t.name === toolCall.name);
                                     if (!tool) {
                                         const errorMsg = `Error: Tool '${toolCall.name}' not found.`;
-                                        sendSse(res, { type: "tool_result", data: { name: toolCall.name, observation: errorMsg } });
+                                        sendSse(res, { type: "tool_result", data: { id: toolCall.id, name: toolCall.name, observation: errorMsg } });
                                         return new ToolMessage({ tool_call_id: toolCall.id, content: errorMsg });
                                     }
                                     const observation = await tool.invoke(toolCall.args);
                                     const observationStr = typeof observation === "string" ? observation : JSON.stringify(observation);
                                     collectedObservations.push(observationStr);
-                                    sendSse(res, { type: "tool_result", data: { name: toolCall.name, observation: observationStr } });
+                                    sendSse(res, { type: "tool_result", data: { id: toolCall.id, name: toolCall.name, observation: observationStr } });
                                     return new ToolMessage({ tool_call_id: toolCall.id, content: observationStr });
                                 })
                             );
