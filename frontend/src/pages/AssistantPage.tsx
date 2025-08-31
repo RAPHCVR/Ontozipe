@@ -1,6 +1,7 @@
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { v4 as uuidv4 } from "uuid";
 import remarkGfm from "remark-gfm";
 import { useApi } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
@@ -15,14 +16,14 @@ type AgentStep = { type: 'tool_call'; name: string; args: any; result?: string; 
  * Tente de parser une chaîne de caractères comme du JSON et de la formater joliment.
  * Si ce n'est pas du JSON, retourne la chaîne originale.
  */
-const formatObservation = (observation?: string): string => {
-    if (!observation) return "";
-    try {
-        const parsed = JSON.parse(observation);
-        return JSON.stringify(parsed, null, 2);
-    } catch (e) {
-        return observation;
+const formatObservation = (obs: unknown): string => {
+    if (obs == null) return "";
+    if (typeof obs === "string") {
+        try { return JSON.stringify(JSON.parse(obs), null, 2); }
+        catch { return obs; }
     }
+    try { return JSON.stringify(obs, null, 2); }
+    catch { return String(obs); }
 };
 
 
@@ -46,25 +47,24 @@ export default function AssistantPage() {
     useEffect(() => { setLoadingOntos(true); api(`/ontology/projects`).then((r) => r.json()).then(setOntos).finally(() => setLoadingOntos(false)); }, [api]);
     useEffect(() => { if (!activeIri && ontos.length > 0) { setActiveIri(ontos[0].iri); } }, [ontos, activeIri]);
 
-    const send = async () => {
+    const handleSend = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         const q = input.trim();
         if (!q || sending) return;
 
-        const history = messages.slice(1); // Exclure le message de bienvenue initial
+        const history = messages.slice(1);
         const questionMsg: ChatMsg = { role: "user", content: q };
 
-        setAgentSteps([]); // Réinitialise les étapes de l'agent pour la nouvelle question
+        setAgentSteps([]);
         setMessages((prev) => [...prev, questionMsg, { role: "assistant", content: "" }]);
         setInput("");
         setSending(true);
+        const idempotencyKey = uuidv4();
 
         await fetchEventSource(`${base}/llm/ask`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ question: q, ontologyIri: activeIri || undefined, history }),
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ question: q, ontologyIri: activeIri || undefined, history, idempotencyKey }),
 
             async onopen(response) {
                 if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
@@ -101,6 +101,10 @@ export default function AssistantPage() {
                                 const newLastMsg = { ...lastMsg, content: lastMsg.content + data };
                                 return [...prev.slice(0, -1), newLastMsg];
                             });
+                            break;
+
+                        case 'done':
+                            setSending(false);
                             break;
 
                         case 'error':
@@ -165,7 +169,6 @@ export default function AssistantPage() {
                         key={idx}
                         className={`flex ${m.role === "user" ? "justify-end" : "flex-col items-start"}`}
                     >
-                        {/* Affiche les étapes de l'agent juste avant le dernier message de l'assistant */}
                         {m.role === 'assistant' && idx === messages.length - 1 && agentSteps.length > 0 && (
                             <div className="mb-2 w-full max-w-[80%]">
                                 <details className="rounded-lg bg-gray-100 dark:bg-slate-800 p-2">
@@ -179,7 +182,7 @@ export default function AssistantPage() {
                                                     <Cog6ToothIcon className="h-4 w-4" /> Appel de l'outil: {step.name}
                                                 </p>
                                                 <pre className="whitespace-pre-wrap break-words bg-gray-50 dark:bg-slate-800 p-1 rounded mt-1 text-gray-700 dark:text-gray-300">
-                                                    <code>{JSON.stringify(step.args, null, 2)}</code>
+                                                    <code>{formatObservation(step.args)}</code>
                                                 </pre>
                                                 {step.result ? (
                                                     <div className="mt-1 border-t border-gray-200 dark:border-slate-600 pt-1">
@@ -212,33 +215,29 @@ export default function AssistantPage() {
                 ))}
             </div>
 
-            <div className="flex items-end gap-2">
-                <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Posez votre question (Shift+Entrée pour nouvelle ligne)…"
-                    rows={2}
-                    className="flex-1 text-sm border rounded-md px-3 py-2 dark:bg-slate-800 dark:border-slate-600 resize-none"
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            send();
-                        }
-                    }}
-                />
+            <form onSubmit={handleSend} className="flex items-end gap-2">
+                    <textarea
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Posez votre question (Maj+Entrée pour nouvelle ligne)…"
+                        rows={2}
+                        className="flex-1 text-sm border rounded-md px-3 py-2 dark:bg-slate-800 dark:border-slate-600 resize-none"
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                            }
+                        }}
+                    />
                 <button
-                    onClick={send}
+                    type="submit"
                     disabled={sending || !input.trim()}
                     className="btn-primary disabled:opacity-50 h-[42px] w-[42px] flex-shrink-0 !p-0 flex items-center justify-center rounded-md"
                     aria-label="Envoyer"
                 >
-                    {sending ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white" />
-                    ) : (
-                        <PaperAirplaneIcon className="h-5 w-5" />
-                    )}
+                    {sending ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white" /> : <PaperAirplaneIcon className="h-5 w-5" />}
                 </button>
-            </div>
+            </form>
             <p className="text-xs text-gray-500">
                 L'assistant peut utiliser des outils pour interroger l'ontologie sélectionnée.
             </p>

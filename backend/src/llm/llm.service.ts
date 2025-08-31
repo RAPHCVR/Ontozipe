@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from "@nestjs/common";
+import { Injectable, BadRequestException, ConflictException } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { lastValueFrom } from "rxjs";
 import { ChatOllama } from "@langchain/ollama";
@@ -14,6 +14,9 @@ export class LlmService {
     private readonly CORE = "http://example.org/core#";
     private readonly FUSEKI_SPARQL = `${(process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(/\/$/,"")}/sparql`;
 
+    /** Empêche l'exécution simultanée de requêtes avec la même clé d'idempotence. */
+    private readonly inflightRequests = new Set<string>();
+
     private buildModel(): ChatOllama {
         const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11343";
         const model = process.env.OLLAMA_MODEL || "llama3";
@@ -21,7 +24,14 @@ export class LlmService {
             process.env.UTC_API_KEY && process.env.UTC_API_KEY.trim().length > 0
                 ? { Authorization: `Bearer ${process.env.UTC_API_KEY}` }
                 : undefined;
-        return new ChatOllama({ baseUrl, model, temperature: 0.2, maxRetries: 2, headers });
+        return new ChatOllama({
+            baseUrl,
+            model,
+            temperature: 0.2,
+            maxRetries: 2,
+            headers,
+            numPredict: 256, // Forcer des sorties plus courtes
+        });
     }
 
     private async getUserGroups(userIri: string): Promise<string[]> {
@@ -158,5 +168,24 @@ export class LlmService {
         const tools = this.buildTools(params.userIri, params.ontologyIri);
         const llmWithTools = llm.bindTools(tools);
         return { llm, llmWithTools, tools };
+    }
+
+    /**
+     * Exécute une fonction asynchrone une seule fois pour une clé donnée.
+     * Lève une exception si une exécution avec la même clé est déjà en cours.
+     * @param key - La clé d'idempotence unique pour cette requête.
+     * @param executor - La fonction à exécuter.
+     */
+    public async executeOnce<T>(key: string, executor: () => Promise<T>): Promise<T> {
+        if (this.inflightRequests.has(key)) {
+            throw new ConflictException("Une requête identique est déjà en cours de traitement.");
+        }
+        this.inflightRequests.add(key);
+        try {
+            return await executor();
+        } finally {
+            // S'assure que la clé est retirée même en cas d'erreur
+            this.inflightRequests.delete(key);
+        }
     }
 }
