@@ -19,7 +19,7 @@ export class LlmService {
     /** Empêche l'exécution simultanée de requêtes avec la même clé d'idempotence. */
     private readonly inflightRequests = new Set<string>();
 
-    private buildModel2(): ChatOllama {
+    private buildModel(): ChatOllama {
         const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11343";
         const model = process.env.OLLAMA_MODEL || "llama3";
         const headers =
@@ -35,7 +35,7 @@ export class LlmService {
         });
     }
 
-    private buildModel(): ChatOpenAI {
+    private buildModel2(): ChatOpenAI {
         const openAIApiKey = process.env.OPENAI_API_KEY;
         if (!openAIApiKey) {
             throw new Error("OPENAI_API_KEY is not set in environment variables");
@@ -275,7 +275,7 @@ export class LlmService {
     }
 
     public prepareAgentExecutor(params: { userIri: string; ontologyIri?: string }): {
-        llm: ChatOpenAI;
+        llm: ChatOllama;
         llmWithTools: Runnable;
         tools: StructuredTool[];
     } {
