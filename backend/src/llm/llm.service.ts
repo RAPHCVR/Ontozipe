@@ -32,7 +32,6 @@ export class LlmService {
             temperature: 0.2,
             maxRetries: 2,
             headers,
-            numPredict: 256, // Forcer des sorties plus courtes
         });
     }
 
