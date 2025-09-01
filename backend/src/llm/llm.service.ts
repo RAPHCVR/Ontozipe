@@ -272,7 +272,7 @@ export class LlmService {
             }
         );
         
-        return [searchTool, getTool, getMostConnectedNodesTool, searchNodesByKeywordsTool, getBatchEntityDetailsTool];
+        return [searchTool, getTool, getMostConnectedNodesTool, searchNodesByKeywordsTool];
     }
 
     public prepareAgentExecutor(params: { userIri: string; ontologyIri?: string }): {
