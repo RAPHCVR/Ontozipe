@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ConflictException } from "@nestjs/common";
+import { Injectable, BadRequestException } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { lastValueFrom } from "rxjs";
 import { ChatOllama } from "@langchain/ollama";
@@ -8,7 +8,8 @@ import { z } from "zod";
 import { escapeSparqlLiteral } from "../utils/sparql.utils";
 import { ChatOpenAI } from "@langchain/openai";
 import { getMostConnectedNodes, searchNodesByKeywords, buildNodeFromUri } from "./queries";
-import { ResultRepresentation } from "./result_representation";
+import { ResultRepresentation, Node } from "./result_representation";
+import { Response } from "express";
 
 @Injectable()
 export class LlmService {
@@ -17,14 +18,33 @@ export class LlmService {
     private readonly CORE = "http://example.org/core#";
     private readonly FUSEKI_SPARQL = `${(process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(/\/$/,"")}/sparql`;
 
-    /** Empêche l'exécution simultanée de requêtes avec la même clé d'idempotence. */
-    private readonly inflightRequests = new Set<string>();
+    /** Registre des runs SSE (idempotencyKey -> set de réponses SSE) pour permettre la reconnexion. */
+    private readonly sseRuns = new Map<string, Set<Response>>();
+    /**
+     * Mémoire des recherches par contexte (clé: userIri + '::' + ontologyIri|default).
+     * Évite tout partage entre utilisateurs/sessions.
+     */
+    private readonly representations = new Map<string, ResultRepresentation>();
 
-    /** Instance persistante de ResultRepresentation qui s'enrichit au cours de la conversation. */
-    private persistentRepresentation = new ResultRepresentation();
+    private makeContextKey(userIri: string, ontologyIri?: string): string {
+        return `${userIri}::${ontologyIri ?? "default"}`;
+    }
 
+    private getOrCreateRepresentation(userIri: string, ontologyIri?: string): ResultRepresentation {
+        const key = this.makeContextKey(userIri, ontologyIri);
+        let rep = this.representations.get(key);
+        if (!rep) {
+            rep = new ResultRepresentation();
+            this.representations.set(key, rep);
+        }
+        return rep;
+    }
+
+    /* ======================== */
+    /*   MODELES (LLM clients)  */
+    /* ======================== */
     private buildModel(): ChatOllama {
-        const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11343";
+        const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
         const model = process.env.OLLAMA_MODEL || "llama3";
         const headers =
             process.env.UTC_API_KEY && process.env.UTC_API_KEY.trim().length > 0
@@ -46,6 +66,50 @@ export class LlmService {
         }
         const model = process.env.OPENAI_MODEL || "gpt-5-mini";
         return new ChatOpenAI({ openAIApiKey, modelName: model });
+    }
+
+    /* ========================================== */
+    /*       GESTION SSE MULTI-ABONNES PAR CLE     */
+    /* ========================================== */
+    /**
+     * Ajoute un abonné SSE sur une clé d'idempotence. Retourne true si c'est le premier abonné
+     * (donc qu'il faut démarrer l'exécution), false si on se greffe sur une exécution en cours.
+     */
+    public registerSseSubscriber(key: string, res: Response): { isFirst: boolean } {
+        const existing = this.sseRuns.get(key);
+        const isFirst = !existing;
+        const set = existing ?? new Set<Response>();
+        set.add(res);
+        if (!existing) this.sseRuns.set(key, set);
+        // Nettoyage à la fermeture de la connexion
+        res.on("close", () => {
+            const current = this.sseRuns.get(key);
+            if (!current) return;
+            current.delete(res);
+            // On ne stoppe pas l'exécution si plus d'abonnés; l'agent finira et on nettoiera à la fin.
+        });
+        return { isFirst };
+    }
+    /** Diffuse un événement SSE vers tous les abonnés de la clé. */
+    public sseBroadcast(key: string, event: { type: string; data: unknown }) {
+        const subs = this.sseRuns.get(key);
+        if (!subs || subs.size === 0) return;
+        const payload = `data: ${JSON.stringify(event)}\n\n`;
+        for (const r of Array.from(subs)) {
+            try {
+                r.write(payload);
+            } catch {
+                subs.delete(r);
+            }
+        }
+    }
+    /** Termine proprement un run SSE: envoie 'done' et ferme toutes les connexions, puis nettoie. */
+    public finishSseRun(key: string) {
+        const subs = this.sseRuns.get(key);
+        if (!subs) return;
+        this.sseBroadcast(key, { type: "done", data: null });
+        for (const r of Array.from(subs)) { try { r.end(); } catch {} }
+        this.sseRuns.delete(key);
     }
 
     private async getUserGroups(userIri: string): Promise<string[]> {
@@ -182,7 +246,7 @@ export class LlmService {
                     if (nodes.length === 0) {
                         return `Aucun noeud trouvé dans l'ontologie <${ontoEff}>.`;
                     }
-                    return JSON.stringify({ 
+                    return JSON.stringify({
                         nodes: nodes.map(n => ({ uri: n.uri, connectionCount: n.connectionCount })),
                         totalFound: nodes.length,
                         ontologyIri: ontoEff
@@ -212,23 +276,23 @@ export class LlmService {
                     // 1. Prendre les 6 premiers résultats
                     const results = await searchNodesByKeywords(this.http, this.FUSEKI_SPARQL, onto, keywords);
                     const first6Results = results.slice(0, 6);
-                    
+
                     if (first6Results.length === 0) {
                         return `Aucun noeud trouvé correspondant aux mots-clés [${keywords.join(', ')}] dans l'ontologie <${onto}>.`;
                     }
 
                     // 2. Transmettre ces résultats à buildNodeFromUri un par un (avec système de déduplication)
                     const uncoveredUri = new Set<string>();
-                    const nodes = [];
+                    const nodes: Node[] = [];
 
                     for (const result of first6Results) {
                         try {
                             const node = await buildNodeFromUri(this.http, this.FUSEKI_SPARQL, onto, result.uri);
-                            
+
                             // Vérifie si l'URI de la node est déjà dans uncoveredUri
                             if (!uncoveredUri.has(node.uri)) {
                                 nodes.push(node);
-                                
+
                                 // Ajoute les URI à uncoveredUri pour éviter les résultats de recherche redondants.
                                 uncoveredUri.add(node.uri);
 
@@ -239,7 +303,7 @@ export class LlmService {
                                 for (const attribute of node.attributes) {
                                     uncoveredUri.add(attribute.property_uri);
                                 }
-                                
+
                                 console.log(`Successfully built and added node for URI: ${result.uri}`);
                             } else {
                                 console.log(`Node with URI ${result.uri} already covered, skipping.`);
@@ -250,15 +314,15 @@ export class LlmService {
                         }
                     }
 
-                    // 4. Faire updateWithNodes sur la représentation persistante
-                    this.persistentRepresentation = this.persistentRepresentation.updateWithNodes(nodes);
-                    
+                    // 4. Mettre à jour la représentation persistante POUR CET UTILISATEUR/ONTOLOGIE
+                    this.updateRepresentationWithNodes(userIri, onto, nodes);
+
                     // Renvoyer un message personnalisé avec les labels des entités trouvées
                     const entityLabels = nodes
                         .filter(node => node.label) // Seulement les nodes avec un label
                         .map(node => node.label)
                         .join(', ');
-                    
+
                     if (entityLabels) {
                         return `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
                     } else {
@@ -288,9 +352,9 @@ export class LlmService {
                 }
                 try {
                     console.log(`Debug Graph Tool: Processing ${uris.length} entity URIs from ontology <${onto}>`);
-                    
+
                     // 2. Récupérer les détails de chaque URI une par une avec buildNodeFromUri
-                    const nodes = [];
+                    const nodes: Node[] = [];
                     for (const uri of uris) {
                         try {
                             const node = await buildNodeFromUri(this.http, this.FUSEKI_SPARQL, onto, uri);
@@ -302,15 +366,15 @@ export class LlmService {
                         }
                     }
 
-                    // 3. Faire updateWithNodes sur la représentation persistante
-                    this.persistentRepresentation = this.persistentRepresentation.updateWithNodes(nodes);
-                    
+                    // 3. Mettre à jour la représentation persistante POUR CET UTILISATEUR/ONTOLOGIE
+                    this.updateRepresentationWithNodes(userIri, onto, nodes);
+
                     // Renvoyer un message personnalisé avec les labels des entités trouvées
                     const entityLabels = nodes
                         .filter(node => node.label) // Seulement les nodes avec un label
                         .map(node => node.label)
                         .join(', ');
-                    
+
                     if (entityLabels) {
                         return `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
                     } else {
@@ -346,29 +410,24 @@ export class LlmService {
     }
 
     /**
-     * Récupère la représentation textuelle des résultats persistants
-     * de la dernière exécution des outils.
+     * Met à jour la représentation (mémoire) pour un utilisateur/ontologie.
      */
-    public getPersistentResults(): string {
-        return this.persistentRepresentation.toString();
+    public updateRepresentationWithNodes(userIri: string, ontologyIri: string | undefined, nodes: Node[]) {
+        const current = this.getOrCreateRepresentation(userIri, ontologyIri);
+        const updated = current.updateWithNodes(nodes);
+        this.representations.set(this.makeContextKey(userIri, ontologyIri), updated);
     }
 
     /**
-     * Exécute une fonction asynchrone une seule fois pour une clé donnée.
-     * Lève une exception si une exécution avec la même clé est déjà en cours.
-     * @param key - La clé d'idempotence unique pour cette requête.
-     * @param executor - La fonction à exécuter.
+     * Récupère la représentation textuelle des résultats persistants
+     * pour un utilisateur (et une ontologie éventuelle).
      */
-    public async executeOnce<T>(key: string, executor: () => Promise<T>): Promise<T> {
-        if (this.inflightRequests.has(key)) {
-            throw new ConflictException("Une requête identique est déjà en cours de traitement.");
-        }
-        this.inflightRequests.add(key);
-        try {
-            return await executor();
-        } finally {
-            // S'assure que la clé est retirée même en cas d'erreur
-            this.inflightRequests.delete(key);
-        }
+    public getPersistentResultsFor(userIri: string, ontologyIri?: string): string {
+        return this.getOrCreateRepresentation(userIri, ontologyIri).toString();
+    }
+
+    /** Réinitialise la mémoire pour un utilisateur/ontologie (optionnel) */
+    public clearRepresentation(userIri: string, ontologyIri?: string) {
+        this.representations.delete(this.makeContextKey(userIri, ontologyIri));
     }
 }
