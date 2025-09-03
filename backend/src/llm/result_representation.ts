@@ -256,7 +256,7 @@ export class ResultRepresentation {
 
         // Section des noeuds partiels (références découvertes mais non détaillées)
         if (partialNodes.length > 0) {
-            lines.push("URI des Entités Découvrables:");
+            lines.push("URI des Entités à Découvrir avec les tools:");
             lines.push("");
             
             for (const node of partialNodes) {

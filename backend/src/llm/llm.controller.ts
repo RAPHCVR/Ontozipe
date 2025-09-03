@@ -82,8 +82,20 @@ export class LlmController {
                         ontologyIri: dto.ontologyIri,
                     });
 
+                    // Construire le prompt système de base avec toujours les résultats persistants
+                    const buildSystemPrompt = () => {
+                        let prompt = `${SYSTEM_PROMPT_FR}${dto.ontologyIri ? `\nContexte: l'ontologie active est <${dto.ontologyIri}>.` : ''}`;
+                        const persistentResults = this.llmService.getPersistentResults();
+                        if (persistentResults && persistentResults.trim()) {
+                            prompt += `\n\n--- RESULTATS DES RECHERCHES PRECEDENTES ---\n${persistentResults}`;
+                        }
+                        return prompt;
+                    };
+                    
+                    let systemPrompt = buildSystemPrompt();
+
                     const messages: BaseMessage[] = [
-                        new SystemMessage(`${SYSTEM_PROMPT_FR}${dto.ontologyIri ? `\nContexte: l'ontologie active est <${dto.ontologyIri}>.` : ''}`),
+                        new SystemMessage(systemPrompt),
                         ...this.toLangchainHistory(dto.history),
                         new HumanMessage(dto.question),
                     ];
@@ -110,7 +122,12 @@ export class LlmController {
                                 })
                             );
                             messages.push(...toolMessages);
-                            messages.push(new SystemMessage("Sur la base des résultats des outils, produis maintenant la réponse finale en 3 à 6 lignes, sans ré-appeler d’outil. Si aucun résultat pertinent n’a été trouvé, dis-le."));
+                            
+                            // MISE À JOUR DU PROMPT SYSTEME avec les nouveaux résultats
+                            // Remplace le premier message système par un nouveau avec les résultats mis à jour
+                            messages[0] = new SystemMessage(buildSystemPrompt());
+                            
+                            messages.push(new SystemMessage("Sur la base des résultats des outils, produis maintenant la réponse finale en 3 à 6 lignes, sans ré-appeler d'outil. Si aucun résultat pertinent n'a été trouvé, dis-le."));
                             continue;
                         }
 

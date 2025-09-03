@@ -253,8 +253,17 @@ export class LlmService {
                     // 4. Faire updateWithNodes sur la représentation persistante
                     this.persistentRepresentation = this.persistentRepresentation.updateWithNodes(nodes);
                     
-                    // Renvoyer la string using toString
-                    return this.persistentRepresentation.toString();
+                    // Renvoyer un message personnalisé avec les labels des entités trouvées
+                    const entityLabels = nodes
+                        .filter(node => node.label) // Seulement les nodes avec un label
+                        .map(node => node.label)
+                        .join(', ');
+                    
+                    if (entityLabels) {
+                        return `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                    } else {
+                        return `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                    }
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
                     return `Erreur lors de la recherche par mots-clés: ${errorMessage}`;
@@ -296,8 +305,17 @@ export class LlmService {
                     // 3. Faire updateWithNodes sur la représentation persistante
                     this.persistentRepresentation = this.persistentRepresentation.updateWithNodes(nodes);
                     
-                    // Renvoyer la string using toString
-                    return this.persistentRepresentation.toString();
+                    // Renvoyer un message personnalisé avec les labels des entités trouvées
+                    const entityLabels = nodes
+                        .filter(node => node.label) // Seulement les nodes avec un label
+                        .map(node => node.label)
+                        .join(', ');
+                    
+                    if (entityLabels) {
+                        return `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                    } else {
+                        return `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                    }
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
                     console.error('Error in debug graph tool:', error);
@@ -325,6 +343,14 @@ export class LlmService {
         const tools = this.buildTools(params.userIri, params.ontologyIri);
         const llmWithTools = llm.bindTools(tools);
         return { llm, llmWithTools, tools };
+    }
+
+    /**
+     * Récupère la représentation textuelle des résultats persistants
+     * de la dernière exécution des outils.
+     */
+    public getPersistentResults(): string {
+        return this.persistentRepresentation.toString();
     }
 
     /**
