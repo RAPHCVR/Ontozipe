@@ -8,9 +8,9 @@ import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
 import { PaperAirplaneIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
 
-type ChatMsg = { role: "user" | "assistant"; content: string };
+type ChatMsg = { role: "user" | "assistant"; content: string, agentSteps?: AgentStep[] };
 type Ontology = { iri: string; label?: string };
-type AgentStep = { type: 'tool_call'; name: string; args: any; result?: string; };
+type AgentStep = { id: string; type: 'tool_call'; name: string; args: any; result?: string; };
 
 /**
  * Tente de parser une chaîne de caractères comme du JSON et de la formater joliment.
@@ -39,11 +39,9 @@ export default function AssistantPage() {
             content: "Bonjour, je suis l’assistant OntoZIPE. Posez-moi une question sur votre ontologie.",
         },
     ]);
-    const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const base = useMemo(() => (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, ""), []);
-
     useEffect(() => { setLoadingOntos(true); api(`/ontology/projects`).then((r) => r.json()).then(setOntos).finally(() => setLoadingOntos(false)); }, [api]);
     useEffect(() => { if (!activeIri && ontos.length > 0) { setActiveIri(ontos[0].iri); } }, [ontos, activeIri]);
 
@@ -55,8 +53,7 @@ export default function AssistantPage() {
         const history = messages.slice(1);
         const questionMsg: ChatMsg = { role: "user", content: q };
 
-        setAgentSteps([]);
-        setMessages((prev) => [...prev, questionMsg, { role: "assistant", content: "" }]);
+        setMessages((prev) => [...prev, questionMsg, { role: "assistant", content: "", agentSteps: [] }]);
         setInput("");
         setSending(true);
         const idempotencyKey = uuidv4();
@@ -81,17 +78,29 @@ export default function AssistantPage() {
 
                     switch (type) {
                         case 'tool_call':
-                            setAgentSteps(prev => [...prev, { type: 'tool_call', name: data.name, args: data.args }]);
+                            setMessages(prev => {
+                                const lastMsg = prev[prev.length - 1];
+                                const updatedSteps = [...(lastMsg.agentSteps || []), { id: data.id, type: 'tool_call', name: data.name, args: data.args }];
+                                const newLastMsg = { ...lastMsg, agentSteps: updatedSteps };
+                                return [...prev.slice(0, -1), newLastMsg];
+                            });
                             break;
 
                         case 'tool_result':
-                            setAgentSteps(prev => {
-                                const lastStep = prev[prev.length - 1];
-                                if (lastStep && lastStep.name === data.name) {
-                                    const updatedStep = { ...lastStep, result: data.observation };
-                                    return [...prev.slice(0, -1), updatedStep];
+                            setMessages(prev => {
+                                const lastMsg = prev[prev.length - 1];
+                                const currentSteps = lastMsg.agentSteps || [];
+                                const idx = currentSteps.findIndex(s => s.id === data.id);
+                                let updatedSteps;
+                                if (idx >= 0) {
+                                    updatedSteps = currentSteps.slice();
+                                    updatedSteps[idx] = { ...updatedSteps[idx], result: data.observation };
+                                } else {
+                                    // Si le tool_result arrive avant le tool_call (rare mais possible), on crée une entrée.
+                                    updatedSteps = [...currentSteps, { id: data.id, type: 'tool_call', name: data.name, args: {}, result: data.observation }];
                                 }
-                                return prev;
+                                const newLastMsg = { ...lastMsg, agentSteps: updatedSteps };
+                                return [...prev.slice(0, -1), newLastMsg];
                             });
                             break;
 
@@ -137,7 +146,7 @@ export default function AssistantPage() {
     };
 
     const containerRef = useRef<HTMLDivElement>(null);
-    useEffect(() => { if (containerRef.current) { containerRef.current.scrollTop = containerRef.current.scrollHeight; } }, [messages, agentSteps]);
+    useEffect(() => { if (containerRef.current) { containerRef.current.scrollTop = containerRef.current.scrollHeight; } }, [messages]);
 
     return (
         <div className="container mx-auto max-w-5xl w-full flex flex-col gap-4">
@@ -169,14 +178,14 @@ export default function AssistantPage() {
                         key={idx}
                         className={`flex ${m.role === "user" ? "justify-end" : "flex-col items-start"}`}
                     >
-                        {m.role === 'assistant' && idx === messages.length - 1 && agentSteps.length > 0 && (
+                        {m.role === 'assistant' && m.agentSteps && m.agentSteps.length > 0 && (
                             <div className="mb-2 w-full max-w-[80%]">
                                 <details className="rounded-lg bg-gray-100 dark:bg-slate-800 p-2">
                                     <summary className="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-400">
                                         Raisonnement de l'agent...
                                     </summary>
                                     <div className="mt-2 space-y-2">
-                                        {agentSteps.map((step, stepIdx) => (
+                                        {m.agentSteps.map((step, stepIdx) => (
                                             <div key={stepIdx} className="text-xs p-2 rounded bg-white dark:bg-slate-700">
                                                 <p className="font-bold text-indigo-500 flex items-center gap-1">
                                                     <Cog6ToothIcon className="h-4 w-4" /> Appel de l'outil: {step.name}

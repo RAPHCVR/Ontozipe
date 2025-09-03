@@ -23,7 +23,7 @@ export class LlmService {
     /** Instance persistante de ResultRepresentation qui s'enrichit au cours de la conversation. */
     private persistentRepresentation = new ResultRepresentation();
 
-    private buildModel2(): ChatOllama {
+    private buildModel(): ChatOllama {
         const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11343";
         const model = process.env.OLLAMA_MODEL || "llama3";
         const headers =
@@ -36,11 +36,10 @@ export class LlmService {
             temperature: 0.2,
             maxRetries: 2,
             headers,
-            numPredict: 256, // Forcer des sorties plus courtes
         });
     }
 
-    private buildModel(): ChatOpenAI {
+    private buildModel2(): ChatOpenAI {
         const openAIApiKey = process.env.OPENAI_API_KEY;
         if (!openAIApiKey) {
             throw new Error("OPENAI_API_KEY is not set in environment variables");
@@ -318,7 +317,7 @@ export class LlmService {
     }
 
     public prepareAgentExecutor(params: { userIri: string; ontologyIri?: string }): {
-        llm: ChatOpenAI;
+        llm: ChatOllama;
         llmWithTools: Runnable;
         tools: StructuredTool[];
     } {
