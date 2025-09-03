@@ -1,5 +1,7 @@
 import { HttpService } from "@nestjs/axios";
 import { lastValueFrom } from "rxjs";
+import { ResultRepresentation, Node, IAttribute, INodeOptions, IRelationship } from './result_representation'; // Assurez-vous que le chemin est correct
+
 
 export interface NodeWithConnectionCount {
     uri: string;
@@ -11,13 +13,6 @@ export interface NodeSearchResult {
     matchedKeywords: number;
 }
 
-export interface EntityDetails {
-    id: string;
-    label?: string;
-    types: string[];
-    properties: { predicate: string; value: string; isLiteral: boolean }[];
-}
-
 export async function getMostConnectedNodes(
     http: HttpService, 
     fusekiSparqlUrl: string, 
@@ -27,13 +22,13 @@ export async function getMostConnectedNodes(
         SELECT ?node (COUNT(DISTINCT ?connectedNode) AS ?connectionCount) WHERE {
             GRAPH <${ontologyIri}> {
                 {
-                    # Nœuds comme sujets
+                    # noeuds comme sujets
                     ?node ?predicate ?connectedNode .
                     FILTER(isURI(?connectedNode))
                 }
                 UNION
                 {
-                    # Nœuds comme objets
+                    # noeuds comme objets
                     ?connectedNode ?predicate ?node .
                     FILTER(isURI(?connectedNode))
                 }
@@ -71,13 +66,21 @@ export async function searchNodesByKeywords(
     keywords: string[],
     limit: number = 50
 ): Promise<NodeSearchResult[]> {
+    // Fonction pour extraire le nom local d'une URI (partie après # ou dernière /)
+    const extractLocalName = (uri: string) => {
+        const hashIndex = uri.lastIndexOf('#');
+        const slashIndex = uri.lastIndexOf('/');
+        return uri.substring(Math.max(hashIndex, slashIndex) + 1);
+    };
+
     // Construire les conditions de filtrage pour chaque mot-clé
-    const filterConditions = keywords.map((keyword, index) => {
+    const filterConditions = keywords.map(keyword => {
         const cleanKeyword = keyword.toLowerCase().trim();
         if (cleanKeyword.length > 3) {
             // Match partiel pour les mots de plus de 3 caractères
             return `(
                 CONTAINS(LCASE(STR(?node)), "${cleanKeyword}") ||
+                CONTAINS(LCASE(STR(?localName)), "${cleanKeyword}") ||
                 CONTAINS(LCASE(STR(?property)), "${cleanKeyword}") ||
                 CONTAINS(LCASE(STR(?value)), "${cleanKeyword}") ||
                 CONTAINS(LCASE(STR(?label)), "${cleanKeyword}") ||
@@ -86,11 +89,12 @@ export async function searchNodesByKeywords(
         } else {
             // Match exact pour les mots courts
             return `(
-                STR(?node) = "${cleanKeyword}" ||
-                STR(?property) = "${cleanKeyword}" ||
-                STR(?value) = "${cleanKeyword}" ||
-                STR(?label) = "${cleanKeyword}" ||
-                STR(?comment) = "${cleanKeyword}"
+                LCASE(STR(?node)) = "${cleanKeyword}" ||
+                LCASE(STR(?localName)) = "${cleanKeyword}" ||
+                LCASE(STR(?property)) = "${cleanKeyword}" ||
+                LCASE(STR(?value)) = "${cleanKeyword}" ||
+                LCASE(STR(?label)) = "${cleanKeyword}" ||
+                LCASE(STR(?comment)) = "${cleanKeyword}"
             )`;
         }
     }).join(' || ');
@@ -99,14 +103,16 @@ export async function searchNodesByKeywords(
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         
-        SELECT ?node (COUNT(DISTINCT ?matchedKeyword) AS ?matchCount) WHERE {
+        SELECT ?node (COUNT(DISTINCT ?matchType) AS ?matchCount) WHERE {
             GRAPH <${ontologyIri}> {
                 {
                     # Recherche dans les propriétés du nœud (comme sujet)
                     ?node ?property ?value .
                     OPTIONAL { ?node rdfs:label ?label }
                     OPTIONAL { ?node rdfs:comment ?comment }
-                    BIND("dummy" AS ?matchedKeyword)
+                    # Extraire le nom local de l'URI du nœud
+                    BIND(REPLACE(STR(?node), "^.*[/#]([^/#]+)$", "$1") AS ?localName)
+                    BIND("subject_match" AS ?matchType)
                     FILTER(${filterConditions})
                 }
                 UNION
@@ -115,27 +121,43 @@ export async function searchNodesByKeywords(
                     ?subject ?property ?node .
                     OPTIONAL { ?node rdfs:label ?label }
                     OPTIONAL { ?node rdfs:comment ?comment }
-                    BIND("dummy" AS ?matchedKeyword)
+                    # Extraire le nom local de l'URI du nœud
+                    BIND(REPLACE(STR(?node), "^.*[/#]([^/#]+)$", "$1") AS ?localName)
+                    BIND("object_match" AS ?matchType)
                     FILTER(${filterConditions})
                 }
                 UNION
                 {
-                    # Recherche dans les labels et commentaires spécifiquement
+                    # Recherche spécifique dans les labels 
                     ?node rdfs:label ?label .
+                    OPTIONAL { ?node rdfs:comment ?comment }
+                    BIND(REPLACE(STR(?node), "^.*[/#]([^/#]+)$", "$1") AS ?localName)
+                    BIND("" AS ?property)
+                    BIND("" AS ?value)
+                    BIND("label_match" AS ?matchType)
+                    FILTER(${filterConditions})
+                }
+                UNION
+                {
+                    # Recherche spécifique dans les commentaires
+                    ?node rdfs:comment ?comment .
+                    OPTIONAL { ?node rdfs:label ?label }
+                    BIND(REPLACE(STR(?node), "^.*[/#]([^/#]+)$", "$1") AS ?localName)
+                    BIND("" AS ?property)
+                    BIND("" AS ?value)
+                    BIND("comment_match" AS ?matchType)
+                    FILTER(${filterConditions})
+                }
+                UNION
+                {
+                    # Recherche spécifique dans les URI/noms locaux sans autres propriétés
+                    ?node ?anyProp ?anyValue .
+                    BIND(REPLACE(STR(?node), "^.*[/#]([^/#]+)$", "$1") AS ?localName)
+                    OPTIONAL { ?node rdfs:label ?label }
                     OPTIONAL { ?node rdfs:comment ?comment }
                     BIND("" AS ?property)
                     BIND("" AS ?value)
-                    BIND("dummy" AS ?matchedKeyword)
-                    FILTER(${filterConditions})
-                }
-                UNION
-                {
-                    # Recherche dans les commentaires spécifiquement
-                    ?node rdfs:comment ?comment .
-                    OPTIONAL { ?node rdfs:label ?label }
-                    BIND("" AS ?property)
-                    BIND("" AS ?value)
-                    BIND("dummy" AS ?matchedKeyword)
+                    BIND("uri_match" AS ?matchType)
                     FILTER(${filterConditions})
                 }
             }
@@ -171,39 +193,76 @@ export async function searchNodesByKeywords(
     }
 }
 
-export async function batchGetEntityDetails(
+/**
+ * Récupère toutes les informations d'un nœud spécifique depuis Fuseki et construit un objet Node complet.
+ * @param http Le service HttpService de NestJS.
+ * @returns Un objet Node complet et marqué comme 'built'.
+ */
+export async function buildNodeFromUri(
     http: HttpService,
     fusekiSparqlUrl: string,
     ontologyIri: string,
-    uris: string[]
-): Promise<Map<string, EntityDetails>> {
-    if (!uris || uris.length === 0) {
-        return new Map();
-    }
-
-    // Construire la requête SPARQL pour récupérer les détails de toutes les URIs en une seule fois
-    const urisList = uris.map(uri => `<${uri}>`).join(', ');
-    
+    nodeUri: string
+): Promise<Node> {
     const sparql = `
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         
-        SELECT ?entity ?lbl ?p ?v WHERE {
+        SELECT DISTINCT
+          ?nodeLabel
+          ?nodeType
+          ?property
+          ?propertyLabel
+          ?value
+          ?valueType
+          ?valueLabel
+          ?literalDatatype
+          ?relationDirection
+          ?relatedEntity
+        WHERE {
             GRAPH <${ontologyIri}> {
-                VALUES ?entity { ${urisList} }
-                OPTIONAL { ?entity rdfs:label ?lbl }
+                BIND(<${nodeUri}> AS ?subject)
+        
+                # Récupérer le label et le type du sujet principal
+                OPTIONAL { ?subject rdfs:label ?nodeLabel . }
+                OPTIONAL { ?subject rdf:type ?nodeType . FILTER(isIRI(?nodeType)) }
+
                 {
-                    ?entity rdf:type ?v .
-                    BIND(rdf:type AS ?p)
+                    # Récupérer toutes les propriétés sortantes (node as subject)
+                    ?subject ?property ?value .
+                    BIND("outgoing" AS ?relationDirection)
+                    BIND(?value AS ?relatedEntity)
+                } 
+                UNION 
+                {
+                    # Récupérer toutes les propriétés entrantes (node as object)
+                    ?relatedEntity ?property ?subject .
+                    BIND(?subject AS ?value)
+                    BIND("incoming" AS ?relationDirection)
                 }
                 UNION
                 {
-                    ?entity ?p ?v .
-                    FILTER(?p != rdfs:label)
+                    # Récupérer les classes parentes de son type si le nœud est un individu
+                    ?subject rdf:type ?nodeTypeTemp .
+                    ?nodeTypeTemp rdfs:subClassOf+ ?value .
+                    BIND(<http://www.semanticweb.org/custom/belongsToClass> AS ?property)
+                    BIND("outgoing" AS ?relationDirection)  
+                    BIND(?value AS ?relatedEntity)
+                    FILTER(isIRI(?nodeTypeTemp) && isIRI(?value))
                 }
+        
+                # Blocs optionnels pour enrichir les données
+                OPTIONAL { ?property rdfs:label ?propertyLabel . }
+                OPTIONAL {
+                    FILTER(isIRI(?value))
+                    ?value rdfs:label ?valueLabel .
+                }
+        
+                # Blocs BIND pour calculer les discriminateurs
+                BIND(IF(isLiteral(?value), "Literal", "URI") AS ?valueType)
+                BIND(IF(isLiteral(?value), STR(datatype(?value)), "") AS ?literalDatatype)
             }
         }
-        ORDER BY ?entity ?p
     `;
 
     const params = new URLSearchParams({ 
@@ -213,68 +272,107 @@ export async function batchGetEntityDetails(
 
     try {
         const res = await lastValueFrom(http.get(fusekiSparqlUrl, { params }));
-        
-        type SparqlEntityBinding = {
-            entity: { value: string };
-            lbl?: { value: string };
-            p: { value: string };
-            v: { value: string; type: string };
+
+        type SparqlBinding = {  // Binding de la requête sparql
+            nodeLabel?: { value: string };
+            nodeType?: { value: string };
+            property: { value: string };
+            propertyLabel?: { value: string };
+            value: { value: string };
+            valueType: { value: string };
+            valueLabel?: { value: string };
+            literalDatatype: { value: string };
+            relationDirection?: { value: string };
+            relatedEntity?: { value: string };
         };
 
-        const bindings = res.data.results.bindings as SparqlEntityBinding[];
+        const bindings = res.data.results.bindings as SparqlBinding[];
+
+        if (bindings.length === 0) {
+            // Si le noeud n'a aucune propriété on le crée quand même.
+            // On peut faire une query plus simple pour juste le label/type
+            // mais pour l'instant on retourne un noeud minimal.
+            console.warn(`Node with URI <${nodeUri}> not found or has no properties.`);
+            return new Node({ uri: nodeUri });
+        }
         
-        // Grouper les résultats par entité
-        const entitiesMap = new Map<string, EntityDetails>();
-        
+        // Initialisation des collections pour le nouveau noeud avec des Sets pour éviter les doublons
+        const attributesSet = new Map<string, IAttribute>(); // Key: property_uri + value
+        const relationshipsSet = new Map<string, IRelationship>(); // Key: target_uri + predicate_uri + direction
+        let nodeLabel = bindings[0].nodeLabel?.value;
+        let nodeType = bindings[0].nodeType?.value;
+
+        // Perrmet d'obtenir un nom lisible à partir de l'URI
+        const getLocalName = (uri: string) => uri.substring(uri.lastIndexOf('#') + 1);
+
         for (const binding of bindings) {
-            const entityUri = binding.entity.value;
-            
-            if (!entitiesMap.has(entityUri)) {
-                entitiesMap.set(entityUri, {
-                    id: entityUri,
-                    label: binding.lbl?.value || entityUri.split(/[#/]/).pop(),
-                    types: [],
-                    properties: []
-                });
+            // Le label et le type peuvent être répétés sur chaque ligne, on les prend une fois.
+            if (!nodeLabel && binding.nodeLabel) nodeLabel = binding.nodeLabel.value;
+            if (!nodeType && binding.nodeType) nodeType = binding.nodeType.value;
+
+            // On ignore le triplet rdf:type ici car on le gère déjà via la variable nodeType.
+            if (binding.property.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
+                continue;
             }
             
-            const entity = entitiesMap.get(entityUri)!;
-            
-            // Mettre à jour le label si disponible
-            if (binding.lbl && !entity.label) {
-                entity.label = binding.lbl.value;
-            }
-            
-            if (binding.p.value.endsWith('type')) {
-                // C'est un type
-                if (!entity.types.includes(binding.v.value)) {
-                    entity.types.push(binding.v.value);
+            if (binding.valueType.value === 'Literal') {
+                // C'est un ATTRIBUT (seulement pour les relations sortantes)
+                if (binding.relationDirection?.value === 'outgoing') {
+                    const attribute: IAttribute = {
+                        property_uri: binding.property.value,
+                        property_label: binding.propertyLabel?.value || getLocalName(binding.property.value),
+                        value: binding.value.value,
+                        datatype: binding.literalDatatype.value
+                    };
+                    // Clé unique pour éviter les doublons
+                    const attributeKey = `${attribute.property_uri}:${attribute.value}:${attribute.datatype}`;
+                    attributesSet.set(attributeKey, attribute);
                 }
-            } else {
-                // C'est une propriété
-                entity.properties.push({
-                    predicate: binding.p.value,
-                    value: binding.v.value,
-                    isLiteral: binding.v.type !== 'uri'
-                });
+            } else { // 'URI'
+                // C'est une RELATION
+                const direction = binding.relationDirection?.value as 'outgoing' | 'incoming';
+                const targetUri = direction === 'outgoing' ? binding.value.value : binding.relatedEntity?.value;
+                
+                if (targetUri) {
+                    let predicateLabel = binding.propertyLabel?.value || getLocalName(binding.property.value);
+                    
+                    // Gestion spéciale pour les relations de classe
+                    if (binding.property.value === 'http://www.w3.org/2000/01/rdf-schema#subClassOf') {
+                        predicateLabel = 'sous-classe de';
+                    } else if (binding.property.value === 'http://www.semanticweb.org/custom/belongsToClass') {
+                        predicateLabel = 'appartient à la classe';
+                    }
+                    
+                    const relationship: IRelationship = {
+                        target_uri: targetUri,
+                        predicate_uri: binding.property.value,
+                        predicate_label: predicateLabel,
+                        direction: direction
+                    };
+                    // Utiliser une clé unique pour éviter les doublons de relations
+                    const relationshipKey = `${relationship.target_uri}:${relationship.predicate_uri}:${relationship.direction}`;
+                    relationshipsSet.set(relationshipKey, relationship);
+                }
             }
         }
+
+        // Convertir les Maps en Arrays
+        const attributes = Array.from(attributesSet.values());
+        const relationships = Array.from(relationshipsSet.values());
         
-        // S'assurer que toutes les URIs demandées sont dans le résultat
-        for (const uri of uris) {
-            if (!entitiesMap.has(uri)) {
-                entitiesMap.set(uri, {
-                    id: uri,
-                    label: uri.split(/[#/]/).pop(),
-                    types: [],
-                    properties: []
-                });
-            }
-        }
-        
-        return entitiesMap;
+        // Construction de l'objet Node final
+        const nodeOptions: INodeOptions = {
+            uri: nodeUri,
+            label: nodeLabel || getLocalName(nodeUri), // Fallback sur le nom local
+            node_type: nodeType, // Peut être undefined si non trouvé
+            attributes: attributes,
+            relationships: relationships
+        };
+
+        return new Node(nodeOptions);
+
     } catch (error) {
-        console.error('Error executing batch entity details query:', error);
-        throw new Error('Failed to get batch entity details');
+        console.error(`Error building node from URI <${nodeUri}>:`, error);
+        throw new Error(`Failed to build node from URI`);
     }
 }

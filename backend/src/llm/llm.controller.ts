@@ -96,6 +96,7 @@ export class LlmController {
                             const toolMessages = await Promise.all(
                                 aiResponse.tool_calls.map(async (toolCall: ToolCall) => {
                                     sendSse(res, { type: "tool_call", data: { name: toolCall.name, args: toolCall.args } });
+                 
                                     const tool = tools.find((t) => t.name === toolCall.name);
                                     if (!tool) {
                                         const errorMsg = `Error: Tool '${toolCall.name}' not found.`;

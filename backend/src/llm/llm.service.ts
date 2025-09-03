@@ -7,7 +7,8 @@ import { tool, StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import { escapeSparqlLiteral } from "../utils/sparql.utils";
 import { ChatOpenAI } from "@langchain/openai";
-import { getMostConnectedNodes, searchNodesByKeywords, batchGetEntityDetails } from "./queries";
+import { getMostConnectedNodes, searchNodesByKeywords, buildNodeFromUri } from "./queries";
+import { ResultRepresentation } from "./result_representation";
 
 @Injectable()
 export class LlmService {
@@ -18,6 +19,9 @@ export class LlmService {
 
     /** Empêche l'exécution simultanée de requêtes avec la même clé d'idempotence. */
     private readonly inflightRequests = new Set<string>();
+
+    /** Instance persistante de ResultRepresentation qui s'enrichit au cours de la conversation. */
+    private persistentRepresentation = new ResultRepresentation();
 
     private buildModel2(): ChatOllama {
         const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11343";
@@ -93,7 +97,7 @@ export class LlmService {
         return (res.data.results.bindings as Row[]).map((r) => ({ id: r.s.value, label: r.lbl?.value }));
     }
 
-    private async getEntityDetails(iri: string, ontologyIri: string): Promise<{
+    private async getEntityDetails(uri: string, ontologyIri: string): Promise<{
         id: string; label?: string; types: string[]; properties: { predicate: string; value: string; isLiteral: boolean }[];
     } | null> {
         if (!ontologyIri) throw new BadRequestException("ontologyIri manquant");
@@ -102,10 +106,10 @@ export class LlmService {
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             SELECT ?lbl ?p ?v WHERE {
                 GRAPH <${ontologyIri}> {
-                    OPTIONAL { <${iri}> rdfs:label ?lbl }
-                    { <${iri}> rdf:type ?v . BIND(rdf:type AS ?p) }
+                    OPTIONAL { <${uri}> rdfs:label ?lbl }
+                    { <${uri}> rdf:type ?v . BIND(rdf:type AS ?p) }
                     UNION
-                    { <${iri}> ?p ?v . FILTER(?p != rdfs:label) }
+                    { <${uri}> ?p ?v . FILTER(?p != rdfs:label) }
                 }
             }`;
         const params = new URLSearchParams({ query: sparql, format: "application/sparql-results+json" });
@@ -120,7 +124,7 @@ export class LlmService {
         const properties = rows
             .filter((r) => !r.p.value.endsWith("type"))
             .map((r) => ({ predicate: r.p.value, value: r.v.value, isLiteral: r.v.type !== "uri" }));
-        return { id: iri, label: label || iri.split(/[#/]/).pop(), types, properties };
+        return { id: uri, label: label || uri.split(/[#/]/).pop(), types, properties };
     }
 
     private buildTools(userIri: string, ontologyIri?: string): StructuredTool[] {
@@ -128,7 +132,7 @@ export class LlmService {
             async ({ query, ontologyIri: onto, limit }: { query: string; ontologyIri?: string; limit?: number; }) => {
                 const ontoEff = onto || ontologyIri || "";
                 if (!ontoEff) {
-                    return "Erreur : l'IRI de l'ontologie est manquant pour la recherche. Demandez à l'utilisateur de la préciser.";
+                    return "Erreur : l'URI de l'ontologie est manquant pour la recherche. Demandez à l'utilisateur de la préciser.";
                 }
                 const list = await this.searchEntities(query, ontoEff, userIri, limit ?? 10);
                 // Le LLM comprend mieux une réponse en langage naturel si rien n'est trouvé.
@@ -141,28 +145,28 @@ export class LlmService {
                 description: "Recherche des individus pertinents par mot-clé dans une ontologie donnée.",
                 schema: z.object({
                     query: z.string().describe("Texte de recherche"),
-                    ontologyIri: z.string().optional().describe("IRI du graph d'ontologie"),
+                    ontologyIri: z.string().optional().describe("URI du graph d'ontologie"),
                     limit: z.number().int().min(1).max(50).optional(),
                 }),
             }
         );
 
         const getTool = tool(
-            async ({ iri, ontologyIri: onto }: { iri: string; ontologyIri?: string }) => {
+            async ({ uri, ontologyIri: onto }: { uri: string; ontologyIri?: string }) => {
                 const ontoEff = onto || ontologyIri || "";
                 if (!ontoEff) {
-                    return "Erreur : l'IRI de l'ontologie est manquant pour la récupération de détails. Demandez à l'utilisateur de la préciser.";
+                    return "Erreur : l'URI de l'ontologie est manquant pour la récupération de détails. Demandez à l'utilisateur de la préciser.";
                 }
-                const data = await this.getEntityDetails(iri, ontoEff);
+                const data = await this.getEntityDetails(uri, ontoEff);
                 if (!data) {
-                    return `Aucun détail trouvé pour l'individu <${iri}> dans l'ontologie <${ontoEff}>. Il n'existe peut-être pas.`;
+                    return `Aucun détail trouvé pour l'individu <${uri}> dans l'ontologie <${ontoEff}>. Il n'existe peut-être pas.`;
                 }
                 return JSON.stringify({ entity: data, ontologyIri: ontoEff });
             }, {
                 name: "get_entity",
                 description: "Récupère le détail d'un individu (types et propriétés).",
                 schema: z.object({
-                    iri: z.string().describe("IRI de l'individu à détailler"),
+                    uri: z.string().describe("URI de l'individu à détailler"),
                     ontologyIri: z.string().optional(),
                 }),
             }
@@ -172,12 +176,12 @@ export class LlmService {
             async ({ ontologyIri: onto }: { ontologyIri?: string }) => {
                 const ontoEff = onto || ontologyIri || "";
                 if (!ontoEff) {
-                    return "Erreur : l'IRI de l'ontologie est manquant pour la recherche des nœuds les plus connectés. Demandez à l'utilisateur de la préciser.";
+                    return "Erreur : l'URI de l'ontologie est manquant pour la recherche des noeuds les plus connectés. Demandez à l'utilisateur de la préciser.";
                 }
                 try {
                     const nodes = await getMostConnectedNodes(this.http, this.FUSEKI_SPARQL, ontoEff);
                     if (nodes.length === 0) {
-                        return `Aucun nœud trouvé dans l'ontologie <${ontoEff}>.`;
+                        return `Aucun noeud trouvé dans l'ontologie <${ontoEff}>.`;
                     }
                     return JSON.stringify({ 
                         nodes: nodes.map(n => ({ uri: n.uri, connectionCount: n.connectionCount })),
@@ -186,93 +190,131 @@ export class LlmService {
                     });
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-                    return `Erreur lors de la récupération des nœuds les plus connectés: ${errorMessage}`;
+                    return `Erreur lors de la récupération des noeuds les plus connectés: ${errorMessage}`;
                 }
             }, {
                 name: "get_most_connected_nodes",
-                description: "Récupère les 10 nœuds ayant le plus de connexions (prédicats entrants et sortants) dans une ontologie donnée.",
+                description: "Récupère les 10 noeuds ayant le plus de connexions (prédicats entrants et sortants) dans une ontologie donnée.",
                 schema: z.object({
-                    ontologyIri: z.string().optional().describe("IRI du graph d'ontologie"),
+                    ontologyIri: z.string().optional().describe("URI du graph d'ontologie"),
                 }),
             }
         );
 
-        const searchNodesByKeywordsTool = tool(
+        const searchFromNaturalLanguageTool = tool(
             async ({ keywords, ontologyIri: onto }: { keywords: string[], ontologyIri: string }) => {
                 if (!onto) {
-                    return "Erreur : l'IRI de l'ontologie est obligatoire pour la recherche par mots-clés.";
+                    return "Erreur : l'URI de l'ontologie est obligatoire pour la recherche par mots-clés.";
                 }
                 if (!keywords || keywords.length === 0) {
                     return "Erreur : au moins un mot-clé est requis pour la recherche.";
                 }
                 try {
+                    // 1. Prendre les 6 premiers résultats
                     const results = await searchNodesByKeywords(this.http, this.FUSEKI_SPARQL, onto, keywords);
-                    if (results.length === 0) {
-                        return `Aucun nœud trouvé correspondant aux mots-clés [${keywords.join(', ')}] dans l'ontologie <${onto}>.`;
+                    const first6Results = results.slice(0, 6);
+                    
+                    if (first6Results.length === 0) {
+                        return `Aucun noeud trouvé correspondant aux mots-clés [${keywords.join(', ')}] dans l'ontologie <${onto}>.`;
                     }
-                    return JSON.stringify({
-                        results: results.map(r => ({ uri: r.uri, matchedKeywords: r.matchedKeywords })),
-                        totalFound: results.length,
-                        searchKeywords: keywords,
-                        ontologyIri: onto
-                    });
+
+                    // 2. Transmettre ces résultats à buildNodeFromUri un par un (avec système de déduplication)
+                    const uncoveredUri = new Set<string>();
+                    const nodes = [];
+
+                    for (const result of first6Results) {
+                        try {
+                            const node = await buildNodeFromUri(this.http, this.FUSEKI_SPARQL, onto, result.uri);
+                            
+                            // Vérifie si l'URI de la node est déjà dans uncoveredUri
+                            if (!uncoveredUri.has(node.uri)) {
+                                nodes.push(node);
+                                
+                                // Ajoute les URI à uncoveredUri pour éviter les résultats de recherche redondants.
+                                uncoveredUri.add(node.uri);
+
+                                for (const relationship of node.relationships) {
+                                    uncoveredUri.add(relationship.target_uri);
+                                }
+
+                                for (const attribute of node.attributes) {
+                                    uncoveredUri.add(attribute.property_uri);
+                                }
+                                
+                                console.log(`Successfully built and added node for URI: ${result.uri}`);
+                            } else {
+                                console.log(`Node with URI ${result.uri} already covered, skipping.`);
+                            }
+                        } catch (error) {
+                            console.warn(`Failed to build node for URI ${result.uri}:`, error);
+                            // Saute cette node en cas d'échec
+                        }
+                    }
+
+                    // 4. Faire updateWithNodes sur la représentation persistante
+                    this.persistentRepresentation = this.persistentRepresentation.updateWithNodes(nodes);
+                    
+                    // Renvoyer la string using toString
+                    return this.persistentRepresentation.toString();
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
                     return `Erreur lors de la recherche par mots-clés: ${errorMessage}`;
                 }
             }, {
-                name: "search_nodes_by_keywords",
-                description: "Recherche dans tous les nœuds d'une ontologie en utilisant une liste de mots-clés. Cherche dans les URIs, propriétés, valeurs, labels et commentaires. Retourne les nœuds matchés triés par nombre de mots-clés trouvés.",
+                name: "search_from_natural_language",
+                description: "Recherche des entités dans l'ontologie pour lesquels un des mots fournis apparaît dans les propriétés, valeurs, labels ou commentaires.",
                 schema: z.object({
-                    keywords: z.array(z.string()).describe("Liste des mots-clés à rechercher"),
-                    ontologyIri: z.string().describe("IRI du graph d'ontologie dans lequel effectuer la recherche"),
+                    keywords: z.array(z.string()).describe("Liste de mots (partiels ou non) dans la langue de l'ontologie à rechercher"),
+                    ontologyIri: z.string().describe("URI de l'ontologie dans laquelle effectuer la recherche"),
                 }),
             }
         );
 
-        const getBatchEntityDetailsTool = tool(
-            async ({ uris, ontologyIri: onto }: { uris: string[], ontologyIri?: string }) => {
-                const ontoEff = onto || ontologyIri || "";
-                if (!ontoEff) {
-                    return "Erreur : l'IRI de l'ontologie est obligatoire pour récupérer les détails des entités.";
+        const searchFromUriTool = tool(
+            async ({ uris, ontologyIri: onto }: { uris: string[], ontologyIri: string }) => {
+                if (!onto) {
+                    return "Erreur : l'URI de l'ontologie est obligatoire pour le debug du graph.";
                 }
                 if (!uris || uris.length === 0) {
-                    return "Erreur : au moins une URI est requise pour récupérer les détails.";
+                    return "Erreur : au moins un URI d'entité est requis pour créer le graph de debug.";
                 }
                 try {
-                    const entitiesMap = await batchGetEntityDetails(this.http, this.FUSEKI_SPARQL, ontoEff, uris);
+                    console.log(`Debug Graph Tool: Processing ${uris.length} entity URIs from ontology <${onto}>`);
                     
-                    // Convertir la Map en objet pour la sérialisation JSON
-                    const entities = Array.from(entitiesMap.entries()).map(([uri, details]) => ({
-                        uri,
-                        ...details
-                    }));
-                    
-                    if (entities.length === 0) {
-                        return `Aucun détail trouvé pour les URIs [${uris.join(', ')}] dans l'ontologie <${ontoEff}>.`;
+                    // 2. Récupérer les détails de chaque URI une par une avec buildNodeFromUri
+                    const nodes = [];
+                    for (const uri of uris) {
+                        try {
+                            const node = await buildNodeFromUri(this.http, this.FUSEKI_SPARQL, onto, uri);
+                            nodes.push(node);
+                            console.log(`Successfully built node for URI: ${uri}`);
+                        } catch (error) {
+                            console.warn(`Failed to build node for URI ${uri}:`, error);
+                            // Saute cette node en cas d'échec
+                        }
                     }
+
+                    // 3. Faire updateWithNodes sur la représentation persistante
+                    this.persistentRepresentation = this.persistentRepresentation.updateWithNodes(nodes);
                     
-                    return JSON.stringify({
-                        entities,
-                        totalRequested: uris.length,
-                        totalFound: entities.length,
-                        ontologyIri: ontoEff
-                    });
+                    // Renvoyer la string using toString
+                    return this.persistentRepresentation.toString();
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-                    return `Erreur lors de la récupération des détails des entités: ${errorMessage}`;
+                    console.error('Error in debug graph tool:', error);
+                    return `Erreur lors de la création du graph de debug: ${errorMessage}`;
                 }
             }, {
-                name: "get_batch_entity_details",
-                description: "Récupère les détails (types, propriétés, labels) de plusieurs entités en une seule requête. Plus efficace que d'appeler get_entity individuellement pour chaque entité.",
+                name: "search_from_uri",
+                description: "Recherche des entités à partir d'une liste d'URIs dans une ontologie. Trouve leurs informations détaillées ainsi que leur voisinnage, concepts liés.",
                 schema: z.object({
-                    uris: z.array(z.string()).describe("Liste des URIs des entités dont on veut récupérer les détails"),
-                    ontologyIri: z.string().optional().describe("IRI du graph d'ontologie"),
+                    uris: z.array(z.string()).describe("Liste des URIs des éléments à partir desquels rechercher"),
+                    ontologyIri: z.string().describe("URI de l'ontologie dans laquelle effectuer la recherche"),
                 }),
             }
         );
-        
-        return [searchTool, getTool, getMostConnectedNodesTool, searchNodesByKeywordsTool];
+
+        return [getMostConnectedNodesTool, searchFromNaturalLanguageTool, searchFromUriTool];
     }
 
     public prepareAgentExecutor(params: { userIri: string; ontologyIri?: string }): {
