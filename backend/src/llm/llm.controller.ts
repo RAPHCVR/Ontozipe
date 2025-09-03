@@ -108,7 +108,7 @@ export class LlmController {
 
                     messages.push(
                         new SystemMessage(
-                            "Sur la base des résultats des outils, produis maintenant la réponse finale en 3 à 6 lignes, sans ré-appeler d'outil. Si aucun résultat pertinent n'a été trouvé, dis-le."
+                            "Sur la base des résultats des outils, formule la réponse finale en 4 à 7 lignes, ton naturel et pédagogique, sans ré-appeler d'outil. Mentionne 2–4 sujets périphériques pertinents et explicite leur lien sémantique. Si aucun résultat pertinent n'a été trouvé, dis-le."
                         )
                     );
                     continue;

@@ -245,8 +245,15 @@ export class ResultRepresentation {
                     lines.push("  relationships:");
                     for (const relationship of node.relationships) {
                         const direction = relationship.direction === 'outgoing' ? '→' : '←';
-                        const predicate_string = `${relationship.predicate_label}`; // (${extractAfterLastSlash(relationship.predicate_uri)})`;
-                        const new_line = `    - soi ${direction} ${predicate_string}: ${extractAfterLastSlash(relationship.target_uri)}`;
+                        // Affine le libellé selon la direction pour plus de clarté sémantique
+                        let predicateLabel = relationship.predicate_label;
+                        if (relationship.predicate_uri === 'http://www.w3.org/2000/01/rdf-schema#subClassOf' && relationship.direction === 'incoming') {
+                            predicateLabel = 'a pour sous-classe';
+                        }
+                        if (relationship.predicate_uri === 'http://www.semanticweb.org/custom/belongsToClass' && relationship.direction === 'incoming') {
+                            predicateLabel = 'a pour instance';
+                        }
+                        const new_line = `    - soi ${direction} ${predicateLabel}: ${extractAfterLastSlash(relationship.target_uri)}`;
                         lines.push(new_line);
                     }
                 }

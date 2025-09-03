@@ -387,7 +387,7 @@ export class LlmService {
                 }
             }, {
                 name: "search_from_uri",
-                description: "Recherche des entités à partir d'une liste d'URIs dans une ontologie. Trouve leurs informations détaillées ainsi que leur voisinnage, concepts liés.",
+                description: "Explore le graph à partir d'URIs d'entités: récupère les informations détaillées et le voisinage (liens sortants/entrants), y compris les sous-classes (enfants via rdfs:subClassOf entrants) et les instances/membres (via belongsToClass entrants).",
                 schema: z.object({
                     uris: z.array(z.string()).describe("Liste des URIs des éléments à partir desquels rechercher"),
                     ontologyIri: z.string().describe("URI de l'ontologie dans laquelle effectuer la recherche"),
