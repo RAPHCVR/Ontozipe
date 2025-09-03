@@ -1,4 +1,4 @@
-import { Body, Controller, Req, UseGuards, Post, Res } from "@nestjs/common";
+import { Body, Controller, Req, UseGuards, Post, Res, Get, Query } from "@nestjs/common";
 import { Request, Response } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { LlmService } from "./llm.service";
@@ -49,17 +49,21 @@ export class LlmController {
             const { llm, llmWithTools, tools } = this.llmService.prepareAgentExecutor({
                 userIri: req.user.sub,
                 ontologyIri: dto.ontologyIri,
+                sessionId: dto.sessionId,
             });
             // Construire le prompt système de base avec toujours les résultats persistants (par utilisateur/ontologie)
             const buildSystemPrompt = () => {
                 let prompt = `${SYSTEM_PROMPT_FR}${dto.ontologyIri ? `\nContexte: l'ontologie active est <${dto.ontologyIri}>` : ""}`;
-                const persistentResults = this.llmService.getPersistentResultsFor(req.user.sub, dto.ontologyIri);
+                const persistentResults = this.llmService.getPersistentResultsFor(req.user.sub, dto.ontologyIri, dto.sessionId);
                 if (persistentResults && persistentResults.trim()) {
                     prompt += `\n\n--- RESULTATS DES RECHERCHES PRECEDENTES ---\n${persistentResults}`;
                 }
                 return prompt;
             };
             const systemPrompt = buildSystemPrompt();
+            console.log("System Prompt: ",systemPrompt)
+            // Diffuse le prompt système initial pour affichage côté client
+            this.llmService.sseBroadcast(key, { type: "system_prompt", data: systemPrompt });
             const messages: BaseMessage[] = [
                 new SystemMessage(systemPrompt),
                 ...this.toLangchainHistory(dto.history),
@@ -75,7 +79,6 @@ export class LlmController {
                         this.llmService.sseBroadcast(key, { type: "chunk", data: inlineText });
                     }
                     messages.push(aiResponse);
-                    console.log("Tool call detected")
                     const toolMessages = await Promise.all(
                         toolCalls.map(async (toolCall: ToolCall) => {
                             this.llmService.sseBroadcast(key, {
@@ -104,7 +107,10 @@ export class LlmController {
                     messages.push(...toolMessages);
                     // MISE À JOUR DU PROMPT SYSTEME avec les nouveaux résultats
                     // Remplace le premier message système par un nouveau avec les résultats mis à jour
-                    messages[0] = new SystemMessage(buildSystemPrompt());
+                    const updatedPrompt = buildSystemPrompt();
+                    messages[0] = new SystemMessage(updatedPrompt);
+                    // Diffuse la mise à jour du prompt système pour l'affichage en temps réel
+                    this.llmService.sseBroadcast(key, { type: "system_prompt", data: updatedPrompt });
 
                     messages.push(
                         new SystemMessage(
@@ -135,5 +141,19 @@ export class LlmController {
         } finally {
             this.llmService.finishSseRun(key);
         }
+    }
+
+    @Get("system-prompt")
+    async getSystemPrompt(
+        @Req() req: AuthRequest,
+        @Query("ontologyIri") ontologyIri?: string,
+        @Query("sessionId") sessionId?: string,
+    ) {
+        let prompt = `${SYSTEM_PROMPT_FR}${ontologyIri ? `\nContexte: l'ontologie active est <${ontologyIri}>` : ""}`;
+        const persistentResults = this.llmService.getPersistentResultsFor(req.user.sub, ontologyIri, sessionId);
+        if (persistentResults && persistentResults.trim()) {
+            prompt += `\n\n--- RESULTATS DES RECHERCHES PRECEDENTES ---\n${persistentResults}`;
+        }
+        return { systemPrompt: prompt };
     }
 }

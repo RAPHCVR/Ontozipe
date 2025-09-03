@@ -26,4 +26,9 @@ export class AskDto {
     @IsOptional()
     @IsString()
     idempotencyKey?: string;
+
+    /** Identifie la session de conversation côté client (onglet/chat). */
+    @IsOptional()
+    @IsString()
+    sessionId?: string;
 }

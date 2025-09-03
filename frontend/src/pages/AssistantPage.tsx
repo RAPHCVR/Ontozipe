@@ -33,6 +33,8 @@ export default function AssistantPage() {
     const [ontos, setOntos] = useState<Ontology[]>([]);
     const [activeIri, setActiveIri] = useState<string>("");
     const [loadingOntos, setLoadingOntos] = useState(true);
+    const [systemPrompt, setSystemPrompt] = useState<string>("");
+    const [systemPromptLoading, setSystemPromptLoading] = useState<boolean>(false);
     const [messages, setMessages] = useState<ChatMsg[]>([
         {
             role: "assistant",
@@ -42,8 +44,25 @@ export default function AssistantPage() {
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const base = useMemo(() => (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, ""), []);
+    // Identifiant de session de conversation côté client (par onglet/page)
+    const sessionId = useMemo(() => uuidv4(), []);
     useEffect(() => { setLoadingOntos(true); api(`/ontology/projects`).then((r) => r.json()).then(setOntos).finally(() => setLoadingOntos(false)); }, [api]);
     useEffect(() => { if (!activeIri && ontos.length > 0) { setActiveIri(ontos[0].iri); } }, [ontos, activeIri]);
+
+    // Charge la prompt système initiale (lecture seule) pour l'utilisateur/ontologie active
+    useEffect(() => {
+        let cancelled = false;
+        setSystemPromptLoading(true);
+        const qs = new URLSearchParams();
+        if (activeIri) qs.set('ontologyIri', activeIri);
+        if (sessionId) qs.set('sessionId', sessionId);
+        api(`/llm/system-prompt${qs.toString() ? `?${qs.toString()}` : ''}`)
+            .then((r) => r.json())
+            .then((json) => { if (!cancelled) setSystemPrompt(json.systemPrompt || ""); })
+            .catch(() => { if (!cancelled) setSystemPrompt(""); })
+            .finally(() => { if (!cancelled) setSystemPromptLoading(false); });
+        return () => { cancelled = true; };
+    }, [api, activeIri, sessionId]);
 
     const handleSend = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -61,7 +80,7 @@ export default function AssistantPage() {
         await fetchEventSource(`${base}/llm/ask`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ question: q, ontologyIri: activeIri || undefined, history, idempotencyKey }),
+            body: JSON.stringify({ question: q, ontologyIri: activeIri || undefined, history, idempotencyKey, sessionId }),
 
             async onopen(response) {
                 if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) {
@@ -77,6 +96,9 @@ export default function AssistantPage() {
                     const { type, data } = parsedEvent;
 
                     switch (type) {
+                        case 'system_prompt':
+                            if (typeof data === 'string') setSystemPrompt(data);
+                            break;
                         case 'tool_call':
                             setMessages(prev => {
                                 const lastMsg = prev[prev.length - 1];
@@ -168,6 +190,28 @@ export default function AssistantPage() {
                     </select>
                 </div>
             </header>
+
+            {/* Affichage lecture seule de la prompt système */}
+            <div className="card p-3 mb-3">
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-sm font-semibold">Prompt système</h2>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">lecture seule</span>
+                        <button
+                            type="button"
+                            className="btn-secondary text-xs px-2 py-1"
+                            onClick={() => navigator.clipboard?.writeText(systemPrompt)}
+                            disabled={!systemPrompt}
+                            aria-label="Copier la prompt système"
+                        >
+                            Copier
+                        </button>
+                    </div>
+                </div>
+                <pre className="whitespace-pre-wrap break-words text-xs bg-gray-50 dark:bg-slate-800 p-2 rounded max-h-48 overflow-auto">
+                    {systemPromptLoading ? 'Chargement…' : (systemPrompt || 'Aucune prompt pour le moment.')}
+                </pre>
+            </div>
 
             <div
                 ref={containerRef}

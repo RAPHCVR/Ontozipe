@@ -21,17 +21,17 @@ export class LlmService {
     /** Registre des runs SSE (idempotencyKey -> set de réponses SSE) pour permettre la reconnexion. */
     private readonly sseRuns = new Map<string, Set<Response>>();
     /**
-     * Mémoire des recherches par contexte (clé: userIri + '::' + ontologyIri|default).
-     * Évite tout partage entre utilisateurs/sessions.
+     * Mémoire des recherches par contexte (clé: userIri + '::' + ontologyIri|default + '::' + sessionId|default).
+     * Évite tout partage entre utilisateurs/clients/sessions.
      */
     private readonly representations = new Map<string, ResultRepresentation>();
 
-    private makeContextKey(userIri: string, ontologyIri?: string): string {
-        return `${userIri}::${ontologyIri ?? "default"}`;
+    private makeContextKey(userIri: string, ontologyIri?: string, sessionId?: string): string {
+        return `${userIri}::${ontologyIri ?? "default"}::${sessionId ?? "default"}`;
     }
 
-    private getOrCreateRepresentation(userIri: string, ontologyIri?: string): ResultRepresentation {
-        const key = this.makeContextKey(userIri, ontologyIri);
+    private getOrCreateRepresentation(userIri: string, ontologyIri?: string, sessionId?: string): ResultRepresentation {
+        const key = this.makeContextKey(userIri, ontologyIri, sessionId);
         let rep = this.representations.get(key);
         if (!rep) {
             rep = new ResultRepresentation();
@@ -43,7 +43,7 @@ export class LlmService {
     /* ======================== */
     /*   MODELES (LLM clients)  */
     /* ======================== */
-    private buildModel(): ChatOllama {
+    private buildModel2(): ChatOllama {
         const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
         const model = process.env.OLLAMA_MODEL || "llama3";
         const headers =
@@ -59,7 +59,7 @@ export class LlmService {
         });
     }
 
-    private buildModel2(): ChatOpenAI {
+    private buildModel(): ChatOpenAI {
         const openAIApiKey = process.env.OPENAI_API_KEY;
         if (!openAIApiKey) {
             throw new Error("OPENAI_API_KEY is not set in environment variables");
@@ -190,7 +190,7 @@ export class LlmService {
         return { id: uri, label: label || uri.split(/[#/]/).pop(), types, properties };
     }
 
-    private buildTools(userIri: string, ontologyIri?: string): StructuredTool[] {
+    private buildTools(userIri: string, ontologyIri?: string, sessionId?: string): StructuredTool[] {
         const searchTool = tool(
             async ({ query, ontologyIri: onto, limit }: { query: string; ontologyIri?: string; limit?: number; }) => {
                 const ontoEff = onto || ontologyIri || "";
@@ -314,8 +314,8 @@ export class LlmService {
                         }
                     }
 
-                    // 4. Mettre à jour la représentation persistante POUR CET UTILISATEUR/ONTOLOGIE
-                    this.updateRepresentationWithNodes(userIri, onto, nodes);
+                    // 4. Mettre à jour la représentation persistante POUR CET UTILISATEUR/ONTOLOGIE/SESSION
+                    this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
 
                     // Renvoyer un message personnalisé avec les labels des entités trouvées
                     const entityLabels = nodes
@@ -366,8 +366,8 @@ export class LlmService {
                         }
                     }
 
-                    // 3. Mettre à jour la représentation persistante POUR CET UTILISATEUR/ONTOLOGIE
-                    this.updateRepresentationWithNodes(userIri, onto, nodes);
+                    // 3. Mettre à jour la représentation persistante POUR CET UTILISATEUR/ONTOLOGIE/SESSION
+                    this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
 
                     // Renvoyer un message personnalisé avec les labels des entités trouvées
                     const entityLabels = nodes
@@ -398,13 +398,13 @@ export class LlmService {
         return [getMostConnectedNodesTool, searchFromNaturalLanguageTool, searchFromUriTool];
     }
 
-    public prepareAgentExecutor(params: { userIri: string; ontologyIri?: string }): {
-        llm: ChatOllama;
+    public prepareAgentExecutor(params: { userIri: string; ontologyIri?: string; sessionId?: string }): {
+        llm: ChatOpenAI;
         llmWithTools: Runnable;
         tools: StructuredTool[];
     } {
         const llm = this.buildModel();
-        const tools = this.buildTools(params.userIri, params.ontologyIri);
+        const tools = this.buildTools(params.userIri, params.ontologyIri, params.sessionId);
         const llmWithTools = llm.bindTools(tools);
         return { llm, llmWithTools, tools };
     }
@@ -412,22 +412,22 @@ export class LlmService {
     /**
      * Met à jour la représentation (mémoire) pour un utilisateur/ontologie.
      */
-    public updateRepresentationWithNodes(userIri: string, ontologyIri: string | undefined, nodes: Node[]) {
-        const current = this.getOrCreateRepresentation(userIri, ontologyIri);
+    public updateRepresentationWithNodes(userIri: string, ontologyIri: string | undefined, nodes: Node[], sessionId?: string) {
+        const current = this.getOrCreateRepresentation(userIri, ontologyIri, sessionId);
         const updated = current.updateWithNodes(nodes);
-        this.representations.set(this.makeContextKey(userIri, ontologyIri), updated);
+        this.representations.set(this.makeContextKey(userIri, ontologyIri, sessionId), updated);
     }
 
     /**
      * Récupère la représentation textuelle des résultats persistants
      * pour un utilisateur (et une ontologie éventuelle).
      */
-    public getPersistentResultsFor(userIri: string, ontologyIri?: string): string {
-        return this.getOrCreateRepresentation(userIri, ontologyIri).toString();
+    public getPersistentResultsFor(userIri: string, ontologyIri?: string, sessionId?: string): string {
+        return this.getOrCreateRepresentation(userIri, ontologyIri, sessionId).toString();
     }
 
     /** Réinitialise la mémoire pour un utilisateur/ontologie (optionnel) */
-    public clearRepresentation(userIri: string, ontologyIri?: string) {
-        this.representations.delete(this.makeContextKey(userIri, ontologyIri));
+    public clearRepresentation(userIri: string, ontologyIri?: string, sessionId?: string) {
+        this.representations.delete(this.makeContextKey(userIri, ontologyIri, sessionId));
     }
 }
