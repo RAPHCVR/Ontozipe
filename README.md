@@ -72,6 +72,12 @@ Depuis la racine du projet :
 docker compose up -d fuseki
 ```
 
+OU pour lancer les 3 serveurs ensemble dans le même Docker :
+
+```bash
+docker compose up
+```
+
 Accédez ensuite à l’interface : [http://localhost:3030](http://localhost:3030)
 
 * **Utilisateur** : `admin`
