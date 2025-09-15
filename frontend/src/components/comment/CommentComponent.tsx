@@ -38,6 +38,10 @@ const CommentBlock: React.FC<{
 	const [replying, setReplying] = useState(false);
 	const [replyDraft, setReplyDraft] = useState("");
 
+	// PDF modal state and match
+	const [showPdfModal, setShowPdfModal] = useState(false);
+	const pdfMatch = comment.body.match(/https?:\/\/[^\s]+\.pdf/);
+
 	const authorNode = snapshot.persons.find((p) => p.id === comment.createdBy);
 	const authorName =
 		authorNode?.properties?.find((pr) => /foaf.*name$/i.test(pr.predicate))
@@ -95,6 +99,15 @@ const CommentBlock: React.FC<{
 					<button onClick={() => setReplying((v) => !v)} title="Répondre">
 						Repondre
 					</button>
+					{pdfMatch && !editing && (
+						<button
+							onClick={() => setShowPdfModal(true)}
+							title="Voir le PDF"
+							className="text-yellow-700 bg-yellow-100 border border-yellow-300 rounded px-2 py-1 hover:bg-yellow-200"
+						>
+							📄
+						</button>
+					)}
 					{isAuthor && !editing && (
 						<>
 							<button onClick={() => setEditing(true)} title="Modifier">
@@ -145,6 +158,27 @@ const CommentBlock: React.FC<{
 					</div>
 				)}
 			</div>
+
+			{/* ----- PDF Modal ----- */}
+			{showPdfModal && pdfMatch && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+					<div className="bg-white dark:bg-slate-900 rounded shadow-lg p-6 max-w-5xl w-full relative">
+						<button
+							onClick={() => setShowPdfModal(false)}
+							className="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-red-500 text-2xl"
+							title="Fermer"
+						>
+							✖
+						</button>
+						<iframe
+							src={pdfMatch[0]}
+							title="Aperçu PDF"
+							className="w-full h-[80vh] border"
+							frameBorder="0"
+						></iframe>
+					</div>
+				</div>
+			)}
 
 			{/* ----- link to show/hide replies ----- */}
 			{replies.length > 0 && (
