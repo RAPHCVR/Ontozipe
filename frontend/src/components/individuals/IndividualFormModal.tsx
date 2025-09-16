@@ -16,14 +16,14 @@ const IndividualFormModal: React.FC<{
 	initial?: Partial<IndividualNode> & { visibleToGroups?: string[] };
 	activeClassId?: string; // <-- NEW: initial classId if provided
 	onClose: () => void;
-    onSubmit: (payload: {
-        mode: "create" | "update" | "delete";
-        iri?: string;
-        label: string;
-        classId: string;
-        properties: PropertyInput[];
-        visibleToGroups: string[];
-    }) => void;
+	onSubmit: (payload: {
+		mode: "create" | "update" | "delete";
+		iri?: string;
+		label: string;
+		classId: string;
+		properties: PropertyInput[];
+		visibleToGroups: string[];
+	}) => void;
 }> = ({
 	snapshot,
 	ontologyIri,
@@ -80,22 +80,24 @@ const IndividualFormModal: React.FC<{
 	}>({ dataProps: [], objectProps: [] });
 
 	// fetch when classId changes
-    useEffect(() => {
-        if (!classId) return;
-        const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-        api(`${base}/ontology/properties?class=${encodeURIComponent(classId)}&ontology=${encodeURIComponent(ontologyIri)}`)
-            .then((r) => r.json())
-            .then(setAvailable)
-            .catch(console.error);
-        }, [api, classId, ontologyIri]);
+	useEffect(() => {
+		if (!classId) return;
+		api(
+			`/ontology/properties?class=${encodeURIComponent(
+				classId
+			)}&ontology=${encodeURIComponent(ontologyIri)}`
+		)
+			.then((r) => r.json())
+			.then(setAvailable)
+			.catch(console.error);
+	}, [api, classId, ontologyIri]);
 
-    useEffect(() => {
-        const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-        api(`${base}/ontology/groups`)
-            .then((r) => r.json())
-            .then((arr: Group[]) => setGroups(arr))
-            .catch(console.error);
-    }, [api]);
+	useEffect(() => {
+		api(`/ontology/groups`)
+			.then((r) => r.json())
+			.then((arr: Group[]) => setGroups(arr))
+			.catch(console.error);
+	}, [api]);
 
 	const toggleGroup = (iri: string) =>
 		setSelectedGroups((prev) =>
@@ -130,31 +132,31 @@ const IndividualFormModal: React.FC<{
 	});
 
 	// --- Submit ---
-    const handleSave = () => {
-        if (!label.trim()) return alert("Le label est requis");
-        onSubmit({
-            mode: isEdit ? "update" : "create",
-            iri: isEdit ? String(initial.id) : undefined,
-            label,
-            classId,
-            properties: [...dataProps, ...objProps],
-            visibleToGroups: selectedGroups,
-        });
-        onClose();
-    };
-    const handleDelete = () => {
-        if (!initial.id) return;
-        if (!confirm("Supprimer définitivement cet individu ?")) return;
-        onSubmit({
-            mode: "delete",
-            iri: String(initial.id),
-            label,
-            classId,
-            properties: [],
-            visibleToGroups: [],
-        });
-        onClose();
-    };
+	const handleSave = () => {
+		if (!label.trim()) return alert("Le label est requis");
+		onSubmit({
+			mode: isEdit ? "update" : "create",
+			iri: isEdit ? String(initial.id) : undefined,
+			label,
+			classId,
+			properties: [...dataProps, ...objProps],
+			visibleToGroups: selectedGroups,
+		});
+		onClose();
+	};
+	const handleDelete = () => {
+		if (!initial.id) return;
+		if (!confirm("Supprimer définitivement cet individu ?")) return;
+		onSubmit({
+			mode: "delete",
+			iri: String(initial.id),
+			label,
+			classId,
+			properties: [],
+			visibleToGroups: [],
+		});
+		onClose();
+	};
 	return (
 		<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
 			<div className="bg-white dark:bg-slate-800 rounded-lg w-4/5 max-w-5xl p-6 shadow-lg space-y-4 overflow-y-auto max-h-[90vh]">

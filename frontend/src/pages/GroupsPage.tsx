@@ -7,11 +7,11 @@ import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
 
 type Group = {
-    iri: string;
-    label: string;
-    members?: string[];
-    createdBy: string;
-    organizationIri?: string;
+	iri: string;
+	label: string;
+	members?: string[];
+	createdBy: string;
+	organizationIri?: string;
 };
 
 type GroupDetails = Group & { members: string[] };
@@ -26,27 +26,27 @@ export default function GroupsPage() {
 	const [showNew, setShowNew] = useState(false);
 	const [selected, setSelected] = useState<GroupDetails | null>(null);
 
-    const load = () =>
-        api("http://localhost:4000/ontology/groups")
-            .then((r) => r.json())
-            .then((data) =>
-                setGroups(
-                    data.map((g: any) => ({
-                        iri: g.iri,
-                        label: g.label,
-                        createdBy: g.createdBy,
-                        members: g.members ?? [],
-                        organizationIri: g.organizationIri,
-                    }))
-                )
-            );
+	const load = () =>
+		api("/ontology/groups")
+			.then((r) => r.json())
+			.then((data) =>
+				setGroups(
+					data.map((g: any) => ({
+						iri: g.iri,
+						label: g.label,
+						createdBy: g.createdBy,
+						members: g.members ?? [],
+						organizationIri: g.organizationIri,
+					}))
+				)
+			);
 
 	useEffect(() => {
 		if (!currentUserIri) return;
 
 		(async () => {
 			try {
-				const res = await api("http://localhost:4000/ontology/persons");
+				const res = await api("/ontology/persons");
 				const data = await res.json();
 				const me = data.find(
 					(p: any) => p.iri === currentUserIri || p.id === currentUserIri
@@ -98,12 +98,9 @@ export default function GroupsPage() {
 										title="Supprimer"
 										className="text-red-600 text-sm"
 										onClick={() =>
-											api(
-												`http://localhost:4000/ontology/groups/${encodeURIComponent(
-													g.iri
-												)}`,
-												{ method: "DELETE" }
-											).then(load)
+											api(`/ontology/groups/${encodeURIComponent(g.iri)}`, {
+												method: "DELETE",
+											}).then(load)
 										}>
 										🗑
 									</button>
@@ -173,8 +170,8 @@ function GroupFormModal({
 	useEffect(() => {
 		(async () => {
 			const url = isSuperAdmin
-				? "http://localhost:4000/ontology/organizations"
-				: "http://localhost:4000/ontology/organizations?mine=true";
+				? "/ontology/organizations"
+				: "/ontology/organizations?mine=true";
 			const res = await api(url);
 			const data = await res.json();
 			console.log("Organisations:", isSuperAdmin, data);
@@ -196,9 +193,7 @@ function GroupFormModal({
 		if (!selectedOrg) return;
 		(async () => {
 			const res = await api(
-				`http://localhost:4000/ontology/organizations/${enc(
-					selectedOrg
-				)}/members`
+				`/ontology/organizations/${enc(selectedOrg)}/members`
 			);
 			const data = await res.json();
 			setAllPersons(
@@ -224,7 +219,7 @@ function GroupFormModal({
 	}, [selectedOrg]);
 
 	const save = () =>
-		api("http://localhost:4000/ontology/groups", {
+		api("/ontology/groups", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
@@ -337,8 +332,8 @@ function GroupDetailsModal({
 	useEffect(() => {
 		(async () => {
 			const url = isSuperAdmin
-				? "http://localhost:4000/ontology/organizations"
-				: "http://localhost:4000/ontology/organizations?mine=true";
+				? "/ontology/organizations"
+				: "/ontology/organizations?mine=true";
 			const res = await api(url);
 			const data = await res.json();
 			setOrganizations(
@@ -360,9 +355,7 @@ function GroupDetailsModal({
 		}
 		(async () => {
 			const res = await api(
-				`http://localhost:4000/ontology/organizations/${enc(
-					selectedOrg
-				)}/members`
+				`/ontology/organizations/${enc(selectedOrg)}/members`
 			);
 			const data = await res.json();
 			setAllPersons(
@@ -383,33 +376,25 @@ function GroupDetailsModal({
 	/* ----- Mutations ----- */
 	const patchLabel = async () => {
 		if (label === group.label) return;
-		await api(
-			`http://localhost:4000/ontology/groups/${encodeURIComponent(group.iri)}`,
-			{
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ label }),
-			}
-		);
+		await api(`/ontology/groups/${encodeURIComponent(group.iri)}`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ label }),
+		});
 	};
 
 	const addMember = async (personIri: string) => {
-		await api(
-			`http://localhost:4000/ontology/groups/${encodeURIComponent(
-				group.iri
-			)}/members`,
-			{
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ userIri: personIri }),
-			}
-		);
+		await api(`/ontology/groups/${encodeURIComponent(group.iri)}/members`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ userIri: personIri }),
+		});
 		setMembers((m) => [...m, personIri]);
 	};
 
 	const removeMember = async (personIri: string) => {
 		await api(
-			`http://localhost:4000/ontology/groups/${encodeURIComponent(
+			`/ontology/groups/${encodeURIComponent(
 				group.iri
 			)}/members/${encodeURIComponent(personIri)}`,
 			{ method: "DELETE" }
@@ -422,16 +407,11 @@ function GroupDetailsModal({
 			if (isOwner) {
 				if (label !== group.label) await patchLabel();
 				if (selectedOrg && selectedOrg !== group.organizationIri) {
-					await api(
-						`http://localhost:4000/ontology/groups/${encodeURIComponent(
-							group.iri
-						)}`,
-						{
-							method: "PATCH",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ organizationIri: selectedOrg }),
-						}
-					);
+					await api(`/ontology/groups/${encodeURIComponent(group.iri)}`, {
+						method: "PATCH",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ organizationIri: selectedOrg }),
+					});
 				}
 			}
 			onReload();
@@ -538,12 +518,9 @@ function GroupDetailsModal({
 						<button
 							className="btn-secondary text-red-600 border-red-400 hover:bg-red-50"
 							onClick={async () => {
-								await api(
-									`http://localhost:4000/ontology/groups/${encodeURIComponent(
-										group.iri
-									)}`,
-									{ method: "DELETE" }
-								);
+								await api(`/ontology/groups/${encodeURIComponent(group.iri)}`, {
+									method: "DELETE",
+								});
 								onReload();
 								onClose();
 							}}>

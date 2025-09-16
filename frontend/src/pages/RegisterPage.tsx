@@ -1,24 +1,26 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useApi } from "../lib/api";
 
 export default function RegisterPage() {
-	const { token, login } = useAuth();
+    const { token, login } = useAuth();
+    const api = useApi();
 	const [form, setForm] = useState({ name: "", email: "", password: "" });
 	const [err, setErr] = useState("");
 
 	if (token) return <Navigate to="/" replace />;
 
-	const submit = () => {
-		fetch("http://localhost:4000/auth/register", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(form),
-		})
-			.then((r) => (r.ok ? r.json() : Promise.reject(r)))
-			.then((d) => login(d.token))
-			.catch(() => setErr("Impossible de créer le compte"));
-	};
+    const submit = () => {
+        api("/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(form),
+        })
+            .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+            .then((d) => login(d.token))
+            .catch(() => setErr("Impossible de créer le compte"));
+    };
 
 	return (
 		<div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-slate-900">

@@ -4,8 +4,30 @@ import { AppModule } from "./app.module";
 import { json, urlencoded } from "express";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import * as dotenv from "dotenv";
+import * as path from "path";
+import * as fs from "fs";
 
-dotenv.config();
+// Load environment variables from the nearest .env (root or backend)
+(() => {
+	const candidates = [
+		// If running via `nest start` in backend dir
+		path.resolve(process.cwd(), ".env"),
+		path.resolve(process.cwd(), "../.env"),
+		// If running compiled code from backend/dist
+		path.resolve(__dirname, "../../.env"),
+		path.resolve(__dirname, "../.env"),
+		// Fallback: project root one level up
+		path.resolve(__dirname, "../../../.env"),
+	];
+	for (const p of candidates) {
+		if (fs.existsSync(p)) {
+			dotenv.config({ path: p });
+			break;
+		}
+	}
+	// Also respect any real environment variables already set (Docker env_file)
+	dotenv.config();
+})();
 
 async function bootstrap() {
 	const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -15,7 +37,8 @@ async function bootstrap() {
 	app.use(urlencoded({ limit: "2mb", extended: true }));
 
 	app.enableCors();
-	await app.listen(4000);
+	const port = Number(process.env.BACKEND_PORT || 4000);
+	await app.listen(port);
 }
 bootstrap().catch((err) => {
 	console.error("Erreur au démarrage du backend", err);

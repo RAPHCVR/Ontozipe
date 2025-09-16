@@ -3,26 +3,37 @@ services:
     image: stain/jena-fuseki
     container_name: fuseki
     ports:
-      - "3030:3030"
+      - "${FUSEKI_PORT:-3030}:3030"
     environment:
-      - ADMIN_PASSWORD=Pass123
+      - ADMIN_PASSWORD=${FUSEKI_PASSWORD:-Pass123}
     volumes:
       - ./fuseki_data:/fuseki
+
   backend:
     build: ./backend
     container_name: autonomy_backend
     env_file: .env
     depends_on:
       - fuseki
+    environment:
+      # For docker network, ensure backend targets the service name, not localhost
+      - FUSEKI_URL=http://fuseki:${FUSEKI_PORT:-3030}/autonomy
+      - PORT=${BACKEND_PORT:-4000}
+      - BACKEND_PORT=${BACKEND_PORT:-4000}
     ports:
-      - "4000:4000"
+      - "${BACKEND_PORT:-4000}:4000"
     platform: linux/amd64
+
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # Inject at build time for Vite
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:${BACKEND_PORT:-4000}/}
     container_name: autonomy_frontend
     env_file: .env
     depends_on:
       - backend
     ports:
-      - "3000:5173"
+      - "${FRONTEND_PORT:-3000}:5173"
     platform: linux/amd64

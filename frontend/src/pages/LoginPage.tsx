@@ -1,26 +1,28 @@
 import { useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useApi } from "../lib/api";
 
 export default function LoginPage() {
-	const { token, login } = useAuth();
-	const loc = useLocation();
+    const { token, login } = useAuth();
+    const api = useApi();
+    const loc = useLocation();
 	const [email, setEmail] = useState("");
 	const [password, setPwd] = useState("");
 	const [error, setError] = useState("");
 
 	if (token) return <Navigate to={loc.state?.from?.pathname ?? "/"} replace />;
 
-	const submit = () => {
-		fetch("http://localhost:4000/auth/login", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ email, password }),
-		})
-			.then((r) => (r.ok ? r.json() : Promise.reject(r)))
-			.then((data) => login(data.token))
-			.catch(() => setError("Identifiants invalides"));
-	};
+    const submit = () => {
+        api("/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+        })
+            .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+            .then((data) => login(data.token))
+            .catch(() => setError("Identifiants invalides"));
+    };
 
 	return (
 		<div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-slate-900">

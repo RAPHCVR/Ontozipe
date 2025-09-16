@@ -13,29 +13,27 @@ const FOAF = "http://xmlns.com/foaf/0.1/";
 
 @Injectable()
 export class AuthService {
-    private readonly fusekiBase = (
-        process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy"
-    ).replace(/\/$/, "");
-    private readonly fusekiUrl = `${this.fusekiBase}/sparql`;
-    private readonly fusekiUpdate = `${this.fusekiBase}/update`;
-    private FUSEKI_USER = process.env.FUSEKI_USER || "admin";
-	private FUSEKI_PASS = process.env.FUSEKI_PASSWORD || "Pass123";
-    private JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
+	private readonly fusekiBase = process.env.FUSEKI_URL;
+	private readonly fusekiUrl = `${this.fusekiBase}/sparql`;
+	private readonly fusekiUpdate = `${this.fusekiBase}/update`;
+
+	private FUSEKI_USER = process.env.FUSEKI_USER || "";
+	private FUSEKI_PASS = process.env.FUSEKI_PASSWORD || "";
+	private JWT_SECRET = process.env.JWT_SECRET || "";
 
 	constructor(private readonly http: HttpService) {}
 
 	/** ---------- Utils ---------- */
-  private async askBoolean(ask: string): Promise<boolean> {
-        const params = new URLSearchParams({ query: ask });
-        const res = await lastValueFrom(
-              this.http.get(this.fusekiUrl, {
-                    params,
-                    headers: { Accept: "application/sparql-results+json" },
-          })
-        );
-        return res.data.boolean === true;
-  }
-
+	private async askBoolean(ask: string): Promise<boolean> {
+		const params = new URLSearchParams({ query: ask });
+		const res = await lastValueFrom(
+			this.http.get(this.fusekiUrl, {
+				params,
+				headers: { Accept: "application/sparql-results+json" },
+			})
+		);
+		return res.data.boolean === true;
+	}
 
 	private async runUpdate(update: string) {
 		await lastValueFrom(

@@ -15,7 +15,7 @@ export default function CommentFormModal({
 	const [text, setText] = useState("");
 
 	const save = () =>
-		api("http://localhost:4000/ontology/individuals", {
+		api("/ontology/individuals", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({

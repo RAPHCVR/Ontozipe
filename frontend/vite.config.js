@@ -3,7 +3,9 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-	plugins: [react(), tailwindcss()],
-	server: { open: true },
-	resolve: { alias: { "@": "/src" } },
+    plugins: [react(), tailwindcss()],
+    // Load environment variables from the repo root .env
+    envDir: "..",
+    server: { open: true },
+    resolve: { alias: { "@": "/src" } },
 });

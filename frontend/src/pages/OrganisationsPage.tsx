@@ -29,8 +29,8 @@ export default function OrganisationsPage() {
 	const fetchOrgs = useCallback(
 		async (superRole: boolean) => {
 			const url = superRole
-				? "http://localhost:4000/ontology/organizations"
-				: "http://localhost:4000/ontology/organizations?mine=true";
+				? "/ontology/organizations"
+				: "/ontology/organizations?mine=true";
 			const data = await api(url).then((r) => r.json());
 			setOrgs(data);
 		},
@@ -52,7 +52,7 @@ export default function OrganisationsPage() {
 
 	useEffect(() => {
 		if (personsLoaded) return; // évite la boucle
-		api("http://localhost:4000/ontology/persons")
+		api("/ontology/persons")
 			.then((r) => r.json())
 			.then((data) => {
 				setPersons(
@@ -117,9 +117,7 @@ export default function OrganisationsPage() {
 										className="text-red-600 text-sm"
 										onClick={() =>
 											api(
-												`http://localhost:4000/ontology/organizations/${encodeURIComponent(
-													o.iri
-												)}`,
+												`/ontology/organizations/${encodeURIComponent(o.iri)}`,
 												{ method: "DELETE" }
 											).then(() => {
 												setOrgsLoaded(false);
@@ -147,7 +145,7 @@ export default function OrganisationsPage() {
 						setOrgsLoaded(false);
 						fetchOrgs(isSuperAdmin ?? false);
 					}}
-					existingPersonsEndpoint="http://localhost:4000/ontology/persons"
+					existingPersonsEndpoint="/ontology/persons"
 				/>
 			)}
 
@@ -161,7 +159,7 @@ export default function OrganisationsPage() {
 						setOrgsLoaded(false);
 						fetchOrgs(isSuperAdmin ?? false);
 					}}
-					existingPersonsEndpoint="http://localhost:4000/ontology/persons"
+					existingPersonsEndpoint="/ontology/persons"
 				/>
 			)}
 		</div>
@@ -212,7 +210,7 @@ function OrganisationFormModal({
 	}, []); // charge une fois à l’ouverture de la modale
 
 	const save = () =>
-		api("http://localhost:4000/ontology/organizations", {
+		api("/ontology/organizations", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ label, ownerIri: owner }),
@@ -300,9 +298,7 @@ function OrganisationDetailsModal({
 
 	const loadMembers = useCallback(async () => {
 		const res = await api(
-			`http://localhost:4000/ontology/organizations/${encodeURIComponent(
-				org.iri
-			)}/members`
+			`/ontology/organizations/${encodeURIComponent(org.iri)}/members`
 		);
 		const data = await res.json(); // [{ iri, label? }]
 		setMembers(data.map((m: any) => m.iri));
@@ -319,25 +315,18 @@ function OrganisationDetailsModal({
 		if (canEditLabelAdmin) payload.label = label;
 		if (canEditLabelAdmin) payload.ownerIri = owner;
 
-		await api(
-			`http://localhost:4000/ontology/organizations/${encodeURIComponent(
-				org.iri
-			)}`,
-			{
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(payload),
-			}
-		);
+		await api(`/ontology/organizations/${encodeURIComponent(org.iri)}`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
 		onReload();
 		onClose();
 	};
 
 	const addMember = async (personIri: string) => {
 		await api(
-			`http://localhost:4000/ontology/organizations/${encodeURIComponent(
-				org.iri
-			)}/members`,
+			`/ontology/organizations/${encodeURIComponent(org.iri)}/members`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -349,7 +338,7 @@ function OrganisationDetailsModal({
 
 	const removeMember = async (personIri: string) => {
 		await api(
-			`http://localhost:4000/ontology/organizations/${encodeURIComponent(
+			`/ontology/organizations/${encodeURIComponent(
 				org.iri
 			)}/members/${encodeURIComponent(personIri)}`,
 			{ method: "DELETE" }
@@ -442,9 +431,7 @@ function OrganisationDetailsModal({
 							className="btn-secondary text-red-600 border-red-400 hover:bg-red-50"
 							onClick={async () => {
 								await api(
-									`http://localhost:4000/ontology/organizations/${encodeURIComponent(
-										org.iri
-									)}`,
+									`/ontology/organizations/${encodeURIComponent(org.iri)}`,
 									{ method: "DELETE" }
 								);
 								onReload();
