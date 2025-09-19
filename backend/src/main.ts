@@ -3,10 +3,19 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { json, urlencoded } from "express";
 import { NestExpressApplication } from "@nestjs/platform-express";
-import * as dotenv from "dotenv";
+import { config as loadEnv } from "dotenv";
+import { existsSync } from "fs";
+import { resolve } from "path";
 import { ValidationPipe } from "@nestjs/common";
 
-dotenv.config();
+const envSources = [
+    { path: resolve(__dirname, "../../.env"), override: false },
+    { path: resolve(__dirname, "../.env"), override: true },
+];
+
+for (const { path, override } of envSources) {
+    if (existsSync(path)) loadEnv({ path, override });
+}
 
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
