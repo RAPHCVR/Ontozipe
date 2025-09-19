@@ -1,0 +1,20 @@
+# Dépendances locales
+node_modules
+
+# Fichiers de build
+dist
+.nest
+
+# Fichiers de configuration de l'IDE et de l'OS
+.idea
+.vscode
+*.DS_Store
+
+# Logs et variables locales
+logs
+*.log
+.env
+
+# Git
+.git
+.gitignore

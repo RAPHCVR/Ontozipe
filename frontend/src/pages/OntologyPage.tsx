@@ -68,7 +68,6 @@ export default function OntologyPage() {
     // Get ontology IRI from querystring
     const params = new URLSearchParams(window.location.search);
     const ontologyIri = params.get("iri") || "";
-    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
 
     // Reset la classe sélectionnée quand on change d’ontologie
     useEffect(() => {
@@ -80,7 +79,7 @@ export default function OntologyPage() {
     // Charger le snapshot
     useEffect(() => {
         setLoading(true);
-        api(`${base}/ontology/snapshot?ontology=${encodeURIComponent(ontologyIri)}`)
+        api(`/ontology/snapshot?ontology=${encodeURIComponent(ontologyIri)}`)
             .then((r) => r.json())
             .then((data) => setSnapshot({ ...data }))
             .catch(console.error)
@@ -89,7 +88,7 @@ export default function OntologyPage() {
     }, [ontologyIri, token]);
 
     const reloadSnapshot = () =>
-        api(`${base}/ontology/snapshot?ontology=${encodeURIComponent(ontologyIri)}`)
+        api(`/ontology/snapshot?ontology=${encodeURIComponent(ontologyIri)}`)
             .then((r) => r.json())
             .then(setSnapshot);
 
@@ -111,7 +110,7 @@ export default function OntologyPage() {
                 onEdit={(ind) => setFormInfo({ mode: "edit", initial: ind })}
                 width={sidebarWidth}
                 onDelete={(ind) => {
-                    api(`${base}/ontology/individuals/${encodeURIComponent(ind.id)}?ontology=${encodeURIComponent(ontologyIri)}`, { method: "DELETE" })
+                    api(`/ontology/individuals/${encodeURIComponent(ind.id)}?ontology=${encodeURIComponent(ontologyIri)}`, { method: "DELETE" })
                         .then(reloadSnapshot)
                         .catch(console.error);
                 }}
@@ -153,7 +152,7 @@ export default function OntologyPage() {
                     activeClassId={activeClassId || ""}
                     onClose={() => setFormInfo(null)}
                     onSubmit={(payload) => {
-                        const urlBase = `${base}/ontology/individuals`;
+                        const urlBase = `/ontology/individuals`;
 
                         let req: Promise<Response>;
                         if (payload.mode === "create") {

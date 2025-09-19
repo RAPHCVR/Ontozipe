@@ -1,42 +1,43 @@
 import axios from "axios";
+import { escapeSparqlLiteral } from "../utils/sparql.utils";
 
 export interface Property {
-	predicate: string;
-	predicateLabel?: string;
-	value: string;
-	valueLabel?: string;
-	isLiteral: boolean;
+    predicate: string;
+    predicateLabel?: string;
+    value: string;
+    valueLabel?: string;
+    isLiteral: boolean;
 }
 
 export interface IndividualNode {
-	id: string;
-	label: string;
-	classId: string;
-	properties: Property[];
-	children: IndividualNode[];
+    id: string;
+    label: string;
+    classId: string;
+    properties: Property[];
+    children: IndividualNode[];
 
-	/** Méta‑données */
-	createdBy?: string;
-	createdAt?: string; // xsd:dateTime ISO
-	updatedBy?: string;
-	updatedAt?: string;
-	visibleTo?: string[]; // liste des groupes core:visibleTo
-	groups?: { iri: string; label?: string }[];
+    /** Méta‑données */
+    createdBy?: string;
+    createdAt?: string; // xsd:dateTime ISO
+    updatedBy?: string;
+    updatedAt?: string;
+    visibleTo?: string[]; // liste des groupes core:visibleTo
+    groups?: { iri: string; label?: string }[];
 }
 
 /** Commentaire attaché à une ressource (core:Comment) */
 export interface CommentNode {
-	id: string;
-	body: string; // texte du commentaire
-	onResource: string; // IRI de l’individu ou ressource ciblée
-	replyTo?: string; // IRI du commentaire parent (optionnel)
+    id: string;
+    body: string; // texte du commentaire
+    onResource: string; // IRI de l’individu ou ressource ciblée
+    replyTo?: string; // IRI du commentaire parent (optionnel)
 
-	/** Méta‑données */
-	createdBy: string;
-	createdAt: string;
-	updatedBy?: string;
-	updatedAt?: string;
-	visibleTo?: string[];
+    /** Méta‑données */
+    createdBy: string;
+    createdAt: string;
+    updatedBy?: string;
+    updatedAt?: string;
+    visibleTo?: string[];
 }
 
 /**
@@ -46,27 +47,27 @@ export interface CommentNode {
  */
 function toRDF(value: string, isLiteral: boolean): string {
     return isLiteral
-        ? `"""${value.replace(/"/g, '\\"')}"""`
+        ? `"""${escapeSparqlLiteral(value)}"""`
         : `<${value}>`;
 }
 
-import { Injectable, ForbiddenException } from "@nestjs/common";
+import { Injectable, ForbiddenException, BadRequestException } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { lastValueFrom } from "rxjs";
 
 export interface NodeData {
-	id: string;
-	label: string | undefined;
-	title: string;
+    id: string;
+    label: string | undefined;
+    title: string;
 }
 export interface EdgeData {
-	from: string;
-	to: string;
+    from: string;
+    to: string;
 }
 export interface Individual {
-	id: string;
-	label: string;
-	classId: string;
+    id: string;
+    label: string;
+    classId: string;
 }
 
 export interface FullSnapshot {
@@ -86,10 +87,10 @@ export interface GroupInfo {
 
 /** Organization descriptor */
 export interface OrganizationInfo {
-	iri: string;
-	label?: string;
-	owner: string; // IRI du super‑admin / admin désigné
-	createdAt: string;
+    iri: string;
+    label?: string;
+    owner: string; // IRI du super‑admin / admin désigné
+    createdAt: string;
 }
 
 @Injectable()
@@ -105,38 +106,55 @@ export class OntologyService {
         username: process.env.FUSEKI_USER || "admin",
         password: process.env.FUSEKI_PASSWORD || "Pass123",
     };
-	private FUSEKI_USER = process.env.FUSEKI_USER || "admin";
-	private FUSEKI_PASS = process.env.FUSEKI_PASSWORD || "Pass123";
+    private FUSEKI_USER = process.env.FUSEKI_USER || "admin";
+    private FUSEKI_PASS = process.env.FUSEKI_PASSWORD || "Pass123";
 
-	private readonly ROOT_CLASS = "http://www.w3.org/2002/07/owl#Class";
-	private readonly ROOT_ONTOLOGY = "http://www.w3.org/2002/07/owl#Ontology";
+    private readonly ROOT_CLASS = "http://www.w3.org/2002/07/owl#Class";
+    private readonly ROOT_ONTOLOGY = "http://www.w3.org/2002/07/owl#Ontology";
 
-	private readonly CORE = "http://example.org/core#";
-	private readonly XSD = "http://www.w3.org/2001/XMLSchema#";
-	/** Graph dédié aux métadonnées des projets */
-	private readonly PROJECTS_GRAPH = this.fuseki + "#projects";
+    private readonly CORE = "http://example.org/core#";
+    private readonly XSD = "http://www.w3.org/2001/XMLSchema#";
+    /** Graph dédié aux métadonnées des projets */
+    private readonly PROJECTS_GRAPH = this.fuseki + "#projects";
 
-	/** Rôles – IRIs fixes (déclarés dans core.ttl) */
-	private readonly ROLE_SUPER_ADMIN = this.CORE + "SuperAdminRole";
-	private readonly ROLE_ADMIN = this.CORE + "AdminRole";
-	private readonly ROLE_REGULAR = this.CORE + "RegularRole";
+    /** Rôles – IRIs fixes (déclarés dans core.ttl) */
+    private readonly ROLE_SUPER_ADMIN = this.CORE + "SuperAdminRole";
+    private readonly ROLE_ADMIN = this.CORE + "AdminRole";
+    private readonly ROLE_REGULAR = this.CORE + "RegularRole";
 
-	constructor(private readonly httpService: HttpService) {}
+    constructor(private readonly httpService: HttpService) {}
 
-	/** Envoie une requête UPDATE SPARQL à Fuseki. */
-	private async runUpdate(update: string): Promise<void> {
-		await lastValueFrom(
-			this.httpService.post(
-				this.fusekiUpdateUrl,
-				new URLSearchParams({ update }),
-				{ auth: { username: this.FUSEKI_USER, password: this.FUSEKI_PASS } }
-			)
-		);
-	}
+    /**
+     * Méthode centrale pour vérifier les droits d'écriture sur une ontologie.
+     * Lève une ForbiddenException si l'utilisateur n'a pas les permissions requises.
+     * Règle : un SuperAdmin peut tout faire. Sinon, il faut être propriétaire du projet.
+     */
+    private async _enforceWritePermission(userIri: string, ontologyIri: string): Promise<void> {
+        const isSuperAdmin = await this.isSuperAdmin(userIri);
+        if (isSuperAdmin) {
+            return; // Le SuperAdmin a tous les droits.
+        }
 
-	/** Récupère la liste des groupes auxquels appartient un user (default + named graphs). */
-	private async getUserGroups(userIri: string): Promise<string[]> {
-		const askGroups = `
+        const isProjectOwner = await this.isOwner(userIri, ontologyIri);
+        if (!isProjectOwner) {
+            throw new ForbiddenException("Accès refusé. Vous n'avez pas les droits d'écriture sur cette ontologie.");
+        }
+    }
+
+    /** Envoie une requête UPDATE SPARQL à Fuseki. */
+    private async runUpdate(update: string): Promise<void> {
+        await lastValueFrom(
+            this.httpService.post(
+                this.fusekiUpdateUrl,
+                new URLSearchParams({ update }),
+                { auth: { username: this.FUSEKI_USER, password: this.FUSEKI_PASS } }
+            )
+        );
+    }
+
+    /** Récupère la liste des groupes auxquels appartient un user (default + named graphs). */
+    private async getUserGroups(userIri: string): Promise<string[]> {
+        const askGroups = `
         PREFIX core: <${this.CORE}>
         SELECT DISTINCT ?g WHERE {
           {
@@ -153,60 +171,60 @@ export class OntologyService {
             }
           }
         }`;
-		const params = new URLSearchParams({
-			query: askGroups,
-			format: "application/sparql-results+json",
-		});
-		const res = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
-		return res.data.results.bindings.map((b: any) => b.g.value);
-	}
+        const params = new URLSearchParams({
+            query: askGroups,
+            format: "application/sparql-results+json",
+        });
+        const res = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
+        return res.data.results.bindings.map((b: any) => b.g.value);
+    }
 
-	/** Récupère la liste des rôles détenus par un utilisateur */
-	private async getUserRoles(userIri: string): Promise<string[]> {
-		const sparql = `
+    /** Récupère la liste des rôles détenus par un utilisateur */
+    private async getUserRoles(userIri: string): Promise<string[]> {
+        const sparql = `
 			PREFIX core: <${this.CORE}>
 			SELECT ?r WHERE {
 			  { <${userIri}> core:hasRole ?r }
 			  UNION { GRAPH ?g { <${userIri}> core:hasRole ?r } }
 			}`;
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-		const res = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
-		return res.data.results.bindings.map((b: any) => b.r.value);
-	}
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const res = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
+        return res.data.results.bindings.map((b: any) => b.r.value);
+    }
 
-	/** Vérifie si l’utilisateur est Super‑admin */
-	private async isSuperAdmin(userIri: string): Promise<boolean> {
-		const roles = await this.getUserRoles(userIri);
-		return roles.includes(this.ROLE_SUPER_ADMIN);
-	}
+    /** Vérifie si l’utilisateur est Super‑admin */
+    private async isSuperAdmin(userIri: string): Promise<boolean> {
+        const roles = await this.getUserRoles(userIri);
+        return roles.includes(this.ROLE_SUPER_ADMIN);
+    }
 
-	/** Vérifie si l’utilisateur est propriétaire (admin) d’une organisation */
-	private async isOrganizationOwner(
-		userIri: string,
-		orgIri: string
-	): Promise<boolean> {
-		const ask = `
+    /** Vérifie si l’utilisateur est propriétaire (admin) d’une organisation */
+    private async isOrganizationOwner(
+        userIri: string,
+        orgIri: string
+    ): Promise<boolean> {
+        const ask = `
 			PREFIX core: <${this.CORE}>
 			ASK { GRAPH <${this.PROJECTS_GRAPH}> { <${orgIri}> core:ownedBy <${userIri}> } }
 		`;
-		const res = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params: { query: ask } })
-		);
-		return res.data.boolean === true;
-	}
+        const res = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params: { query: ask } })
+        );
+        return res.data.boolean === true;
+    }
 
-	/**
-	 * Renvoie les ontologies (core:OntologyProject) accessibles.
-	 */
-	async getProjects(): Promise<{ iri: string; label?: string }[]> {
-		const sparql = `
+    /**
+     * Renvoie les ontologies (core:OntologyProject) accessibles.
+     */
+    async getProjects(): Promise<{ iri: string; label?: string }[]> {
+        const sparql = `
 			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 			PREFIX core: <${this.CORE}>
 			SELECT ?proj ?lbl WHERE {
@@ -217,123 +235,125 @@ export class OntologyService {
 			}
 			ORDER BY ?lbl`;
 
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
 
-		const res = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
-		return res.data.results.bindings.map((b: any) => ({
-			iri: b.proj.value,
-			label: b.lbl?.value,
-		}));
-	}
+        const res = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
+        return res.data.results.bindings.map((b: any) => ({
+            iri: b.proj.value,
+            label: b.lbl?.value,
+        }));
+    }
 
-	/**
-	 * Vérifie si un IRI existe déjà dans le triplestore.
-	 */
-	private async individualExists(iri: string): Promise<boolean> {
-		const ask = `ASK { GRAPH ?g { <${iri}> ?p ?o } }`;
-		const params = new URLSearchParams({
-			query: ask,
-		});
-		const res = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
-		return res.data.boolean === true;
-	}
+    /**
+     * Vérifie si un IRI existe déjà dans le triplestore.
+     */
+    private async individualExists(iri: string): Promise<boolean> {
+        const ask = `ASK { GRAPH ?g { <${iri}> ?p ?o } }`;
+        const params = new URLSearchParams({
+            query: ask,
+        });
+        const res = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
+        return res.data.boolean === true;
+    }
 
-	/** Vérifie si un commentaire (ou n’importe quel IRI) existe déjà dans un graph précis. */
-	private async commentExistsInGraph(
-		iri: string,
-		graphIri: string
-	): Promise<boolean> {
-		const ask = `ASK { GRAPH <${graphIri}> { <${iri}> ?p ?o } }`;
-		const res = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params: { query: ask } })
-		);
-		return res.data.boolean === true;
-	}
+    /** Vérifie si un commentaire (ou n’importe quel IRI) existe déjà dans un graph précis. */
+    private async commentExistsInGraph(
+        iri: string,
+        graphIri: string
+    ): Promise<boolean> {
+        const ask = `ASK { GRAPH <${graphIri}> { <${iri}> ?p ?o } }`;
+        const res = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params: { query: ask } })
+        );
+        return res.data.boolean === true;
+    }
 
-	/** Vérifie que l'utilisateur est le créateur d'un projet */
-	private async isOwner(userIri: string, projectIri: string): Promise<boolean> {
-		const ask = `
+    /** Vérifie que l'utilisateur est le créateur d'un projet */
+    private async isOwner(userIri: string, projectIri: string): Promise<boolean> {
+        const ask = `
 			PREFIX core: <${this.CORE}>
 			ASK { GRAPH <${this.PROJECTS_GRAPH}> { <${projectIri}> core:createdBy <${userIri}> } }`;
-		const res = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params: { query: ask } })
-		);
-		return res.data.boolean === true;
-	}
+        const res = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params: { query: ask } })
+        );
+        return res.data.boolean === true;
+    }
 
-	/** Vérifie que l'utilisateur est le créateur d'un groupe */
-	private async isGroupOwner(
-		userIri: string,
-		groupIri: string
-	): Promise<boolean> {
-		// search BOTH the default graph and any named graphs
-		const ask = `
+    /** Vérifie que l'utilisateur est le créateur d'un groupe */
+    private async isGroupOwner(
+        userIri: string,
+        groupIri: string
+    ): Promise<boolean> {
+        // search BOTH the default graph and any named graphs
+        const ask = `
         PREFIX core: <${this.CORE}>
         ASK {
           { <${groupIri}> core:createdBy <${userIri}> }
           UNION
           { GRAPH ?g { <${groupIri}> core:createdBy <${userIri}> } }
         }`;
-		const res = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params: { query: ask } })
-		);
-		return res.data.boolean === true;
-	}
+        const res = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params: { query: ask } })
+        );
+        return res.data.boolean === true;
+    }
 
-	/**
-	 * Crée un individu complet :
-	 *   • rdf:type + rdfs:label
-	 *   • core:inProject            (ontologie à laquelle il appartient)
-	 *   • core:createdBy / createdAt
-	 *   • core:updatedBy / updatedAt
-	 *   • core:visibleTo            (ACL par groupes)
-	 *
-	 * @param node              Structure de l’individu (id, label, props…)
-	 * @param requesterIri      IRI de l’utilisateur créateur
-	 * @param ontologyIri       IRI du projet / de l’ontologie courante
-	 * @param visibleToGroups   Liste de groupes autorisés à voir la ressource
-	 */
-	async createIndividual(
-		node: IndividualNode,
-		requesterIri: string,
-		ontologyIri: string,
-		visibleToGroups: string[] = []
-	): Promise<void> {
-		if (await this.individualExists(node.id)) {
-			throw new Error("IRI already exists");
-		}
-		console.log("Creating individual:", node.id, "in ontology", ontologyIri);
-		const now = new Date().toISOString();
+    /**
+     * Crée un individu complet :
+     *   • rdf:type + rdfs:label
+     *   • core:inProject            (ontologie à laquelle il appartient)
+     *   • core:createdBy / createdAt
+     *   • core:updatedBy / updatedAt
+     *   • core:visibleTo            (ACL par groupes)
+     *
+     * @param node              Structure de l’individu (id, label, props…)
+     * @param requesterIri      IRI de l’utilisateur créateur
+     * @param ontologyIri       IRI du projet / de l’ontologie courante
+     * @param visibleToGroups   Liste de groupes autorisés à voir la ressource
+     */
+    async createIndividual(
+        node: IndividualNode,
+        requesterIri: string,
+        ontologyIri: string,
+        visibleToGroups: string[] = []
+    ): Promise<void> {
+        await this._enforceWritePermission(requesterIri, ontologyIri);
 
-		let triples = `<${node.id}> rdf:type <${node.classId}> ;\n`;
-		triples += `\trdfs:label """${node.label.replace(/"/g, '\\"')}""" ;\n`;
-		triples += `\tcore:inProject <${ontologyIri}> ;\n`;
-		triples += `\tcore:createdBy <${requesterIri}> ;\n`;
-		triples += `\tcore:createdAt "${now}"^^xsd:dateTime ;\n`;
-		triples += `\tcore:updatedBy <${requesterIri}> ;\n`;
-		triples += `\tcore:updatedAt "${now}"^^xsd:dateTime .\n`;
+        if (await this.individualExists(node.id)) {
+            throw new Error("IRI already exists");
+        }
+        console.log("Creating individual:", node.id, "in ontology", ontologyIri);
+        const now = new Date().toISOString();
 
-		// Propriétés utilisateur
-		for (const prop of node.properties) {
-			triples += `<${node.id}> <${prop.predicate}> ${toRDF(
-				prop.value,
-				prop.isLiteral
-			)} .\n`;
-		}
+        let triples = `<${node.id}> rdf:type <${node.classId}> ;\n`;
+        triples += `\trdfs:label """${escapeSparqlLiteral(node.label)}""" ;\n`;
+        triples += `\tcore:inProject <${ontologyIri}> ;\n`;
+        triples += `\tcore:createdBy <${requesterIri}> ;\n`;
+        triples += `\tcore:createdAt "${now}"^^xsd:dateTime ;\n`;
+        triples += `\tcore:updatedBy <${requesterIri}> ;\n`;
+        triples += `\tcore:updatedAt "${now}"^^xsd:dateTime .\n`;
 
-		// Visibilités par groupe
-		for (const g of visibleToGroups) {
-			triples += `<${node.id}> core:visibleTo <${g}> .\n`;
-		}
+        // Propriétés utilisateur
+        for (const prop of node.properties) {
+            triples += `<${node.id}> <${prop.predicate}> ${toRDF(
+                prop.value,
+                prop.isLiteral
+            )} .\n`;
+        }
 
-		const update = `
+        // Visibilités par groupe
+        for (const g of visibleToGroups) {
+            triples += `<${node.id}> core:visibleTo <${g}> .\n`;
+        }
+
+        const update = `
 			PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 			PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
@@ -343,35 +363,38 @@ export class OntologyService {
 					${triples}
 				}
 			}`;
-		await this.runUpdate(update);
-	}
+        await this.runUpdate(update);
+    }
 
-	/**
-	 * Met à jour un individu :
-	 *  - `addProps` : propriétés à insérer
-	 *  - `delProps` : propriétés à supprimer
-	 */
+    /**
+     * Met à jour un individu:
+     *  - `addProps`: propriétés à insérer
+     *  - `delProps`: propriétés à supprimer (non utilisé encore)
+     */
     async updateIndividual(
         iri: string,
         addProps: Property[] = [],
         _delProps: Property[] = [],
-        requesterIri?: string,
+        requesterIri: string,
         newVisibleToGroups?: string[],
         ontologyIri?: string
     ) {
-        if (!ontologyIri) throw new Error("ontologyIri manquant");
+        if (!ontologyIri) throw new BadRequestException("ontologyIri manquant");
+
+        await this._enforceWritePermission(requesterIri, ontologyIri);
+
         const now = new Date().toISOString();
 
         const mkVal = (v: string, isLit: boolean) =>
-            isLit ? `"""${v.replace(/"/g, '\\"')}"""` : `<${v}>`;
+            isLit ? `"""${escapeSparqlLiteral(v)}"""` : `<${v}>`;
 
         // 1) remplacements propriété par propriété (DELETE old, INSERT new)
         const perPropUpdates = addProps.map((p) => `
           WITH <${ontologyIri}>
           DELETE { <${iri}> <${p.predicate}> ?old . }
           ${p.value === "" || p.value == null
-                    ? ""
-                    : `INSERT { <${iri}> <${p.predicate}> ${mkVal(p.value, p.isLiteral)} . }`}
+            ? ""
+            : `INSERT { <${iri}> <${p.predicate}> ${mkVal(p.value, p.isLiteral)} . }`}
           WHERE  { OPTIONAL { <${iri}> <${p.predicate}> ?old . } }
         `).join(" ;\n");
         // 2) ACL: remplacement complet si la liste est fournie
@@ -394,49 +417,63 @@ export class OntologyService {
           `;
 
         const update = [perPropUpdates, aclUpdate, metaUpdate].filter(Boolean).join(" ;\n");
+        if (update.trim()) {
+            await this.runUpdate(update);
+        }
+    }
+
+    /**
+     * Supprime totalement un individu : toutes les triples où il apparaît
+     * comme sujet sont retirées du store.
+     */
+    async deleteIndividual(iri: string, ontologyIri: string, requesterIri: string): Promise<void> {
+        await this._enforceWritePermission(requesterIri, ontologyIri);
+
+        const update = `DELETE WHERE { GRAPH <${ontologyIri}> { <${iri}> ?p ?o . } }`;
         await this.runUpdate(update);
     }
 
+    /* ============================================================
+     *                 CRUD – core:Comment
+     * ============================================================
+     */
 
-	/* ============================================================
-	 *                 CRUD – core:Comment
-	 * ============================================================
-	 */
+    /**
+     * Crée un commentaire sur une ressource.
+     */
+    async createComment(
+        {
+            id,
+            body,
+            onResource,
+            replyTo,
+            visibleTo = [],
+        }: {
+            id: string;
+            body: string;
+            onResource: string; // IRI de la ressource *obligatoire*
+            replyTo?: string; // IRI du commentaire parent (optionnel)
+            visibleTo?: string[];
+        },
+        requesterIri: string,
+        ontologyIri: string
+    ): Promise<void> {
+        await this._enforceWritePermission(requesterIri, ontologyIri);
 
-	/**
-	 * Crée un commentaire sur une ressource.
-	 */
-	async createComment(
-		{
-			id,
-			body,
-			onResource,
-			replyTo,
-			visibleTo = [],
-		}: {
-			id: string;
-			body: string;
-			onResource: string; // IRI de la ressource *obligatoire*
-			replyTo?: string; // IRI du commentaire parent (optionnel)
-			visibleTo?: string[];
-		},
-		requesterIri: string,
-		ontologyIri: string
-	): Promise<void> {
-		if (await this.commentExistsInGraph(id, ontologyIri)) {
-			throw new Error("Comment ID already exists in this ontology");
-		}
-		if (!onResource) {
-			throw new Error(
-				"A comment must reference a target resource (onResource)"
-			);
-		}
-		if (replyTo && !(await this.commentExistsInGraph(replyTo, ontologyIri))) {
-			throw new Error("Parent comment (replyTo) not found in this ontology");
-		}
-		const now = new Date().toISOString();
-		let triples = `<${id}> a core:Comment ;
-			core:body """${body.replace(/"/g, '\\"')}""" ;
+        if (await this.commentExistsInGraph(id, ontologyIri)) {
+            throw new Error("Comment ID already exists in this ontology");
+        }
+        if (!onResource) {
+            throw new Error(
+                "A comment must reference a target resource (onResource)"
+            );
+        }
+        if (replyTo && !(await this.commentExistsInGraph(replyTo, ontologyIri))) {
+            throw new Error("Parent comment (replyTo) not found in this ontology");
+        }
+        const now = new Date().toISOString();
+        let triples = `<${id}> a core:Comment ;
+			core:body """${escapeSparqlLiteral(body)}""" ;
 			core:onResource <${onResource}> ;
 			${replyTo ? `core:replyTo <${replyTo}> ;` : ""}
 			core:createdBy <${requesterIri}> ;
@@ -444,84 +481,88 @@ export class OntologyService {
 			core:updatedBy <${requesterIri}> ;
 			core:updatedAt "${now}"^^xsd:dateTime .\n`;
 
-		for (const g of visibleTo) {
-			triples += `<${id}> core:visibleTo <${g}> .\n`;
-		}
+        for (const g of visibleTo) {
+            triples += `<${id}> core:visibleTo <${g}> .\n`;
+        }
 
-		const update = `
+        const update = `
 			PREFIX core: <${this.CORE}>
 			PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
 			INSERT DATA { GRAPH <${ontologyIri}> { ${triples} } }`;
-		await this.runUpdate(update);
-	}
+        await this.runUpdate(update);
+    }
 
-	/**
-	 * Met à jour le corps ou l’ACL d’un commentaire.
-	 */
-	async updateComment(
-		iri: string,
-		{ newBody, visibleTo }: { newBody?: string; visibleTo?: string[] },
-		requesterIri: string,
-		ontologyIri: string
-	): Promise<void> {
-		if (!(await this.commentExistsInGraph(iri, ontologyIri))) {
-			throw new Error("Comment not found");
-		}
-		const now = new Date().toISOString();
-		let deletePart = "";
-		let insertPart = "";
+    /**
+     * Met à jour le corps ou l’ACL d’un commentaire.
+     */
+    async updateComment(
+        iri: string,
+        { newBody, visibleTo }: { newBody?: string; visibleTo?: string[] },
+        requesterIri: string,
+        ontologyIri: string
+    ): Promise<void> {
+        await this._enforceWritePermission(requesterIri, ontologyIri);
 
-		if (newBody !== undefined) {
-			deletePart += `<${iri}> core:body ?b .\n`;
-			insertPart += `<${iri}> core:body """${newBody.replace(/"/g, '\\"')}""" .\n`;
-		}
-		if (Array.isArray(visibleTo)) {
-			deletePart += `<${iri}> core:visibleTo ?g .\n`;
-			insertPart += visibleTo
-				.map((g) => `<${iri}> core:visibleTo <${g}> .\n`)
-				.join("");
-		}
+        if (!(await this.commentExistsInGraph(iri, ontologyIri))) {
+            throw new Error("Comment not found");
+        }
+        const now = new Date().toISOString();
+        let deletePart = "";
+        let insertPart = "";
 
-		// meta
-		deletePart += `<${iri}> core:updatedBy ?ub ; core:updatedAt ?ua .\n`;
-		insertPart += `<${iri}> core:updatedBy <${requesterIri}> ;
+        if (newBody !== undefined) {
+            deletePart += `<${iri}> core:body ?b .\n`;
+            insertPart += `<${iri}> core:body """${escapeSparqlLiteral(newBody)}""" .\n`;
+        }
+        if (Array.isArray(visibleTo)) {
+            deletePart += `<${iri}> core:visibleTo ?g .\n`;
+            insertPart += visibleTo
+                .map((g) => `<${iri}> core:visibleTo <${g}> .\n`)
+                .join("");
+        }
+
+        // meta
+        deletePart += `<${iri}> core:updatedBy ?ub ; core:updatedAt ?ua .\n`;
+        insertPart += `<${iri}> core:updatedBy <${requesterIri}> ;
 		                    core:updatedAt "${now}"^^xsd:dateTime .\n`;
 
-		const update = `
+        const update = `
 			PREFIX core: <${this.CORE}>
 			PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
 			DELETE { GRAPH <${ontologyIri}> { ${deletePart} } }
 			INSERT { GRAPH <${ontologyIri}> { ${insertPart} } }
 			WHERE  { OPTIONAL { GRAPH <${ontologyIri}> { ${deletePart} } } }`;
-		await this.runUpdate(update);
-	}
+        await this.runUpdate(update);
+    }
 
-	/** Supprime complètement un commentaire. */
-	async deleteComment(iri: string, ontologyIri: string): Promise<void> {
-		const update = `DELETE WHERE { GRAPH <${ontologyIri}> { <${iri}> ?p ?o . } }`;
-		await this.runUpdate(update);
-	}
+    /** Supprime complètement un commentaire. */
+    async deleteComment(iri: string, ontologyIri: string, requesterIri: string): Promise<void> {
+        await this._enforceWritePermission(requesterIri, ontologyIri);
 
-	/**
-	 * Renvoie les commentaires d’une ressource visibles pour un utilisateur.
-	 */
-	async getCommentsForResource(
-		userIri: string,
-		resourceIri: string,
-		ontologyIri: string
-	): Promise<CommentNode[]> {
-		const userGroups = await this.getUserGroups(userIri);
-		const groupsList = userGroups.map((g) => `<${g}>`).join(", ");
-		const aclFilter = `
+        const update = `DELETE WHERE { GRAPH <${ontologyIri}> { <${iri}> ?p ?o . } }`;
+        await this.runUpdate(update);
+    }
+
+    /**
+     * Renvoie les commentaires d’une ressource visibles pour un utilisateur.
+     */
+    async getCommentsForResource(
+        userIri: string,
+        resourceIri: string,
+        ontologyIri: string
+    ): Promise<CommentNode[]> {
+        const userGroups = await this.getUserGroups(userIri);
+        const groupsList = userGroups.map((g) => `<${g}>`).join(", ");
+        const aclFilter = `
 		  EXISTS { ?c core:createdBy <${userIri}> } ||
 		  ${
-				userGroups.length > 0
-					? `(!BOUND(?vg) || ?vg IN (${groupsList}))`
-					: `(!BOUND(?vg))`
-			}
+            userGroups.length > 0
+                ? `(!BOUND(?vg) || ?vg IN (${groupsList}))`
+                : `(!BOUND(?vg))`
+        }
 		`.trim();
 
-		const sparql = `
+        const sparql = `
 			PREFIX core: <${this.CORE}>
 			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
@@ -542,60 +583,60 @@ export class OntologyService {
 			ORDER BY DESC(?createdAt)
 		`;
 
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-		const { data } = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const { data } = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
 
-		type Row = {
-			c: { value: string };
-			body: { value: string };
-			createdBy?: { value: string };
-			createdAt?: { value: string };
-			updatedBy?: { value: string };
-			updatedAt?: { value: string };
-			vg?: { value: string };
-			replyTo?: { value: string };
-		};
+        type Row = {
+            c: { value: string };
+            body: { value: string };
+            createdBy?: { value: string };
+            createdAt?: { value: string };
+            updatedBy?: { value: string };
+            updatedAt?: { value: string };
+            vg?: { value: string };
+            replyTo?: { value: string };
+        };
 
-		const list: CommentNode[] = [];
+        const list: CommentNode[] = [];
 
-		(data.results.bindings as Row[]).forEach((row) => {
-			const existing = list.find((cm) => cm.id === row.c.value);
-			let entry: CommentNode;
-			if (existing) {
-				entry = existing;
-			} else {
-				entry = {
-					id: row.c.value,
-					body: row.body.value,
-					onResource: resourceIri,
-					createdBy: row.createdBy?.value || "",
-					createdAt: row.createdAt?.value || "",
-					replyTo: row.replyTo?.value,
-				};
-				list.push(entry);
-			}
-			if (row.updatedBy?.value) entry.updatedBy = row.updatedBy.value;
-			if (row.updatedAt?.value) entry.updatedAt = row.updatedAt.value;
-			if (row.vg?.value) {
-				if (!entry.visibleTo) entry.visibleTo = [];
-				if (!entry.visibleTo.includes(row.vg.value))
-					entry.visibleTo.push(row.vg.value);
-			}
-			if (row.replyTo?.value) entry.replyTo = row.replyTo.value;
-		});
+        (data.results.bindings as Row[]).forEach((row) => {
+            const existing = list.find((cm) => cm.id === row.c.value);
+            let entry: CommentNode;
+            if (existing) {
+                entry = existing;
+            } else {
+                entry = {
+                    id: row.c.value,
+                    body: row.body.value,
+                    onResource: resourceIri,
+                    createdBy: row.createdBy?.value || "",
+                    createdAt: row.createdAt?.value || "",
+                    replyTo: row.replyTo?.value,
+                };
+                list.push(entry);
+            }
+            if (row.updatedBy?.value) entry.updatedBy = row.updatedBy.value;
+            if (row.updatedAt?.value) entry.updatedAt = row.updatedAt.value;
+            if (row.vg?.value) {
+                if (!entry.visibleTo) entry.visibleTo = [];
+                if (!entry.visibleTo.includes(row.vg.value))
+                    entry.visibleTo.push(row.vg.value);
+            }
+            if (row.replyTo?.value) entry.replyTo = row.replyTo.value;
+        });
 
-		return list;
-	}
+        return list;
+    }
 
-	/**
-	 * Renvoie tous les individus (avec leurs propriétés) appartenant à l’ontologie
-	 * demandée et visibles pour l’utilisateur courant.
-	 */
+    /**
+     * Renvoie tous les individus (avec leurs propriétés) appartenant à l’ontologie
+     * demandée et visibles pour l’utilisateur courant.
+     */
     async getIndividualsForOntology(userIri: string, ontologyIri: string): Promise<IndividualNode[]> {
         const userGroups = await this.getUserGroups(userIri);
         const groupsList = userGroups.map((g) => `<${g}>`).join(", ");
@@ -695,7 +736,7 @@ export class OntologyService {
         const map = new Map<string, IndividualNode>();
 
         (data.results.bindings as Row[]).forEach((row) => {
-            // 1) Sujet: comme avant
+            // 1) Sujet
             const id = row.s.value;
             if (!map.has(id)) {
                 map.set(id, {
@@ -766,17 +807,17 @@ export class OntologyService {
         return Array.from(map.values());
     }
 
-	async getFullSnapshot(
-		userIri: string,
-		ontologyIri: string
-	): Promise<FullSnapshot> {
-		const [graph, individuals, persons] = await Promise.all([
-			this.getGraph(ontologyIri),
-			this.getIndividualsForOntology(userIri, ontologyIri),
-			this.getAllPersons(),
-		]);
-		return { graph, individuals, persons };
-	}
+    async getFullSnapshot(
+        userIri: string,
+        ontologyIri: string
+    ): Promise<FullSnapshot> {
+        const [graph, individuals, persons] = await Promise.all([
+            this.getGraph(ontologyIri),
+            this.getIndividualsForOntology(userIri, ontologyIri),
+            this.getAllPersons(),
+        ]);
+        return { graph, individuals, persons };
+    }
 
     async getGraph(
         ontologyIri: string
@@ -822,10 +863,10 @@ export class OntologyService {
         return { nodes: Array.from(nodesMap.values()), edges };
     }
 
-	/**
-	 * Retourne les DataProperties & ObjectProperties applicables à une classe
-	 * (via rdfs:domain sur la classe ou l’une de ses super‑classes).
-	 */
+    /**
+     * Retourne les DataProperties & ObjectProperties applicables à une classe
+     * (via rdfs:domain sur la classe ou l’une de ses super‑classes).
+     */
     async getClassProperties(
         classIri: string,
         userIri: string,
@@ -898,24 +939,24 @@ export class OntologyService {
         return { dataProps, objectProps };
     }
 
-	/**
-	 * Retourne tous les utilisateurs de la plateforme (core:User) avec
-	 * l’ensemble de leurs propriétés (email, provider, etc.).
-	 * On exploite ici le schéma Core : un utilisateur est une instance
-	 * de `core:User`, sous‑classe de foaf:Person ; la présence d’un
-	 * `core:hasAccount` matérialise le fait qu’il dispose d’identifiants.
-	 */
-	async getAllPersons(/* userIri non utilisé ici */): Promise<
-		IndividualNode[]
-	> {
-		const sparql = `
+    /**
+     * Retourne tous les utilisateurs de la plateforme (core:User) avec
+     * l’ensemble de leurs propriétés (email, provider, etc.).
+     * On exploite ici le schéma Core : un utilisateur est une instance
+     * de `core:User`, sous‑classe de foaf:Person ; la présence d’un
+     * `core:hasAccount` matérialise le fait qu’il dispose d’identifiants.
+     */
+    async getAllPersons(): Promise<
+        IndividualNode[]
+    > {
+        const sparql = `
 			PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 			PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
 			PREFIX core:  <${this.CORE}>
 
 			SELECT ?u ?uLabel ?pred ?predLabel ?val ?valLabel ?grp ?grpLabel WHERE {
-			  ?u rdf:type core:User .             # toutes les instances de core:User
-			  OPTIONAL { ?u core:hasAccount ?acc } # présence d’un compte (facultatif)
+			  ?u rdf:type core:User .
+			  OPTIONAL { ?u core:hasAccount ?acc }
 			  OPTIONAL { ?u rdfs:label ?uLabel }
 			  OPTIONAL {
 				{ ?grp core:hasMember ?u }
@@ -930,49 +971,49 @@ export class OntologyService {
 			  OPTIONAL { ?val  rdfs:label ?valLabel }
 			}
 		`;
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-		const { data } = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
-		type Row = {
-			u: { value: string };
-			uLabel?: { value: string };
-			pred: { value: string };
-			predLabel?: { value: string };
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const { data } = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
+        type Row = {
+            u: { value: string };
+            uLabel?: { value: string };
+            pred: { value: string };
+            predLabel?: { value: string };
             val: { value: string; type: string };
-			valLabel?: { value: string };
-			grp?: { value: string };
-			grpLabel?: { value: string };
-		};
+            valLabel?: { value: string };
+            grp?: { value: string };
+            grpLabel?: { value: string };
+        };
 
-		const USER_CLASS_IRI = this.CORE + "User";
-		const personMap = new Map<string, IndividualNode>();
+        const USER_CLASS_IRI = this.CORE + "User";
+        const personMap = new Map<string, IndividualNode>();
 
-		(data.results.bindings as Row[]).forEach((row) => {
-			const id = row.u.value;
-			const label = row.uLabel?.value || id.split(/[#/]/).pop();
-			if (!personMap.has(id)) {
-				personMap.set(id, {
-					id,
-					label: label || "Unknown",
-					classId: USER_CLASS_IRI,
-					properties: [],
-					children: [],
-				});
-			}
-			if (row.grp?.value) {
-				if (!personMap.get(id)!.groups) personMap.get(id)!.groups = [];
-				const list = personMap.get(id)!.groups!;
-				if (!list.some((g) => g.iri === row.grp!.value)) {
-					list.push({
-						iri: row.grp.value,
-						label: row.grpLabel?.value,
-					});
-				}
-			}
+        (data.results.bindings as Row[]).forEach((row) => {
+            const id = row.u.value;
+            const label = row.uLabel?.value || id.split(/[#/]/).pop();
+            if (!personMap.has(id)) {
+                personMap.set(id, {
+                    id,
+                    label: label || "Unknown",
+                    classId: USER_CLASS_IRI,
+                    properties: [],
+                    children: [],
+                });
+            }
+            if (row.grp?.value) {
+                if (!personMap.get(id)!.groups) personMap.get(id)!.groups = [];
+                const list = personMap.get(id)!.groups!;
+                if (!list.some((g) => g.iri === row.grp!.value)) {
+                    list.push({
+                        iri: row.grp.value,
+                        label: row.grpLabel?.value,
+                    });
+                }
+            }
             personMap.get(id)!.properties.push({
                 predicate: row.pred.value,
                 predicateLabel: row.predLabel?.value,
@@ -980,17 +1021,17 @@ export class OntologyService {
                 valueLabel: row.valLabel?.value,
                 isLiteral: row.val.type !== "uri",
             });
-		});
-		return Array.from(personMap.values());
-	}
+        });
+        return Array.from(personMap.values());
+    }
 
-	/**
-	 * Retourne la fiche détaillée d’un utilisateur précis (core:User).
-	 * On récupère toutes ses propriétés ainsi que les groupes auxquels il appartient.
-	 * Si aucun utilisateur n’est trouvé, la fonction renvoie null.
-	 */
+    /**
+     * Retourne la fiche détaillée d’un utilisateur précis (core:User).
+     * On récupère toutes ses propriétés ainsi que les groupes auxquels il appartient.
+     * Si aucun utilisateur n’est trouvé, la fonction renvoie null.
+     */
     async getPerson(
-        _requesterIri: string, // réservé pour ACL futures
+        _requesterIri: string,
         personIri: string
     ): Promise<IndividualNode | null> {
         const sparql = `
@@ -1103,25 +1144,14 @@ export class OntologyService {
         return person;
     }
 
-	/**
-	 * Supprime totalement un individu : toutes les triples où il apparaît
-	 * comme sujet sont retirées du store.
-	 */
-    async deleteIndividual(iri: string, ontologyIri?: string): Promise<void> {
-        const update = ontologyIri
-            ? `DELETE WHERE { GRAPH <${ontologyIri}> { <${iri}> ?p ?o . } }`
-            : `DELETE WHERE { <${iri}> ?p ?o . }`;
-        await this.runUpdate(update);
-    }
+    /* ============================================================
+ *                 CRUD – core:Organization
+ * ============================================================
+ */
 
-	/* ============================================================
-	 *                 CRUD – core:Organization
-	 * ============================================================
-	 */
-
-	/** Liste toutes les organisations (label + owner) */
-	async getOrganizations(): Promise<OrganizationInfo[]> {
-		const sparql = `
+    /** Liste toutes les organisations (label + owner) */
+    async getOrganizations(): Promise<OrganizationInfo[]> {
+        const sparql = `
 			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 			PREFIX core: <${this.CORE}>
 			SELECT ?org ?lbl ?owner ?createdAt WHERE {
@@ -1132,35 +1162,35 @@ export class OntologyService {
 			    OPTIONAL { ?org rdfs:label ?lbl }
 			  }
 			}`;
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-		const { data } = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
-		type Row = {
-			org: { value: string };
-			lbl?: { value: string };
-			owner: { value: string };
-			createdAt: { value: string };
-		};
-		return (data.results.bindings as Row[]).map((row) => ({
-			iri: row.org.value,
-			label: row.lbl?.value,
-			owner: row.owner.value,
-			createdAt: row.createdAt.value,
-		}));
-	}
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const { data } = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
+        type Row = {
+            org: { value: string };
+            lbl?: { value: string };
+            owner: { value: string };
+            createdAt: { value: string };
+        };
+        return (data.results.bindings as Row[]).map((row) => ({
+            iri: row.org.value,
+            label: row.lbl?.value,
+            owner: row.owner.value,
+            createdAt: row.createdAt.value,
+        }));
+    }
 
-	/**
-	 * Renvoie les organisations dont l’utilisateur est :
-	 *   • propriétaire (core:ownedBy)
-	 *   • OU membre via l’un de ses groupes appartenant à l’organisation.
-	 *   • OU membre direct via core:belongsToOrganization.
-	 */
-	async getOrganizationsForUser(userIri: string): Promise<OrganizationInfo[]> {
-		const sparql = `
+    /**
+     * Renvoie les organisations dont l’utilisateur est :
+     *   • propriétaire (core:ownedBy)
+     *   • OU membre via l’un de ses groupes appartenant à l’organisation.
+     *   • OU membre direct via core:belongsToOrganization.
+     */
+    async getOrganizationsForUser(userIri: string): Promise<OrganizationInfo[]> {
+        const sparql = `
 			PREFIX core: <${this.CORE}>
 			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
@@ -1175,37 +1205,37 @@ export class OntologyService {
 			    ?owner = <${userIri}>
 			  )
 			}`;
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-		const { data } = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const { data } = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
 
-		type Row = {
-			org: { value: string };
-			lbl?: { value: string };
-			owner: { value: string };
-			createdAt: { value: string };
-		};
+        type Row = {
+            org: { value: string };
+            lbl?: { value: string };
+            owner: { value: string };
+            createdAt: { value: string };
+        };
 
-		return (data.results.bindings as Row[]).map((row) => ({
-			iri: row.org.value,
-			label: row.lbl?.value,
-			owner: row.owner.value,
-			createdAt: row.createdAt.value,
-		}));
-	}
+        return (data.results.bindings as Row[]).map((row) => ({
+            iri: row.org.value,
+            label: row.lbl?.value,
+            owner: row.owner.value,
+            createdAt: row.createdAt.value,
+        }));
+    }
 
-	/**
-	 * Renvoie les IRIs (et labels) des utilisateurs appartenant à une organisation
-	 * soit via core:belongsToOrganization, soit en tant que membres d’un groupe de l’orga.
-	 */
-	async getOrganizationMembers(
-		orgIri: string
-	): Promise<{ iri: string; label?: string }[]> {
-		const sparql = `
+    /**
+     * Renvoie les IRIs (et labels) des utilisateurs appartenant à une organisation
+     * soit via core:belongsToOrganization, soit en tant que membres d’un groupe de l’orga.
+     */
+    async getOrganizationMembers(
+        orgIri: string
+    ): Promise<{ iri: string; label?: string }[]> {
+        const sparql = `
 			PREFIX core: <${this.CORE}>
 			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
@@ -1226,143 +1256,143 @@ export class OntologyService {
 			  OPTIONAL { ?u rdfs:label ?lbl }
 			}
 		`;
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-		const { data } = await lastValueFrom(
-			this.httpService.get(this.fusekiUrl, { params })
-		);
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        const { data } = await lastValueFrom(
+            this.httpService.get(this.fusekiUrl, { params })
+        );
 
-		type Row = { u: { value: string }; lbl?: { value: string } };
+        type Row = { u: { value: string }; lbl?: { value: string } };
 
-		return (data.results.bindings as Row[]).map((row) => ({
-			iri: row.u.value,
-			label: row.lbl?.value,
-		}));
-	}
+        return (data.results.bindings as Row[]).map((row) => ({
+            iri: row.u.value,
+            label: row.lbl?.value,
+        }));
+    }
 
-	/**
-	 * Crée une organisation – uniquement par un Super‑Admin.
-	 * L’owner (admin) est désigné via `ownerIri`.
-	 * Retourne l’IRI de l’organisation.
-	 */
-	async createOrganization(
-		requesterIri: string,
-		{ label, ownerIri }: { label: string; ownerIri: string }
-	): Promise<string> {
-		if (!(await this.isSuperAdmin(requesterIri))) {
-			throw new ForbiddenException(
-				"Seuls les super‑admins peuvent créer une organisation"
-			);
-		}
-		const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-		const iri = `http://example.org/org/${slug}-${Date.now()}`;
+    /**
+     * Crée une organisation – uniquement par un Super‑Admin.
+     * L’owner (admin) est désigné via `ownerIri`.
+     * Retourne l’IRI de l’organisation.
+     */
+    async createOrganization(
+        requesterIri: string,
+        { label, ownerIri }: { label: string; ownerIri: string }
+    ): Promise<string> {
+        if (!(await this.isSuperAdmin(requesterIri))) {
+            throw new ForbiddenException(
+                "Seuls les super‑admins peuvent créer une organisation"
+            );
+        }
+        const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const iri = `http://example.org/org/${slug}-${Date.now()}`;
 
-		const now = new Date().toISOString();
-		const update = `
+        const now = new Date().toISOString();
+        const update = `
 			PREFIX core: <${this.CORE}>
 			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 			PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
 			INSERT DATA {
 			  GRAPH <${this.PROJECTS_GRAPH}> {
 			    <${iri}> a core:Organization ;
-			             rdfs:label """${label.replace(/"/g, '\\"')}""" ;
+			             rdfs:label """${escapeSparqlLiteral(label)}""" ;
 			             core:ownedBy <${ownerIri}> ;
 			             core:createdBy <${requesterIri}> ;
 			             core:createdAt "${now}"^^xsd:dateTime .
 			  }
 			}`;
-		await this.runUpdate(update);
-		return iri;
-	}
+        await this.runUpdate(update);
+        return iri;
+    }
 
-	/** Modifie le label ou le propriétaire d’une organisation */
-	async updateOrganization(
-		requesterIri: string,
-		orgIri: string,
-		{ newLabel, newOwner }: { newLabel?: string; newOwner?: string }
-	): Promise<void> {
-		if (!(await this.isSuperAdmin(requesterIri))) {
-			throw new ForbiddenException(
-				"Seul un super‑admin peut modifier l’organisation"
-			);
-		}
-		let deletePart = "";
-		let insertPart = "";
-		if (newLabel !== undefined) {
-			deletePart += `<${orgIri}> rdfs:label ?l .\n`;
-			insertPart += `<${orgIri}> rdfs:label """${newLabel.replace(/"/g, '\\"')}""" .\n`;
-		}
-		if (newOwner !== undefined) {
-			deletePart += `<${orgIri}> core:ownedBy ?o .\n`;
-			insertPart += `<${orgIri}> core:ownedBy <${newOwner}> .\n`;
-		}
-		const update = `
+    /** Modifie le label ou le propriétaire d’une organisation */
+    async updateOrganization(
+        requesterIri: string,
+        orgIri: string,
+        { newLabel, newOwner }: { newLabel?: string; newOwner?: string }
+    ): Promise<void> {
+        if (!(await this.isSuperAdmin(requesterIri))) {
+            throw new ForbiddenException(
+                "Seul un super‑admin peut modifier l’organisation"
+            );
+        }
+        let deletePart = "";
+        let insertPart = "";
+        if (newLabel !== undefined) {
+            deletePart += `<${orgIri}> rdfs:label ?l .\n`;
+            insertPart += `<${orgIri}> rdfs:label """${escapeSparqlLiteral(newLabel)}""" .\n`;
+        }
+        if (newOwner !== undefined) {
+            deletePart += `<${orgIri}> core:ownedBy ?o .\n`;
+            insertPart += `<${orgIri}> core:ownedBy <${newOwner}> .\n`;
+        }
+        const update = `
 			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 			PREFIX core: <${this.CORE}>
 			DELETE { GRAPH <${this.PROJECTS_GRAPH}> { ${deletePart} } }
 			INSERT { GRAPH <${this.PROJECTS_GRAPH}> { ${insertPart} } }
 			WHERE  { OPTIONAL { GRAPH <${this.PROJECTS_GRAPH}> { ${deletePart} } } }`;
-		await this.runUpdate(update);
-	}
+        await this.runUpdate(update);
+    }
 
-	/** Supprime une organisation (Super‑admin only) */
-	async deleteOrganization(
-		requesterIri: string,
-		orgIri: string
-	): Promise<void> {
-		if (!(await this.isSuperAdmin(requesterIri))) {
-			throw new ForbiddenException(
-				"Seul un super‑admin peut supprimer une organisation"
-			);
-		}
-		const update = `DELETE WHERE { GRAPH <${this.PROJECTS_GRAPH}> { <${orgIri}> ?p ?o . } }`;
-		await this.runUpdate(update);
-	}
+    /** Supprime une organisation (Super‑admin only) */
+    async deleteOrganization(
+        requesterIri: string,
+        orgIri: string
+    ): Promise<void> {
+        if (!(await this.isSuperAdmin(requesterIri))) {
+            throw new ForbiddenException(
+                "Seul un super‑admin peut supprimer une organisation"
+            );
+        }
+        const update = `DELETE WHERE { GRAPH <${this.PROJECTS_GRAPH}> { <${orgIri}> ?p ?o . } }`;
+        await this.runUpdate(update);
+    }
 
-	/* ---------- Organisation members ---------- */
+    /* ---------- Organisation members ---------- */
 
-	/** Ajoute un utilisateur à l’organisation (Super‑admin ou owner) */
-	async addOrganizationMember(
-		requesterIri: string,
-		orgIri: string,
-		userIri: string
-	): Promise<void> {
-		const allowed =
-			(await this.isSuperAdmin(requesterIri)) ||
-			(await this.isOrganizationOwner(requesterIri, orgIri));
-		if (!allowed)
-			throw new ForbiddenException(
-				"Seul le super‑admin ou l’owner peut ajouter un membre"
-			);
+    /** Ajoute un utilisateur à l’organisation (Super‑admin ou owner) */
+    async addOrganizationMember(
+        requesterIri: string,
+        orgIri: string,
+        userIri: string
+    ): Promise<void> {
+        const allowed =
+            (await this.isSuperAdmin(requesterIri)) ||
+            (await this.isOrganizationOwner(requesterIri, orgIri));
+        if (!allowed)
+            throw new ForbiddenException(
+                "Seul le super‑admin ou l’owner peut ajouter un membre"
+            );
 
-		const update = `
+        const update = `
 			PREFIX core: <${this.CORE}>
 			INSERT DATA {
 				GRAPH <${this.PROJECTS_GRAPH}> {
 					<${userIri}> core:belongsToOrganization <${orgIri}> .
 				}
 			}`;
-		await this.runUpdate(update);
-	}
+        await this.runUpdate(update);
+    }
 
-	/** Retire un utilisateur de l’organisation */
-	async removeOrganizationMember(
-		requesterIri: string,
-		orgIri: string,
-		userIri: string
-	): Promise<void> {
-		const allowed =
-			(await this.isSuperAdmin(requesterIri)) ||
-			(await this.isOrganizationOwner(requesterIri, orgIri));
+    /** Retire un utilisateur de l’organisation */
+    async removeOrganizationMember(
+        requesterIri: string,
+        orgIri: string,
+        userIri: string
+    ): Promise<void> {
+        const allowed =
+            (await this.isSuperAdmin(requesterIri)) ||
+            (await this.isOrganizationOwner(requesterIri, orgIri));
 
-		if (!allowed) {
-			throw new ForbiddenException(
-				"Seul le super-admin ou l’owner peut retirer un membre"
-			);
-		}
-		const update = `
+        if (!allowed) {
+            throw new ForbiddenException(
+                "Seul le super-admin ou l’owner peut retirer un membre"
+            );
+        }
+        const update = `
 			PREFIX core: <${this.CORE}>
 
 			WITH <${this.PROJECTS_GRAPH}>
@@ -1394,119 +1424,120 @@ export class OntologyService {
 				}
 			}
 			}`;
-		await this.runUpdate(update);
-	}
-
-	/* ============================================================
-	 *             CRUD  –  core:OntologyProject
-	 * ============================================================
-	 */
-
-	async createProject(
-		requesterIri: string,
-		{
-			iri,
-			label,
-			visibleToGroups = [],
-		}: { iri: string; label: string; visibleToGroups?: string | string[] },
-		file?: Express.Multer.File
-	) {
-		// normalise « visibleToGroups » pour être toujours un tableau
-		const groups = Array.isArray(visibleToGroups)
-			? visibleToGroups
-			: visibleToGroups
-				? [visibleToGroups]
-				: [];
-		const metaTriples = `
-  PREFIX core: <${this.CORE}>
-  PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-  PREFIX owl:  <http://www.w3.org/2002/07/owl#>
-
-  INSERT DATA {
-    GRAPH <${this.PROJECTS_GRAPH}> {
-      <${iri}> a core:OntologyProject , owl:Ontology ;
-               rdfs:label """${label.replace(/"/g, '\\"')}""" ;
-               core:createdBy <${requesterIri}> .
-      ${groups.map((g) => `<${iri}> core:visibleTo <${g}> .`).join("\n      ")}
+        await this.runUpdate(update);
     }
-  }`;
 
-		await this.runUpdate(metaTriples);
+    /* ============================================================
+     *             CRUD  –  core:OntologyProject
+     * ============================================================
+     */
 
-		/* 2. Si un fichier RDF a été fourni : push direct dans le graph utilisateur */
-		if (file) {
-			await axios.post(
-				`${this.fuseki.replace(/\/?$/, "/data")}?graph=${encodeURIComponent(iri)}`,
-				file.buffer,
-				{
-					auth: this.adminAuth,
-					headers: { "Content-Type": file.mimetype || "application/rdf+xml" },
-					maxBodyLength: Infinity, // important pour > 10 Mio
-				}
-			);
-		}
-	}
-	/** Met à jour le label et/ou la visibilité d'un projet */
-	async updateProject(
-		requesterIri: string,
-		iri: string,
-		newLabel?: string,
-		visibleToGroups?: string[]
-	): Promise<void> {
-		if (!(await this.isOwner(requesterIri, iri))) {
-			throw new ForbiddenException("Vous n’êtes pas propriétaire de ce projet");
-		}
-		let deletePart = "";
-		let insertPart = "";
+    async createProject(
+        requesterIri: string,
+        {
+            iri,
+            label,
+            visibleToGroups = [],
+        }: { iri: string; label: string; visibleToGroups?: string | string[] },
+        file?: Express.Multer.File
+    ) {
+        const groups = Array.isArray(visibleToGroups)
+            ? visibleToGroups
+            : visibleToGroups
+                ? [visibleToGroups]
+                : [];
+        const metaTriples = `
+          PREFIX core: <${this.CORE}>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+        
+          INSERT DATA {
+            GRAPH <${this.PROJECTS_GRAPH}> {
+              <${iri}> a core:OntologyProject , owl:Ontology ;
+                       rdfs:label """${escapeSparqlLiteral(label)}""" ;
+                       core:createdBy <${requesterIri}> .
+              ${groups.map((g) => `<${iri}> core:visibleTo <${g}> .`).join("\n      ")}
+            }
+          }`;
 
-		if (newLabel !== undefined) {
-			deletePart += `<${iri}> rdfs:label ?lbl .\n`;
-			insertPart += `<${iri}> rdfs:label """${newLabel.replace(/"/g, '\\"')}""" .\n`;
-		}
+        await this.runUpdate(metaTriples);
 
-		if (Array.isArray(visibleToGroups)) {
-			deletePart += `<${iri}> core:visibleTo ?g .\n`;
-			insertPart += visibleToGroups
-				.map((g) => `<${iri}> core:visibleTo <${g}> .\n`)
-				.join("");
-		}
+        /* 2. Si un fichier RDF a été fourni : push direct dans le graph utilisateur */
+        if (file) {
+            await axios.post(
+                `${this.fuseki.replace(/\/?$/, "/data")}?graph=${encodeURIComponent(iri)}`,
+                file.buffer,
+                {
+                    auth: this.adminAuth,
+                    headers: { "Content-Type": file.mimetype || "application/rdf+xml" },
+                    maxBodyLength: Infinity,
+                }
+            );
+        }
+    }
 
-		const update = `
+    /** Met à jour le label et/ou la visibilité d'un projet */
+    async updateProject(
+        requesterIri: string,
+        iri: string,
+        newLabel?: string,
+        visibleToGroups?: string[]
+    ): Promise<void> {
+        await this._enforceWritePermission(requesterIri, iri);
+
+        let deletePart = "";
+        let insertPart = "";
+
+        if (newLabel !== undefined) {
+            deletePart += `<${iri}> rdfs:label ?lbl .\n`;
+            insertPart += `<${iri}> rdfs:label """${escapeSparqlLiteral(newLabel)}""" .\n`;
+        }
+
+        if (Array.isArray(visibleToGroups)) {
+            deletePart += `<${iri}> core:visibleTo ?g .\n`;
+            insertPart += visibleToGroups
+                .map((g) => `<${iri}> core:visibleTo <${g}> .\n`)
+                .join("");
+        }
+
+        const update = `
 			PREFIX core: <${this.CORE}>
 			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 			DELETE { GRAPH <${this.PROJECTS_GRAPH}> { ${deletePart} } }
 			INSERT { GRAPH <${this.PROJECTS_GRAPH}> { ${insertPart} } }
 			WHERE  { OPTIONAL { GRAPH <${this.PROJECTS_GRAPH}> { ${deletePart} } } }`;
-		await this.runUpdate(update);
-	}
+        await this.runUpdate(update);
+    }
 
-	/** Supprime définitivement un projet (et toutes ses triples sujet) */
-	async deleteProject(requesterIri: string, iri: string): Promise<void> {
-		if (!(await this.isOwner(requesterIri, iri))) {
-			throw new ForbiddenException("Vous n’êtes pas propriétaire de ce projet");
-		}
-		const update = `DELETE WHERE { GRAPH <${this.PROJECTS_GRAPH}> { <${iri}> ?p ?o . } }`;
-		await this.runUpdate(update);
-	}
+    /** Supprime définitivement un projet (et toutes ses triples sujet) */
+    async deleteProject(requesterIri: string, iri: string): Promise<void> {
+        await this._enforceWritePermission(requesterIri, iri);
 
-	/* ============================================================
-	 *                   Groupes  –  core:Group
-	 * ============================================================
-	 */
+        const deleteMeta = `DELETE WHERE { GRAPH <${this.PROJECTS_GRAPH}> { <${iri}> ?p ?o . } }`;
+        await this.runUpdate(deleteMeta);
 
-	/**
-	 * Retourne la liste des groupes auxquels appartient l’utilisateur.
-	 * Pour chaque groupe on renvoie : IRI, label, créateur et la liste
-	 * complète des membres (IRIs).
-	 */
+        const clearData = `CLEAR GRAPH <${iri}>`;
+        await this.runUpdate(clearData);
+    }
+
+    /* ============================================================
+ *                   Groupes  –  core:Group
+ * ============================================================
+ */
+
+    /**
+     * Retourne la liste des groupes auxquels appartient l’utilisateur.
+     * Pour chaque groupe on renvoie : IRI, label, créateur et la liste
+     * complète des membres (IRIs).
+     */
     async getGroups(userIri: string): Promise<GroupInfo[]> {
         const sparql = `
             PREFIX core: <${this.CORE}>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             SELECT ?g ?lbl ?creator ?member ?org WHERE {
               ?g a core:Group ;
-                 core:createdBy ?creator ;
-                 core:hasMember <${userIri}> .
+                 core:createdBy ?creator .
+              <${userIri}> ^core:hasMember ?g .
               OPTIONAL { ?g rdfs:label ?lbl }
               OPTIONAL { ?g core:hasMember ?member }
               OPTIONAL { ?g core:inOrganization ?org }
@@ -1555,89 +1586,66 @@ export class OntologyService {
             (a.label || a.iri).localeCompare(b.label || b.iri)
         );
     }
-	/** Crée un groupe (rattachement à une organisation) et retourne son IRI */
-	async createGroup(
-		label: string,
-		creatorIri: string,
-		organizationIri: string,
-		members: string[] = []
-	): Promise<string> {
-		const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-		const iri = `http://example.org/group/${slug}-${Date.now()}`;
-		if (!members.includes(creatorIri)) members.push(creatorIri);
-		let triples = `<${iri}> a core:Group ;
-			rdfs:label """${label.replace(/"/g, '\\"')}""" ;
+    /** Crée un groupe (rattachement à une organisation) et retourne son IRI */
+    async createGroup(
+        label: string,
+        creatorIri: string,
+        organizationIri: string,
+        members: string[] = []
+    ): Promise<string> {
+        const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const iri = `http://example.org/group/${slug}-${Date.now()}`;
+        if (!members.includes(creatorIri)) members.push(creatorIri);
+        let triples = `<${iri}> a core:Group ;
+			rdfs:label """${escapeSparqlLiteral(label)}""" ;
 			core:inOrganization <${organizationIri}> ;
 			core:createdBy <${creatorIri}> ;
 			core:createdAt "${new Date().toISOString()}"^^xsd:dateTime .\n`;
-		for (const m of members) {
-			triples += `<${iri}> core:hasMember <${m}> .\n`;
-		}
-		const update = `
+        for (const m of members) {
+            triples += `<${iri}> core:hasMember <${m}> .\n`;
+        }
+        const update = `
 			PREFIX core: <${this.CORE}>
 			PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 			PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
 			INSERT DATA { ${triples} }
 		`;
-		await this.runUpdate(update);
-		return iri;
-	}
+        await this.runUpdate(update);
+        return iri;
+    }
 
-	/** Ajoute un membre à un groupe */
-	// No signature change needed below; just ensure parameter name is requesterIri (already so)
-	async addGroupMember(
-		requesterIri: string,
-		groupIri: string,
-		memberIri: string
-	): Promise<void> {
-		if (!(await this.isGroupOwner(requesterIri, groupIri))) {
-			throw new ForbiddenException("Vous n’êtes pas propriétaire de ce groupe");
-		}
+    /** Ajoute un membre à un groupe */
+    async addGroupMember(
+        requesterIri: string,
+        groupIri: string,
+        memberIri: string
+    ): Promise<void> {
+        if (!(await this.isGroupOwner(requesterIri, groupIri))) {
+            throw new ForbiddenException("Vous n’êtes pas propriétaire de ce groupe");
+        }
 
-		const update = `
+        const update = `
 			PREFIX core: <${this.CORE}>
-			# Ajout dans le graph par défaut
-			INSERT { <${groupIri}> core:hasMember <${memberIri}> . }
-			WHERE  {};
+			INSERT DATA { <${groupIri}> core:hasMember <${memberIri}> . }`;
+        await this.runUpdate(update);
+    }
 
-			# Ajout dans tous les graphs qui contiennent déjà le groupe (si besoin)
-			INSERT {
-			  GRAPH ?g { <${groupIri}> core:hasMember <${memberIri}> . }
-			}
-			WHERE  {
-			  GRAPH ?g { <${groupIri}> ?p ?o }
-			};`;
-		await this.runUpdate(update);
-	}
+    /** Retire un membre d'un groupe */
+    async removeGroupMember(
+        requesterIri: string,
+        groupIri: string,
+        memberIri: string
+    ): Promise<void> {
+        if (!(await this.isGroupOwner(requesterIri, groupIri))) {
+            throw new ForbiddenException("Vous n’êtes pas propriétaire de ce groupe");
+        }
+        const update = `
+            PREFIX core: <${this.CORE}>
+            DELETE DATA { <${groupIri}> core:hasMember <${memberIri}> . }`;
+        await this.runUpdate(update);
+    }
 
-	/** Retire un membre d'un groupe */
-	async removeGroupMember(
-		requesterIri: string,
-		groupIri: string,
-		memberIri: string
-	): Promise<void> {
-		if (!(await this.isGroupOwner(requesterIri, groupIri))) {
-			throw new ForbiddenException("Vous n’êtes pas propriétaire de ce groupe");
-		}
-		const update = `
-PREFIX core: <${this.CORE}>
-
-# -- 1. Direct membership triple (default & named graphs) ---------------------
-DELETE { <${groupIri}> core:hasMember <${memberIri}> . }
-WHERE  {
-  { <${groupIri}> core:hasMember <${memberIri}> }
-  UNION { GRAPH ?g { <${groupIri}> core:hasMember <${memberIri}> } }
-} ;
-
-# -- 2. Reified membership statements -----------------------------------------
-DELETE { ?ms core:member <${memberIri}> ; core:group <${groupIri}> . }
-WHERE  {
-  { ?ms core:member <${memberIri}> ; core:group <${groupIri}> }
-  UNION { GRAPH ?g { ?ms core:member <${memberIri}> ; core:group <${groupIri}> } }
-}`;
-		await this.runUpdate(update);
-	}
-	/** Change le label d'un groupe */
+    /** Change le label d'un groupe */
     async updateGroupLabel(
         requesterIri: string,
         groupIri: string,
@@ -1651,7 +1659,7 @@ WHERE  {
         const update = `
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             DELETE { <${groupIri}> rdfs:label ?l . }
-            INSERT { <${groupIri}> rdfs:label """${newLabel.replace(/"/g, '\\"')}""" . }
+            INSERT { <${groupIri}> rdfs:label """${escapeSparqlLiteral(newLabel)}""" . }
             WHERE  { OPTIONAL { <${groupIri}> rdfs:label ?l . } }`;
         await this.runUpdate(update);
     }
@@ -1668,20 +1676,17 @@ WHERE  {
             PREFIX core: <${this.CORE}>
             # Supprime le rattachement existant (défaut + named graphs)
             DELETE { <${groupIri}> core:inOrganization ?o . }
-            WHERE  { <${groupIri}> core:inOrganization ?o . } ;
-            DELETE { GRAPH ?g { <${groupIri}> core:inOrganization ?o . } }
-            WHERE  { GRAPH ?g { <${groupIri}> core:inOrganization ?o . } } ;
-            # Insère le nouveau rattachement dans le graphe par défaut
-            INSERT DATA { <${groupIri}> core:inOrganization <${newOrgIri}> . }`;
+            INSERT { <${groupIri}> core:inOrganization <${newOrgIri}> . }
+            WHERE  { OPTIONAL { <${groupIri}> core:inOrganization ?o . } }`;
         await this.runUpdate(update);
     }
 
-	/** Supprime complètement un groupe */
-	async deleteGroup(requesterIri: string, groupIri: string): Promise<void> {
-		if (!(await this.isGroupOwner(requesterIri, groupIri))) {
-			throw new ForbiddenException("Vous n’êtes pas propriétaire de ce groupe");
-		}
-		const update = `DELETE WHERE { <${groupIri}> ?p ?o . }`;
-		await this.runUpdate(update);
-	}
+    /** Supprime complètement un groupe */
+    async deleteGroup(requesterIri: string, groupIri: string): Promise<void> {
+        if (!(await this.isGroupOwner(requesterIri, groupIri))) {
+            throw new ForbiddenException("Vous n’êtes pas propriétaire de ce groupe");
+        }
+        const update = `DELETE WHERE { <${groupIri}> ?p ?o . }`;
+        await this.runUpdate(update);
+    }
 }

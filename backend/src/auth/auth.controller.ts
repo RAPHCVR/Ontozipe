@@ -1,35 +1,58 @@
 import {
-	Body,
-	Controller,
-	Get,
-	Patch,
-	Post,
-	Req,
-	UseGuards,
+    Body,
+    Controller,
+    Get,
+    Patch,
+    Post,
+    Req,
+    UseGuards,
 } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "./jwt-auth.guard";
+import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUrl, MinLength } from "class-validator";
 
 /* ---------- DTOs ---------- */
 class RegisterDto {
-	email!: string;
-	password!: string;
-	name!: string;
+    @IsEmail()
+    email!: string;
+
+    @IsString()
+    @MinLength(8, { message: "Le mot de passe doit faire au moins 8 caractères."})
+    password!: string;
+
+    @IsString()
+    @IsNotEmpty()
+    name!: string;
 }
 
 class LoginDto {
-	email!: string;
-	password!: string;
+    @IsEmail()
+    email!: string;
+
+    @IsString()
+    @IsNotEmpty()
+    password!: string;
 }
 
 class ProfileDto {
-	name?: string;
-	avatar?: string;
+    @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    name?: string;
+
+    @IsOptional()
+    @IsUrl()
+    avatar?: string;
 }
 
 class ChangePwdDto {
-	oldPassword!: string;
-	newPassword!: string;
+    @IsString()
+    @IsNotEmpty()
+    oldPassword!: string;
+
+    @IsString()
+    @MinLength(8, { message: "Le nouveau mot de passe doit faire au moins 8 caractères."})
+    newPassword!: string;
 }
 
 class LinkGoogleDto {
@@ -46,45 +69,45 @@ class LinkGoogleDto {
 /* ---------- Controller ---------- */
 @Controller("auth")
 export class AuthController {
-	constructor(private readonly auth: AuthService) {}
+    constructor(private readonly auth: AuthService) {}
 
-	/** ---------- Inscription classique ---------- */
-	@Post("register")
-	async register(@Body() dto: RegisterDto) {
-		await this.auth.register(dto.email, dto.password, dto.name);
-		// auto‑login après inscription
-		return this.auth.login(dto.email, dto.password);
-	}
+    /** ---------- Inscription classique ---------- */
+    @Post("register")
+    async register(@Body() dto: RegisterDto) {
+        await this.auth.register(dto.email, dto.password, dto.name);
+        // auto‑login après inscription
+        return this.auth.login(dto.email, dto.password);
+    }
 
-	/** ---------- Connexion ---------- */
-	@Post("login")
-	login(@Body() dto: LoginDto) {
-		return this.auth.login(dto.email, dto.password);
-	}
+    /** ---------- Connexion ---------- */
+    @Post("login")
+    login(@Body() dto: LoginDto) {
+        return this.auth.login(dto.email, dto.password);
+    }
 
-	/** ---------- Profil courant ---------- */
-	@UseGuards(JwtAuthGuard)
-	@Get("me")
-	async me(@Req() req: any) {
-		const iri: string = req.user.sub;
-		return this.auth.getProfile(iri); // voir méthode à ajouter dans AuthService
-	}
+    /** ---------- Profil courant ---------- */
+    @UseGuards(JwtAuthGuard)
+    @Get("me")
+    async me(@Req() req: any) {
+        const iri: string = req.user.sub;
+        return this.auth.getProfile(iri);
+    }
 
-	/** ---------- Mise à jour du profil ---------- */
-	@UseGuards(JwtAuthGuard)
-	@Patch("me")
-	async updateProfile(@Req() req: any, @Body() body: ProfileDto) {
-		await this.auth.updateProfile(req.user.sub, body);
-		return { ok: true };
-	}
+    /** ---------- Mise à jour du profil ---------- */
+    @UseGuards(JwtAuthGuard)
+    @Patch("me")
+    async updateProfile(@Req() req: any, @Body() body: ProfileDto) {
+        await this.auth.updateProfile(req.user.sub, body);
+        return { ok: true };
+    }
 
-	/** ---------- Changement de mot de passe ---------- */
-	@UseGuards(JwtAuthGuard)
-	@Post("change-password")
-	async changePwd(@Req() req: any, @Body() dto: ChangePwdDto) {
-		// vérification du mot de passe actuel
-		await this.auth.login(req.user.email, dto.oldPassword);
-		await this.auth.changePassword(req.user.email, dto.newPassword);
-		return { ok: true };
-	}
+    /** ---------- Changement de mot de passe ---------- */
+    @UseGuards(JwtAuthGuard)
+    @Post("change-password")
+    async changePwd(@Req() req: any, @Body() dto: ChangePwdDto) {
+        // vérification du mot de passe actuel
+        await this.auth.login(req.user.email, dto.oldPassword);
+        await this.auth.changePassword(req.user.email, dto.newPassword);
+        return { ok: true };
+    }
 }

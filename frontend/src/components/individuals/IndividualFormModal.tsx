@@ -82,16 +82,14 @@ const IndividualFormModal: React.FC<{
 	// fetch when classId changes
     useEffect(() => {
         if (!classId) return;
-        const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-        api(`${base}/ontology/properties?class=${encodeURIComponent(classId)}&ontology=${encodeURIComponent(ontologyIri)}`)
+        api(`/ontology/properties?class=${encodeURIComponent(classId)}&ontology=${encodeURIComponent(ontologyIri)}`)
             .then((r) => r.json())
             .then(setAvailable)
             .catch(console.error);
         }, [api, classId, ontologyIri]);
 
     useEffect(() => {
-        const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-        api(`${base}/ontology/groups`)
+        api(`/ontology/groups`)
             .then((r) => r.json())
             .then((arr: Group[]) => setGroups(arr))
             .catch(console.error);
