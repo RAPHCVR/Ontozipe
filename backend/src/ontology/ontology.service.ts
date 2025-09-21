@@ -52,6 +52,8 @@ function toRDF(value: string, isLiteral: boolean): string {
 }
 
 import { Injectable, ForbiddenException, BadRequestException } from "@nestjs/common";
+import * as fs from 'fs';
+import * as path from 'path';
 import { HttpService } from "@nestjs/axios";
 import { lastValueFrom } from "rxjs";
 
@@ -312,17 +314,20 @@ export class OntologyService {
      *   • core:createdBy / createdAt
      *   • core:updatedBy / updatedAt
      *   • core:visibleTo            (ACL par groupes)
+     *   • core:pdfUrl               (chemin/URL du PDF associé, optionnel)
      *
      * @param node              Structure de l’individu (id, label, props…)
      * @param requesterIri      IRI de l’utilisateur créateur
      * @param ontologyIri       IRI du projet / de l’ontologie courante
      * @param visibleToGroups   Liste de groupes autorisés à voir la ressource
+     * @param pdfUrl            Chemin/URL du PDF associé (optionnel, ex: /uploads/monfichier.pdf)
      */
     async createIndividual(
         node: IndividualNode,
         requesterIri: string,
         ontologyIri: string,
-        visibleToGroups: string[] = []
+        visibleToGroups: string[] = [],
+        pdfUrls?: string[] // <- support multiple PDF URLs
     ): Promise<void> {
         await this._enforceWritePermission(requesterIri, ontologyIri);
 
@@ -348,6 +353,15 @@ export class OntologyService {
             )} .\n`;
         }
 
+        // Ajout des PDFs si fournis
+        if (pdfUrls && Array.isArray(pdfUrls)) {
+            for (const url of pdfUrls) {
+                if (url) {
+                    triples += `<${node.id}> <http://example.org/core#pdfUrl> \"\"\"${escapeSparqlLiteral(url)}\"\"\" .\n`;
+                }
+            }
+        }
+
         // Visibilités par groupe
         for (const g of visibleToGroups) {
             triples += `<${node.id}> core:visibleTo <${g}> .\n`;
@@ -370,6 +384,7 @@ export class OntologyService {
      * Met à jour un individu:
      *  - `addProps`: propriétés à insérer
      *  - `delProps`: propriétés à supprimer (non utilisé encore)
+     *  - `pdfUrl`: nouvelle URL PDF à associer (optionnel, ex: /uploads/monfichier.pdf)
      */
     async updateIndividual(
         iri: string,
@@ -377,7 +392,8 @@ export class OntologyService {
         _delProps: Property[] = [],
         requesterIri: string,
         newVisibleToGroups?: string[],
-        ontologyIri?: string
+        ontologyIri?: string,
+        pdfUrls?: string[] // <- support multiple PDF URLs
     ) {
         if (!ontologyIri) throw new BadRequestException("ontologyIri manquant");
 
@@ -405,7 +421,20 @@ export class OntologyService {
             WHERE  { OPTIONAL { <${iri}> <http://example.org/core#visibleTo> ?g . } }
           ` : "";
 
-        // 3) méta
+        // 3) PDFs : suppression/insertion de la propriété pdfUrl si précisé
+        let pdfUpdate = "";
+        if (pdfUrls !== undefined) {
+            pdfUpdate = `
+            WITH <${ontologyIri}>
+            DELETE { <${iri}> <http://example.org/core#pdfUrl> ?oldPdf . }
+            ${Array.isArray(pdfUrls) && pdfUrls.length > 0
+                ? `INSERT { ${pdfUrls.filter(Boolean).map((url) => `<${iri}> <http://example.org/core#pdfUrl> \"\"\"${escapeSparqlLiteral(url)}\"\"\" .`).join("\n")} }`
+                : ""}
+            WHERE { OPTIONAL { <${iri}> <http://example.org/core#pdfUrl> ?oldPdf . } }
+            `;
+        }
+
+        // 4) méta
         const metaUpdate = `
             PREFIX core: <http://example.org/core#>
             PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
@@ -416,7 +445,7 @@ export class OntologyService {
             WHERE  { OPTIONAL { <${iri}> core:updatedBy ?ub ; core:updatedAt ?ua . } }
           `;
 
-        const update = [perPropUpdates, aclUpdate, metaUpdate].filter(Boolean).join(" ;\n");
+        const update = [perPropUpdates, aclUpdate, pdfUpdate, metaUpdate].filter(Boolean).join(" ;\n");
         if (update.trim()) {
             await this.runUpdate(update);
         }
@@ -429,6 +458,38 @@ export class OntologyService {
     async deleteIndividual(iri: string, ontologyIri: string, requesterIri: string): Promise<void> {
         await this._enforceWritePermission(requesterIri, ontologyIri);
 
+        // 1. Récupérer les URLs PDF associées à l'individu
+        const sparql = `
+            SELECT ?pdf WHERE {
+                GRAPH <${ontologyIri}> {
+                    <${iri}> <http://example.org/core#pdfUrl> ?pdf .
+                }
+            }
+        `;
+        const params = new URLSearchParams({
+            query: sparql,
+            format: "application/sparql-results+json",
+        });
+        try {
+            const res = await (this.httpService && this.httpService.get ? (await (await import('rxjs')).lastValueFrom(this.httpService.get(this.fusekiUrl, { params }))): { data: { results: { bindings: [] } } });
+            const pdfUrls = res.data.results.bindings.map((b: any) => b.pdf.value);
+
+            // 2. Supprimer les fichiers PDF du disque
+            for (const url of pdfUrls) {
+                const filePath = path.join(__dirname, '../../../uploads', path.basename(url));
+                if (filePath.startsWith(path.resolve(__dirname, '../../../uploads'))) {
+                    try {
+                        await fs.promises.unlink(filePath);
+                    } catch (e) {
+                        // Optionnel : log ou ignorer si le fichier n'existe pas
+                    }
+                }
+            }
+        } catch (e) {
+            // Optionnel : log erreur récupération ou suppression fichiers PDF
+        }
+
+        // 3. Supprimer les triples RDF comme actuellement
         const update = `DELETE WHERE { GRAPH <${ontologyIri}> { <${iri}> ?p ?o . } }`;
         await this.runUpdate(update);
     }

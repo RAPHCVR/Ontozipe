@@ -1,5 +1,6 @@
 import React from "react";
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { useApi } from "../../lib/api";
 import { IndividualNode, Snapshot } from "../../types";
 import { formatLabel } from "../../utils/formatLabel";
@@ -32,6 +33,45 @@ const IndividualFormModal: React.FC<{
 	onClose,
 	onSubmit,
 }) => {
+	const { token } = useAuth();
+	// --- PDF Upload State ---
+	const [pdfUrls, setPdfUrls] = useState<string[]>(() => {
+		if (initial && initial.properties) {
+			return initial.properties
+				.filter(
+					(p) =>
+						p.predicate === "http://example.org/core#pdfUrl" &&
+						typeof p.value === "string" &&
+						p.value.endsWith(".pdf")
+				)
+				.map((p) => p.value);
+		}
+		return [];
+	});
+
+	// --- PDF Upload Handler ---
+	const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const files = e.target.files;
+		if (!files) return;
+		const uploadedUrls: string[] = [];
+		for (let i = 0; i < files.length; i++) {
+			const file = files[i];
+			const formData = new FormData();
+			formData.append("file", file);
+			const res = await fetch("/ontology/upload-pdf", {
+				method: "POST",
+				body: formData,
+				headers: {
+					Authorization: token ? `Bearer ${token}` : "",
+				},
+			});
+			if (res.ok) {
+				const { url } = await res.json();
+				uploadedUrls.push(url);
+			}
+		}
+		setPdfUrls((prev) => [...prev, ...uploadedUrls]);
+	};
 	const isEdit = Boolean(initial.id);
 	const api = useApi();
 
@@ -128,18 +168,24 @@ const IndividualFormModal: React.FC<{
 	});
 
 	// --- Submit ---
-    const handleSave = () => {
-        if (!label.trim()) return alert("Le label est requis");
-        onSubmit({
-            mode: isEdit ? "update" : "create",
-            iri: isEdit ? String(initial.id) : undefined,
-            label,
-            classId,
-            properties: [...dataProps, ...objProps],
-            visibleToGroups: selectedGroups,
-        });
-        onClose();
-    };
+	const handleSave = () => {
+		if (!label.trim()) return alert("Le label est requis");
+		// Ajoute les PDF comme propriétés core:pdfUrl
+		const pdfProps = pdfUrls.map((url) => ({
+			predicate: "http://example.org/core#pdfUrl",
+			value: url,
+			isLiteral: true,
+		}));
+		onSubmit({
+			mode: isEdit ? "update" : "create",
+			iri: isEdit ? String(initial.id) : undefined,
+			label,
+			classId,
+			properties: [...dataProps, ...objProps, ...pdfProps],
+			visibleToGroups: selectedGroups,
+		});
+		onClose();
+	};
     const handleDelete = () => {
         if (!initial.id) return;
         if (!confirm("Supprimer définitivement cet individu ?")) return;
@@ -175,6 +221,18 @@ const IndividualFormModal: React.FC<{
 					</div>
 				</div>
 
+					{/* ---- PDF Upload ---- */}
+					<section>
+						<label className="block text-xs font-medium mb-1">Ajouter des PDF</label>
+						<input type="file" accept="application/pdf" multiple onChange={handlePdfUpload} />
+						{pdfUrls.length > 0 && (
+							<ul className="text-xs mt-1">
+								{pdfUrls.map((url, idx) => (
+									<li key={idx} className="truncate">{url.split("/").pop()}</li>
+								))}
+							</ul>
+						)}
+					</section>
 				{/* ---- Data properties ---- */}
 				<section>
 					<div className="flex items-center justify-between mb-1">

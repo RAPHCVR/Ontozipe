@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import PdfViewer from "../PdfViewer";
 import { IndividualNode, Snapshot, CommentNode } from "../../types";
 import { formatLabel } from "../../utils/formatLabel";
 import { useAuth } from "../../auth/AuthContext";
@@ -46,21 +47,37 @@ const IndividualCard: React.FC<{
 	const commonGroups =
 		userGroups.filter((g) => (ind.visibleTo || []).includes(g.iri)) || [];
 
-    const uniqueProps = useMemo(() => {
-        const m = new Map<string, typeof ind.properties[number]>();
-        for (const p of ind.properties || []) {
-            const key = `${p.predicate}||${p.isLiteral ? "L" : "R"}||${p.value}`;
-            const prev = m.get(key);
-            if (!prev) m.set(key, p);
-            else {
-                // conserve la variante la plus "riche" en libellés
-                if ((!prev.valueLabel && p.valueLabel) || (!prev.predicateLabel && p.predicateLabel)) {
-                    m.set(key, p);
-                }
-            }
-        }
-        return Array.from(m.values());
-    }, [ind.properties]);
+	
+
+	// Extraction des URLs PDF associées à l'individu
+	const pdfUrls = useMemo(
+		() =>
+			(ind.properties || [])
+				.filter(
+					(p: typeof ind.properties[number]) =>
+						p.predicate === "http://example.org/core#pdfUrl" &&
+						typeof p.value === "string" &&
+						p.value.endsWith(".pdf")
+				)
+				.map((p) => p.value),
+		[ind.properties]
+	);
+
+	const uniqueProps = useMemo(() => {
+		const m = new Map<string, typeof ind.properties[number]>();
+		for (const p of ind.properties || []) {
+			const key = `${p.predicate}||${p.isLiteral ? "L" : "R"}||${p.value}`;
+			const prev = m.get(key);
+			if (!prev) m.set(key, p);
+			else {
+				// conserve la variante la plus "riche" en libellés
+				if ((!prev.valueLabel && p.valueLabel) || (!prev.predicateLabel && p.predicateLabel)) {
+					m.set(key, p);
+				}
+			}
+		}
+		return Array.from(m.values());
+	}, [ind.properties]);
 
     // Puis utilise uniqueProps à la place de ind.properties
     const filteredProps =
