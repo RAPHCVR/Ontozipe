@@ -35,16 +35,26 @@ const IndividualFormModal: React.FC<{
 }) => {
 	const { token } = useAuth();
 	// --- PDF Upload State ---
-	const [pdfUrls, setPdfUrls] = useState<string[]>(() => {
+	type PdfMeta = { url: string; originalName: string };
+	const [pdfs, setPdfs] = useState<PdfMeta[]>(() => {
 		if (initial && initial.properties) {
-			return initial.properties
-				.filter(
-					(p) =>
-						p.predicate === "http://example.org/core#pdfUrl" &&
-						typeof p.value === "string" &&
-						p.value.endsWith(".pdf")
-				)
-				.map((p) => p.value);
+			// Récupère toutes les urls et tous les noms originaux
+			const urls = initial.properties.filter(
+				(p) =>
+					p.predicate === "http://example.org/core#pdfUrl" &&
+					typeof p.value === "string" &&
+					p.value.endsWith(".pdf")
+			);
+			const names = initial.properties.filter(
+				(p) =>
+					p.predicate === "http://example.org/core#pdfOriginalName" &&
+					typeof p.value === "string"
+			);
+			// Associe chaque url à son nom original (par index)
+			return urls.map((u, i) => ({
+				url: u.value,
+				originalName: names[i]?.value || u.value.split('/').pop() || u.value,
+			}));
 		}
 		return [];
 	});
@@ -53,7 +63,7 @@ const IndividualFormModal: React.FC<{
 	const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
 		if (!files) return;
-		const uploadedUrls: string[] = [];
+		const uploaded: PdfMeta[] = [];
 		for (let i = 0; i < files.length; i++) {
 			const file = files[i];
 			const formData = new FormData();
@@ -66,11 +76,11 @@ const IndividualFormModal: React.FC<{
 				},
 			});
 			if (res.ok) {
-				const { url } = await res.json();
-				uploadedUrls.push(url);
+				const { url, originalName } = await res.json();
+				uploaded.push({ url, originalName });
 			}
 		}
-		setPdfUrls((prev) => [...prev, ...uploadedUrls]);
+		setPdfs((prev) => [...prev, ...uploaded]);
 	};
 	const isEdit = Boolean(initial.id);
 	const api = useApi();
@@ -170,10 +180,15 @@ const IndividualFormModal: React.FC<{
 	// --- Submit ---
 	const handleSave = () => {
 		if (!label.trim()) return alert("Le label est requis");
-		// Ajoute les PDF comme propriétés core:pdfUrl
-		const pdfProps = pdfUrls.map((url) => ({
+		// Ajoute les PDF comme propriétés core:pdfUrl ET core:pdfOriginalName
+		const pdfProps = pdfs.map((pdf) => ({
 			predicate: "http://example.org/core#pdfUrl",
-			value: url,
+			value: pdf.url,
+			isLiteral: true,
+		}));
+		const pdfNameProps = pdfs.map((pdf) => ({
+			predicate: "http://example.org/core#pdfOriginalName",
+			value: pdf.originalName,
 			isLiteral: true,
 		}));
 		onSubmit({
@@ -181,7 +196,7 @@ const IndividualFormModal: React.FC<{
 			iri: isEdit ? String(initial.id) : undefined,
 			label,
 			classId,
-			properties: [...dataProps, ...objProps, ...pdfProps],
+			properties: [...dataProps, ...objProps, ...pdfProps, ...pdfNameProps],
 			visibleToGroups: selectedGroups,
 		});
 		onClose();
@@ -225,10 +240,10 @@ const IndividualFormModal: React.FC<{
 					<section>
 						<label className="block text-xs font-medium mb-1">Ajouter des PDF</label>
 						<input type="file" accept="application/pdf" multiple onChange={handlePdfUpload} />
-						{pdfUrls.length > 0 && (
+						{pdfs.length > 0 && (
 							<ul className="text-xs mt-1">
-								{pdfUrls.map((url, idx) => (
-									<li key={idx} className="truncate">{url.split("/").pop()}</li>
+								{pdfs.map((pdf, idx) => (
+									<li key={idx} className="truncate">{pdf.originalName}</li>
 								))}
 							</ul>
 						)}

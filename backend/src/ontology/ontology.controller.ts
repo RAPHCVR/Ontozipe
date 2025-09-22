@@ -58,6 +58,13 @@ class PropertyDto {
 
 /* ---------- DTOs principaux ---------- */
 
+class PdfDto {
+    @IsString()
+    url!: string;
+    @IsString()
+    originalName!: string;
+}
+
 class CreateIndividualDto {
     @IsUrl()
     id!: string;
@@ -82,6 +89,13 @@ class CreateIndividualDto {
     @IsArray()
     @IsUrl({}, { each: true })
     visibleToGroups?: string[];
+
+    /** PDFs associés à l'individu */
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => PdfDto)
+    pdfs?: PdfDto[];
 }
 
 class UpdateIndividualDto {
@@ -102,6 +116,13 @@ class UpdateIndividualDto {
     @IsArray()
     @IsUrl({}, { each: true })
     visibleToGroups?: string[];
+
+    /** PDFs associés à l'individu (remplacement complet) */
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => PdfDto)
+    pdfs?: PdfDto[];
 }
 
 /* ---------- OntologyProject DTOs ---------- */
@@ -236,12 +257,12 @@ export class OntologyController {
         @Body() dto: CreateIndividualDto
     ): Promise<void> {
         console.log("createIndividual");
-
         return this.ontologyService.createIndividual(
             dto as unknown as IndividualNode,
             req.user.sub, // requesterIri (creator)
             dto.ontologyIri, // ontology IRI
-            dto.visibleToGroups ?? [] // ACL
+            dto.visibleToGroups ?? [], // ACL
+            dto.pdfs // PDFs
         );
     }
 
@@ -253,14 +274,15 @@ export class OntologyController {
         @Query("ontology") ontologyIri: string,
         @Body() dto: UpdateIndividualDto
     ): Promise<void> {
-        const { addProps = [], delProps = [], visibleToGroups } = dto;
+        const { addProps = [], delProps = [], visibleToGroups, pdfs } = dto;
         return this.ontologyService.updateIndividual(
             decodeURIComponent(iri),
             addProps,
             delProps,
             req.user.sub,
             visibleToGroups,
-            ontologyIri
+            ontologyIri,
+            pdfs
         );
     }
 
@@ -630,7 +652,10 @@ export class OntologyController {
         if (!file) {
             throw new BadRequestException('Aucun fichier PDF reçu.');
         }
-        return { url: `/uploads/${file.filename}` };
+        return {
+            url: `/uploads/${file.filename}`,
+            originalName: file.originalname
+        };
     }
 
     /** Suppression d’un commentaire */

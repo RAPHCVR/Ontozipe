@@ -1,3 +1,9 @@
+// Interface pour PDF avec nom original
+export interface PdfInfo {
+    url: string;
+    originalName: string;
+}
+
 import axios from "axios";
 import { escapeSparqlLiteral } from "../utils/sparql.utils";
 
@@ -320,14 +326,15 @@ export class OntologyService {
      * @param requesterIri      IRI de l’utilisateur créateur
      * @param ontologyIri       IRI du projet / de l’ontologie courante
      * @param visibleToGroups   Liste de groupes autorisés à voir la ressource
-     * @param pdfUrl            Chemin/URL du PDF associé (optionnel, ex: /uploads/monfichier.pdf)
+     * @param pdfs              Chemin/URL du PDF associé (optionnel, ex: /uploads/monfichier.pdf)
      */
+
     async createIndividual(
         node: IndividualNode,
         requesterIri: string,
         ontologyIri: string,
         visibleToGroups: string[] = [],
-        pdfUrls?: string[] // <- support multiple PDF URLs
+        pdfs?: PdfInfo[] // <- support multiple PDFs with original name
     ): Promise<void> {
         await this._enforceWritePermission(requesterIri, ontologyIri);
 
@@ -354,11 +361,14 @@ export class OntologyService {
         }
 
         // Ajout des PDFs si fournis
-        if (pdfUrls && Array.isArray(pdfUrls)) {
-            for (const url of pdfUrls) {
-                if (url) {
-                    triples += `<${node.id}> <http://example.org/core#pdfUrl> \"\"\"${escapeSparqlLiteral(url)}\"\"\" .\n`;
+        if (pdfs && Array.isArray(pdfs)) {
+            for (const pdf of pdfs) {
+            if (pdf && pdf.url) {
+                triples += `<${node.id}> <http://example.org/core#pdfUrl> \"\"\"${escapeSparqlLiteral(pdf.url)}\"\"\" .\n`;
+                if (pdf.originalName) {
+                triples += `<${node.id}> <http://example.org/core#pdfOriginalName> \"\"\"${escapeSparqlLiteral(pdf.originalName)}\"\"\" .\n`;
                 }
+            }
             }
         }
 
@@ -393,7 +403,7 @@ export class OntologyService {
         requesterIri: string,
         newVisibleToGroups?: string[],
         ontologyIri?: string,
-        pdfUrls?: string[] // <- support multiple PDF URLs
+        pdfs?: PdfInfo[] // <- support multiple PDFs with original name
     ) {
         if (!ontologyIri) throw new BadRequestException("ontologyIri manquant");
 
@@ -421,16 +431,16 @@ export class OntologyService {
             WHERE  { OPTIONAL { <${iri}> <http://example.org/core#visibleTo> ?g . } }
           ` : "";
 
-        // 3) PDFs : suppression/insertion de la propriété pdfUrl si précisé
+        // 3) PDFs : suppression/insertion des propriétés pdfUrl et pdfOriginalName si précisé
         let pdfUpdate = "";
-        if (pdfUrls !== undefined) {
+        if (pdfs !== undefined) {
             pdfUpdate = `
             WITH <${ontologyIri}>
-            DELETE { <${iri}> <http://example.org/core#pdfUrl> ?oldPdf . }
-            ${Array.isArray(pdfUrls) && pdfUrls.length > 0
-                ? `INSERT { ${pdfUrls.filter(Boolean).map((url) => `<${iri}> <http://example.org/core#pdfUrl> \"\"\"${escapeSparqlLiteral(url)}\"\"\" .`).join("\n")} }`
+            DELETE { <${iri}> <http://example.org/core#pdfUrl> ?oldPdf . <${iri}> <http://example.org/core#pdfOriginalName> ?oldName . }
+            ${Array.isArray(pdfs) && pdfs.length > 0
+                ? `INSERT { ${pdfs.filter(Boolean).map((pdf) => `<${iri}> <http://example.org/core#pdfUrl> \"\"\"${escapeSparqlLiteral(pdf.url)}\"\"\" .${pdf.originalName ? `\n<${iri}> <http://example.org/core#pdfOriginalName> \"\"\"${escapeSparqlLiteral(pdf.originalName)}\"\"\" .` : ''}`).join("\n")} }`
                 : ""}
-            WHERE { OPTIONAL { <${iri}> <http://example.org/core#pdfUrl> ?oldPdf . } }
+            WHERE { OPTIONAL { <${iri}> <http://example.org/core#pdfUrl> ?oldPdf . OPTIONAL { <${iri}> <http://example.org/core#pdfOriginalName> ?oldName . } } }
             `;
         }
 

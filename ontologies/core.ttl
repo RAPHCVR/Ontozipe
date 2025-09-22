@@ -117,6 +117,20 @@ core:createdAt a owl:DatatypeProperty ; rdfs:domain core:Resource, core:Comment 
 core:updatedAt a owl:DatatypeProperty ; rdfs:domain core:Resource ; rdfs:range xsd:dateTime .
 core:text      a owl:DatatypeProperty ; rdfs:domain core:Comment ; rdfs:range xsd:string .
 
+# --- PDF URL ---
+core:pdfUrl a owl:DatatypeProperty ;
+    rdfs:domain core:Resource ;
+    rdfs:range xsd:string ;
+    rdfs:label "URL du fichier PDF"@fr , "PDF file URL"@en ;
+    rdfs:comment "URL du fichier PDF associé à la ressource (stockage ou accès)"@fr .
+
+# --- PDF original file name ---
+core:pdfOriginalName a owl:DatatypeProperty ;
+    rdfs:domain core:Resource ;
+    rdfs:range xsd:string ;
+    rdfs:label "Nom original du fichier PDF"@fr , "Original PDF file name"@en ;
+    rdfs:comment "Nom d'origine du fichier PDF associé à la ressource (pour affichage utilisateur)"@fr .
+
 ##############################
 ## 7. Règles & annotations ###
 ##############################
