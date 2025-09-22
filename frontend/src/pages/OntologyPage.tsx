@@ -79,7 +79,7 @@ export default function OntologyPage() {
     // Charger le snapshot
     useEffect(() => {
         setLoading(true);
-        api(`/ontology/snapshot?ontology=${encodeURIComponent(ontologyIri)}`)
+        api(`/ontologies/${encodeURIComponent(ontologyIri)}/snapshot`)
             .then((r) => r.json())
             .then((data) => setSnapshot({ ...data }))
             .catch(console.error)
@@ -88,7 +88,7 @@ export default function OntologyPage() {
     }, [ontologyIri, token]);
 
     const reloadSnapshot = () =>
-        api(`/ontology/snapshot?ontology=${encodeURIComponent(ontologyIri)}`)
+        api(`/ontologies/${encodeURIComponent(ontologyIri)}/snapshot`)
             .then((r) => r.json())
             .then(setSnapshot);
 
@@ -110,7 +110,7 @@ export default function OntologyPage() {
                 onEdit={(ind) => setFormInfo({ mode: "edit", initial: ind })}
                 width={sidebarWidth}
                 onDelete={(ind) => {
-                    api(`/ontology/individuals/${encodeURIComponent(ind.id)}?ontology=${encodeURIComponent(ontologyIri)}`, { method: "DELETE" })
+                    api(`/individuals/${encodeURIComponent(ind.id)}?ontology=${encodeURIComponent(ontologyIri)}`, { method: "DELETE" })
                         .then(reloadSnapshot)
                         .catch(console.error);
                 }}
@@ -152,7 +152,7 @@ export default function OntologyPage() {
                     activeClassId={activeClassId || ""}
                     onClose={() => setFormInfo(null)}
                     onSubmit={(payload) => {
-                        const urlBase = `/ontology/individuals`;
+                        const urlBase = `/individuals`;
 
                         let req: Promise<Response>;
                         if (payload.mode === "create") {

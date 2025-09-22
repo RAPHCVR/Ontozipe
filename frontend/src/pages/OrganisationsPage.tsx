@@ -27,8 +27,8 @@ export default function OrganisationsPage() {
     const fetchOrgs = useCallback(async () => {
         if (isSuperAdmin === null) return;
         const url = isSuperAdmin
-            ? "/ontology/organizations"
-            : "/ontology/organizations?mine=true";
+            ? "/organizations"
+            : "/organizations?mine=true";
         const data = await api(url).then((r) => r.json());
         setOrgs(data);
     }, [api, isSuperAdmin]);
@@ -52,7 +52,7 @@ export default function OrganisationsPage() {
 
     // Charge la liste de tous les utilisateurs une seule fois pour les modales
     useEffect(() => {
-        api("/ontology/persons")
+        api("/individuals/persons")
             .then((r) => r.json())
             .then((data) => {
                 setPersons(
@@ -102,7 +102,7 @@ export default function OrganisationsPage() {
                                         className="text-red-600 text-sm"
                                         onClick={() =>
                                             api(
-                                                `/ontology/organizations/${encodeURIComponent(
+                                                `/organizations/${encodeURIComponent(
                                                     o.iri
                                                 )}`,
                                                 { method: "DELETE" }
@@ -126,7 +126,7 @@ export default function OrganisationsPage() {
                 <OrganisationFormModal
                     onClose={() => setShowNew(false)}
                     onSaved={fetchOrgs}
-                    existingPersonsEndpoint="/ontology/persons"
+                    existingPersonsEndpoint="/individuals/persons"
                 />
             )}
 
@@ -137,7 +137,7 @@ export default function OrganisationsPage() {
                     isManager={isSuperAdmin || selected.owner === currentUserIri}
                     onClose={() => setSelected(null)}
                     onReload={fetchOrgs}
-                    existingPersonsEndpoint="/ontology/persons"
+                    existingPersonsEndpoint="/individuals/persons"
                 />
             )}
         </div>
@@ -188,7 +188,7 @@ function OrganisationFormModal({
     }, []); // charge une fois à l’ouverture de la modale
 
     const save = () =>
-        api("/ontology/organizations", {
+        api("/organizations", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ label, ownerIri: owner }),
@@ -276,7 +276,7 @@ function OrganisationDetailsModal({
 
     const loadMembers = useCallback(async () => {
         const res = await api(
-            `/ontology/organizations/${encodeURIComponent(
+            `/organizations/${encodeURIComponent(
                 org.iri
             )}/members`
         );
@@ -296,7 +296,7 @@ function OrganisationDetailsModal({
         if (canEditLabelAdmin) payload.ownerIri = owner;
 
         await api(
-            `/ontology/organizations/${encodeURIComponent(
+            `/organizations/${encodeURIComponent(
                 org.iri
             )}`,
             {
@@ -311,7 +311,7 @@ function OrganisationDetailsModal({
 
     const addMember = async (personIri: string) => {
         await api(
-            `/ontology/organizations/${encodeURIComponent(
+            `/organizations/${encodeURIComponent(
                 org.iri
             )}/members`,
             {
@@ -325,7 +325,7 @@ function OrganisationDetailsModal({
 
     const removeMember = async (personIri: string) => {
         await api(
-            `/ontology/organizations/${encodeURIComponent(
+            `/organizations/${encodeURIComponent(
                 org.iri
             )}/members/${encodeURIComponent(personIri)}`,
             { method: "DELETE" }
@@ -418,7 +418,7 @@ function OrganisationDetailsModal({
                             className="btn-secondary text-red-600 border-red-400 hover:bg-red-50"
                             onClick={async () => {
                                 await api(
-                                    `/ontology/organizations/${encodeURIComponent(
+                                    `/organizations/${encodeURIComponent(
                                         org.iri
                                     )}`,
                                     { method: "DELETE" }

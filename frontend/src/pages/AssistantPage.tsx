@@ -46,7 +46,7 @@ export default function AssistantPage() {
     const base = useMemo(() => (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, ""), []);
     // Identifiant de session de conversation côté client (par onglet/page)
     const sessionId = useMemo(() => uuidv4(), []);
-    useEffect(() => { setLoadingOntos(true); api(`/ontology/projects`).then((r) => r.json()).then(setOntos).finally(() => setLoadingOntos(false)); }, [api]);
+    useEffect(() => { setLoadingOntos(true); api(`/ontologies`).then((r) => r.json()).then(setOntos).finally(() => setLoadingOntos(false)); }, [api]);
     useEffect(() => { if (!activeIri && ontos.length > 0) { setActiveIri(ontos[0].iri); } }, [ontos, activeIri]);
 
     // Charge la prompt système initiale (lecture seule) pour l'utilisateur/ontologie active

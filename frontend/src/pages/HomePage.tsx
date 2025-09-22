@@ -24,7 +24,7 @@ export default function HomePage() {
 
     const load = () => {
         setLoading(true);
-        return api("/ontology/projects")
+        return api("/ontologies")
             .then((r) => r.json())
             .then(setOntos)
             .catch((err) => {
@@ -161,7 +161,7 @@ export default function HomePage() {
                         fd.append("label", newLabel.trim());
                         if (rdfFile) fd.append("file", rdfFile);
 
-                        api("/ontology/projects", {
+                        api("/ontologies", {
                             method: "POST",
                             body: fd,
                         })

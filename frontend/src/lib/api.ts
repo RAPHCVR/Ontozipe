@@ -5,7 +5,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:400
 
 /**
  * hook retournant un fetch préconfiguré.
- * Il préfixe automatiquement les chemins relatifs (ex: "/ontology/projects") avec l'URL de base de l'API.
+ * Il préfixe automatiquement les chemins relatifs (ex: "/ontologies") avec l'URL de base de l'API.
  */
 export const useApi = () => {
     const { token, logout } = useAuth();
