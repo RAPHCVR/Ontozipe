@@ -5,6 +5,7 @@ import { json, urlencoded } from "express";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import * as dotenv from "dotenv";
 import { ValidationPipe } from "@nestjs/common";
+import { join } from "path";
 
 dotenv.config();
 
@@ -21,6 +22,12 @@ async function bootstrap() {
     }));
 
     app.enableCors();
+
+    // Expose le dossier uploads en statique
+    app.useStaticAssets(join(__dirname, "..", "uploads"), {
+        prefix: "/uploads/",
+    });
+
     await app.listen(4000);
 }
 bootstrap().catch((err) => {

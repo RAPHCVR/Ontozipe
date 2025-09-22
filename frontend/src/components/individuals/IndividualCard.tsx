@@ -49,19 +49,31 @@ const IndividualCard: React.FC<{
 
 	
 
-	// Extraction des URLs PDF associées à l'individu
-	const pdfUrls = useMemo(
-		() =>
-			(ind.properties || [])
-				.filter(
-					(p: typeof ind.properties[number]) =>
-						p.predicate === "http://example.org/core#pdfUrl" &&
-						typeof p.value === "string" &&
-						p.value.endsWith(".pdf")
-				)
-				.map((p) => p.value),
+	// Extraction des PDFs associés à l'individu (url + nom original)
+	const pdfUrls = useMemo(() =>
+		(ind.properties || [])
+			.filter(
+				(p) =>
+					p.predicate === "http://example.org/core#pdfUrl" &&
+					typeof p.value === "string" &&
+					p.value.endsWith(".pdf")
+			),
 		[ind.properties]
 	);
+	const pdfNames = useMemo(() =>
+		(ind.properties || [])
+			.filter(
+				(p) =>
+					p.predicate === "http://example.org/core#pdfOriginalName" &&
+					typeof p.value === "string"
+			),
+		[ind.properties]
+	);
+	// Associe chaque url à son nom original (par index)
+	const pdfs = pdfUrls.map((u, i) => ({
+		url: u.value,
+		originalName: pdfNames[i]?.value || u.value.split('/').pop() || u.value,
+	}));
 
 	const uniqueProps = useMemo(() => {
 		const m = new Map<string, typeof ind.properties[number]>();
@@ -201,8 +213,31 @@ const IndividualCard: React.FC<{
 					</span>
 				</div>
 			</div>
-			{open && (
-				<div className="space-y-3">
+				{open && (
+					<div className="space-y-3">
+						{/* ---- PDFS ASSOCIÉS ---- */}
+						{pdfs.length > 0 && (
+							<div>
+								<h4 className="text-xs font-semibold text-blue-600 mb-1">
+									Documents PDF associés
+								</h4>
+								<ul className="space-y-1">
+									{pdfs.map((pdf, idx) => (
+										<li key={idx}>
+											<a
+												href={pdf.url}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="text-blue-700 hover:underline"
+											>
+												{pdf.originalName}
+											</a>
+											<span className="ml-2 text-xs text-gray-400">(ouvrir dans un nouvel onglet)</span>
+										</li>
+									))}
+								</ul>
+							</div>
+						)}
 					{/* ---- DATA SECTION ---- */}
 					{dataProps.length > 0 && (
 						<div>

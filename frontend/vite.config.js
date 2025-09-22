@@ -7,7 +7,7 @@ export default defineConfig({
     server: {
         open: true,
         proxy: {
-            '/ontology': 'http://localhost:4000', // adapte le port si besoin
+            '/uploads': 'http://localhost:4000', // adapte le port si besoin
         },
     },
     resolve: { alias: { "@": "/src" } },
