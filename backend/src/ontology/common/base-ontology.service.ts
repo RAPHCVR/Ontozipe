@@ -19,6 +19,14 @@ export abstract class OntologyBaseService {
         password: process.env.FUSEKI_PASSWORD || "Pass123",
     };
 
+    private static readonly CACHE_TTL_MS = Number(process.env.ONTOLOGY_CACHE_TTL_MS ?? 10_000);
+
+    private readonly userGroupsCache = new Map<string, CacheEntry<string[]>>();
+    private readonly userRolesCache = new Map<string, CacheEntry<string[]>>();
+    private readonly projectOwnerCache = new Map<string, CacheEntry<boolean>>();
+    private readonly organizationOwnerCache = new Map<string, CacheEntry<boolean>>();
+    private readonly groupOwnerCache = new Map<string, CacheEntry<boolean>>();
+
     protected constructor(protected readonly httpService: HttpService) {
         this.fusekiBase = (process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(/\/$/, "");
         this.fusekiUrl = `${this.fusekiBase}/sparql`;
@@ -55,6 +63,9 @@ export abstract class OntologyBaseService {
     }
 
     protected async getUserGroups(userIri: string): Promise<string[]> {
+        const cached = this.getCachedValue(this.userGroupsCache, userIri);
+        if (cached) return cached;
+
         const data = await this.runSelect(`
             PREFIX core: <${this.CORE}>
             SELECT DISTINCT ?g WHERE {
@@ -64,10 +75,15 @@ export abstract class OntologyBaseService {
               UNION { GRAPH ?ng { ?ms core:member <${userIri}> ; core:group ?g } }
             }
         `);
-        return (data.results?.bindings ?? []).map((b: any) => b.g.value);
+        const groups = (data.results?.bindings ?? []).map((b: any) => b.g.value);
+        this.setCachedValue(this.userGroupsCache, userIri, groups);
+        return groups;
     }
 
     protected async getUserRoles(userIri: string): Promise<string[]> {
+        const cached = this.getCachedValue(this.userRolesCache, userIri);
+        if (cached) return cached;
+
         const data = await this.runSelect(`
             PREFIX core: <${this.CORE}>
             SELECT ?r WHERE {
@@ -75,7 +91,9 @@ export abstract class OntologyBaseService {
               UNION { GRAPH ?g { <${userIri}> core:hasRole ?r } }
             }
         `);
-        return (data.results?.bindings ?? []).map((b: any) => b.r.value);
+        const roles = (data.results?.bindings ?? []).map((b: any) => b.r.value);
+        this.setCachedValue(this.userRolesCache, userIri, roles);
+        return roles;
     }
 
     protected async isSuperAdmin(userIri: string): Promise<boolean> {
@@ -84,27 +102,45 @@ export abstract class OntologyBaseService {
     }
 
     protected async isOrganizationOwner(userIri: string, organizationIri: string): Promise<boolean> {
-        return this.runAsk(`
+        const cacheKey = this.makeCompositeKey(userIri, organizationIri);
+        const cached = this.getCachedBoolean(this.organizationOwnerCache, cacheKey);
+        if (cached !== undefined) return cached;
+
+        const result = await this.runAsk(`
             PREFIX core: <${this.CORE}>
             ASK { GRAPH <${this.PROJECTS_GRAPH}> { <${organizationIri}> core:ownedBy <${userIri}> } }
         `);
+        this.setCachedBoolean(this.organizationOwnerCache, cacheKey, result);
+        return result;
     }
 
     protected async isProjectOwner(userIri: string, projectIri: string): Promise<boolean> {
-        return this.runAsk(`
+        const cacheKey = this.makeCompositeKey(userIri, projectIri);
+        const cached = this.getCachedBoolean(this.projectOwnerCache, cacheKey);
+        if (cached !== undefined) return cached;
+
+        const result = await this.runAsk(`
             PREFIX core: <${this.CORE}>
             ASK { GRAPH <${this.PROJECTS_GRAPH}> { <${projectIri}> core:createdBy <${userIri}> } }
         `);
+        this.setCachedBoolean(this.projectOwnerCache, cacheKey, result);
+        return result;
     }
 
     protected async isGroupOwner(userIri: string, groupIri: string): Promise<boolean> {
-        return this.runAsk(`
+        const cacheKey = this.makeCompositeKey(userIri, groupIri);
+        const cached = this.getCachedBoolean(this.groupOwnerCache, cacheKey);
+        if (cached !== undefined) return cached;
+
+        const result = await this.runAsk(`
             PREFIX core: <${this.CORE}>
             ASK {
               { <${groupIri}> core:createdBy <${userIri}> }
               UNION { GRAPH ?g { <${groupIri}> core:createdBy <${userIri}> } }
             }
         `);
+        this.setCachedBoolean(this.groupOwnerCache, cacheKey, result);
+        return result;
     }
 
     protected async individualExists(iri: string): Promise<boolean> {
@@ -122,4 +158,78 @@ export abstract class OntologyBaseService {
             throw new ForbiddenException("Accès refusé. Vous n'avez pas les droits d'écriture sur cette ontologie.");
         }
     }
+
+    protected invalidateUserGroups(userIri?: string) {
+        if (!userIri) {
+            this.userGroupsCache.clear();
+            return;
+        }
+        this.userGroupsCache.delete(userIri);
+    }
+
+    protected invalidateUserRoles(userIri?: string) {
+        if (!userIri) {
+            this.userRolesCache.clear();
+            return;
+        }
+        this.userRolesCache.delete(userIri);
+    }
+
+    protected invalidateProjectOwnership(projectIri?: string) {
+        this.invalidateCompositeCache(this.projectOwnerCache, projectIri);
+    }
+
+    protected invalidateOrganizationOwnership(organizationIri?: string) {
+        this.invalidateCompositeCache(this.organizationOwnerCache, organizationIri);
+    }
+
+    protected invalidateGroupOwnership(groupIri?: string) {
+        this.invalidateCompositeCache(this.groupOwnerCache, groupIri);
+    }
+
+    private getCachedValue<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
+        const entry = cache.get(key);
+        if (!entry) return null;
+        if (entry.expiresAt < Date.now()) {
+            cache.delete(key);
+            return null;
+        }
+        return entry.value;
+    }
+
+    private setCachedValue<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T): void {
+        cache.set(key, { value, expiresAt: Date.now() + OntologyBaseService.CACHE_TTL_MS });
+    }
+
+    private getCachedBoolean(cache: Map<string, CacheEntry<boolean>>, key: string): boolean | undefined {
+        const entry = this.getCachedValue(cache, key);
+        if (entry === null) return undefined;
+        return entry;
+    }
+
+    private setCachedBoolean(cache: Map<string, CacheEntry<boolean>>, key: string, value: boolean): void {
+        this.setCachedValue(cache, key, value);
+    }
+
+    private invalidateCompositeCache(cache: Map<string, CacheEntry<boolean>>, suffix?: string) {
+        if (!suffix) {
+            cache.clear();
+            return;
+        }
+        const target = `::${suffix}`;
+        for (const key of Array.from(cache.keys())) {
+            if (key.endsWith(target)) {
+                cache.delete(key);
+            }
+        }
+    }
+
+    private makeCompositeKey(...parts: string[]): string {
+        return parts.join("::");
+    }
+}
+
+interface CacheEntry<T> {
+    value: T;
+    expiresAt: number;
 }

@@ -130,6 +130,8 @@ export class OrganizationsService extends OntologyBaseService {
         `;
 
         await this.runUpdate(update);
+        this.invalidateOrganizationOwnership();
+        this.invalidateUserGroups(ownerIri);
         return iri;
     }
 
@@ -163,6 +165,8 @@ export class OrganizationsService extends OntologyBaseService {
         `;
 
         await this.runUpdate(update);
+        this.invalidateOrganizationOwnership(orgIri);
+        if (newOwner) this.invalidateUserGroups(newOwner);
     }
 
     async deleteOrganization(requesterIri: string, orgIri: string): Promise<void> {
@@ -171,6 +175,8 @@ export class OrganizationsService extends OntologyBaseService {
         }
         const update = `DELETE WHERE { GRAPH <${this.PROJECTS_GRAPH}> { <${orgIri}> ?p ?o . } }`;
         await this.runUpdate(update);
+        this.invalidateOrganizationOwnership(orgIri);
+        this.invalidateUserGroups();
     }
 
     async addOrganizationMember(requesterIri: string, orgIri: string, userIri: string): Promise<void> {
@@ -190,6 +196,8 @@ export class OrganizationsService extends OntologyBaseService {
             }
         `;
         await this.runUpdate(update);
+        this.invalidateOrganizationOwnership(orgIri);
+        this.invalidateUserGroups(userIri);
     }
 
     async removeOrganizationMember(requesterIri: string, orgIri: string, userIri: string): Promise<void> {
@@ -228,6 +236,7 @@ export class OrganizationsService extends OntologyBaseService {
         `;
 
         await this.runUpdate(update);
+        this.invalidateOrganizationOwnership(orgIri);
+        this.invalidateUserGroups(userIri);
     }
 }
-

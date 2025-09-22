@@ -89,6 +89,8 @@ export class GroupsService extends OntologyBaseService {
         `;
 
         await this.runUpdate(update);
+        members.forEach((member) => this.invalidateUserGroups(member));
+        this.invalidateGroupOwnership();
         return iri;
     }
 
@@ -101,6 +103,8 @@ export class GroupsService extends OntologyBaseService {
             INSERT DATA { <${groupIri}> core:hasMember <${memberIri}> . }
         `;
         await this.runUpdate(update);
+        this.invalidateUserGroups(memberIri);
+        this.invalidateGroupOwnership(groupIri);
     }
 
     async removeGroupMember(requesterIri: string, groupIri: string, memberIri: string): Promise<void> {
@@ -112,6 +116,8 @@ export class GroupsService extends OntologyBaseService {
             DELETE DATA { <${groupIri}> core:hasMember <${memberIri}> . }
         `;
         await this.runUpdate(update);
+        this.invalidateUserGroups(memberIri);
+        this.invalidateGroupOwnership(groupIri);
     }
 
     async updateGroupLabel(requesterIri: string, groupIri: string, newLabel?: string): Promise<void> {
@@ -127,6 +133,7 @@ export class GroupsService extends OntologyBaseService {
             WHERE  { OPTIONAL { <${groupIri}> rdfs:label ?l . } }
         `;
         await this.runUpdate(update);
+        this.invalidateGroupOwnership(groupIri);
     }
 
     async updateGroupOrganization(requesterIri: string, groupIri: string, newOrgIri: string): Promise<void> {
@@ -140,6 +147,8 @@ export class GroupsService extends OntologyBaseService {
             WHERE  { OPTIONAL { <${groupIri}> core:inOrganization ?o . } }
         `;
         await this.runUpdate(update);
+        this.invalidateGroupOwnership(groupIri);
+        this.invalidateUserGroups();
     }
 
     async deleteGroup(requesterIri: string, groupIri: string): Promise<void> {
@@ -148,6 +157,7 @@ export class GroupsService extends OntologyBaseService {
         }
         const update = `DELETE WHERE { <${groupIri}> ?p ?o . }`;
         await this.runUpdate(update);
+        this.invalidateGroupOwnership(groupIri);
+        this.invalidateUserGroups();
     }
 }
-
