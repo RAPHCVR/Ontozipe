@@ -7,6 +7,7 @@ import { useApi } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
 import { PaperAirplaneIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
+import { useOntologies } from "../hooks/apiQueries";
 
 type ChatMsg = { role: "user" | "assistant"; content: string, agentSteps?: AgentStep[] };
 type Ontology = { iri: string; label?: string };
@@ -30,9 +31,9 @@ const formatObservation = (obs: unknown): string => {
 export default function AssistantPage() {
     const api = useApi();
     const { token } = useAuth();
-    const [ontos, setOntos] = useState<Ontology[]>([]);
+    const ontologiesQuery = useOntologies();
+    const ontos = (ontologiesQuery.data ?? []) as Ontology[];
     const [activeIri, setActiveIri] = useState<string>("");
-    const [loadingOntos, setLoadingOntos] = useState(true);
     const [systemPrompt, setSystemPrompt] = useState<string>("");
     const [systemPromptLoading, setSystemPromptLoading] = useState<boolean>(false);
     const [messages, setMessages] = useState<ChatMsg[]>([
@@ -46,7 +47,6 @@ export default function AssistantPage() {
     const base = useMemo(() => (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, ""), []);
     // Identifiant de session de conversation côté client (par onglet/page)
     const sessionId = useMemo(() => uuidv4(), []);
-    useEffect(() => { setLoadingOntos(true); api(`/ontologies`).then((r) => r.json()).then(setOntos).finally(() => setLoadingOntos(false)); }, [api]);
     useEffect(() => { if (!activeIri && ontos.length > 0) { setActiveIri(ontos[0].iri); } }, [ontos, activeIri]);
 
     // Charge la prompt système initiale (lecture seule) pour l'utilisateur/ontologie active
@@ -170,6 +170,14 @@ export default function AssistantPage() {
     const containerRef = useRef<HTMLDivElement>(null);
     useEffect(() => { if (containerRef.current) { containerRef.current.scrollTop = containerRef.current.scrollHeight; } }, [messages]);
 
+    if (ontologiesQuery.isError) {
+        return (
+            <div className="flex items-center justify-center h-screen text-red-500">
+                Erreur lors du chargement des ontologies disponibles.
+            </div>
+        );
+    }
+
     return (
         <div className="container mx-auto max-w-5xl w-full flex flex-col gap-4">
             <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-2 mt-4">
@@ -177,7 +185,7 @@ export default function AssistantPage() {
                 <div className="flex items-center gap-2">
                     <label className="text-sm">Ontologie:</label>
                     <select
-                        disabled={loadingOntos}
+                        disabled={ontologiesQuery.isLoading}
                         className="input min-w-[20rem]"
                         value={activeIri}
                         onChange={(e) => setActiveIri(e.target.value)}
