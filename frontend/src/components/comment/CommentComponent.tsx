@@ -9,7 +9,8 @@ dayjs.extend(relativeTime);
 /**
  * Bloc de commentaire (style StackOverflow) – gère récursivement ses réponses.
  */
-const CommentBlock: React.FC<{
+// Removed duplicate CommentBlock declaration
+type CommentBlockProps = {
 	comment: CommentNode;
 	allComments: CommentNode[];
 	snapshot: Snapshot;
@@ -18,7 +19,10 @@ const CommentBlock: React.FC<{
 	onDelete: (comment: CommentNode) => void;
 	currentUserIri: string;
 	level?: number;
-}> = ({
+	renderBody?: (body: string) => React.ReactNode;
+};
+
+const CommentBlock: React.FC<CommentBlockProps> = ({
 	comment,
 	allComments,
 	snapshot,
@@ -27,6 +31,7 @@ const CommentBlock: React.FC<{
 	onDelete,
 	currentUserIri,
 	level = 0,
+	renderBody,
 }) => {
 	const replies = allComments.filter((c) => c.replyTo === comment.id);
 	const [showReplies, setShowReplies] = useState(false);
@@ -74,13 +79,12 @@ const CommentBlock: React.FC<{
 								onClick={() => {
 									setEditing(false);
 									if (draft.trim() && draft.trim() !== comment.body) {
-										onEdit(comment, draft.trim());
-									}
-								}}
-								title="Envoyer"
-								className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded">
-								📤
-							</button>
+										   onEdit(comment, draft.trim());
+									   }
+								   }}
+								   className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded">
+									   📤
+								   </button>
 							<button
 								onClick={() => {
 									setEditing(false);
@@ -92,9 +96,11 @@ const CommentBlock: React.FC<{
 							</button>
 						</div>
 					</div>
-				) : (
-					<p className="whitespace-pre-wrap">{comment.body}</p>
-				)}
+				   ) : (
+					   <p className="whitespace-pre-wrap">
+						   {renderBody ? renderBody(comment.body) : comment.body}
+					   </p>
+				   )}
 				<div className="flex items-center gap-3 text-xs text-sky-600">
 					<button onClick={() => setReplying((v) => !v)} title="Répondre">
 						Repondre

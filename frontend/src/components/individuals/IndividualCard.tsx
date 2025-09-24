@@ -7,6 +7,30 @@ import CommentBlock from "../comment/CommentComponent";
 import { v4 as uuidv4 } from "uuid";
 import { useApi } from "../../lib/api";
 
+// Fonction utilitaire pour transformer [PDF:nom.pdf] en lien cliquable
+export function renderCommentWithPdfLinks(text: string, pdfs: { url: string, originalName: string }[]) {
+	return text.split(/(\[PDF:[^\]]+\])/g).map((part, i) => {
+		const match = part.match(/^\[PDF:(.+)\]$/);
+		if (match) {
+			const pdf = pdfs.find(p => p.originalName === match[1]);
+			if (pdf) {
+				return (
+					<a
+						key={i}
+						href={pdf.url}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-blue-700 hover:underline"
+					>
+						{pdf.originalName}
+					</a>
+				);
+			}
+		}
+		return part;
+	});
+}
+
 const IndividualCard: React.FC<{
 	ind: IndividualNode;
 	snapshot: Snapshot;
@@ -115,6 +139,33 @@ const IndividualCard: React.FC<{
 
 	// saisie rapide d'un nouveau commentaire
 	const [draftComment, setDraftComment] = useState("");
+	const [showPdfAutocomplete, setShowPdfAutocomplete] = useState(false);
+	const [pdfAutocompleteOptions, setPdfAutocompleteOptions] = useState(pdfs);
+	const [pdfAutocompleteIndex, setPdfAutocompleteIndex] = useState(0);
+
+	// Détecte le déclencheur d'autocomplétion
+	const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+		const val = e.target.value;
+		setDraftComment(val);
+		// Déclenche si @pdf ou [PDF: est tapé
+		const trigger = /(@pdf|\[PDF:?)$/i;
+		if (trigger.test(val)) {
+			setShowPdfAutocomplete(true);
+			setPdfAutocompleteOptions(pdfs);
+			setPdfAutocompleteIndex(0);
+		} else {
+			setShowPdfAutocomplete(false);
+		}
+	};
+
+	// Insertion de la mention PDF dans le commentaire
+	const insertPdfMention = (pdf: typeof pdfs[number]) => {
+		// Remplace le dernier @pdf ou [PDF: par la balise
+		setDraftComment((prev) =>
+			prev.replace(/(@pdf|\[PDF:?)$/i, `[PDF:${pdf.originalName}]`)
+		);
+		setShowPdfAutocomplete(false);
+	};
 
 	// helper: refresh from API after mutation
 	const fetchComments = async () => {
@@ -362,13 +413,49 @@ const IndividualCard: React.FC<{
 						</h4>
 						{/* zone de saisie */}
 						<div className="flex items-start gap-2 mb-2">
-							<textarea
-								value={draftComment}
-								onChange={(e) => setDraftComment(e.target.value)}
-								placeholder="Ajouter un commentaire…"
-								rows={2}
-								className="flex-1 text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none"
-							/>
+							<div className="relative w-full">
+								<textarea
+									value={draftComment}
+									onChange={handleCommentChange}
+									placeholder="Ajouter un commentaire…"
+									rows={2}
+									className="flex-1 text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none w-full"
+									onKeyDown={(e) => {
+										if (showPdfAutocomplete && pdfAutocompleteOptions.length > 0) {
+											if (e.key === "ArrowDown") {
+												e.preventDefault();
+												setPdfAutocompleteIndex((i) => (i + 1) % pdfAutocompleteOptions.length);
+											} else if (e.key === "ArrowUp") {
+												e.preventDefault();
+												setPdfAutocompleteIndex((i) => (i - 1 + pdfAutocompleteOptions.length) % pdfAutocompleteOptions.length);
+											} else if (e.key === "Enter") {
+												e.preventDefault();
+												insertPdfMention(pdfAutocompleteOptions[pdfAutocompleteIndex]);
+											} else if (e.key === "Escape") {
+												setShowPdfAutocomplete(false);
+											}
+										}
+									}}
+								/>
+								{showPdfAutocomplete && pdfAutocompleteOptions.length > 0 && (
+									<ul className="absolute left-0 top-full z-50 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded shadow w-64 max-h-40 overflow-auto text-xs mt-1">
+										{pdfAutocompleteOptions.map((pdf, idx) => (
+											<li
+												key={pdf.url}
+												className={
+													"px-2 py-1 cursor-pointer " +
+													(idx === pdfAutocompleteIndex
+														? "bg-indigo-600 text-white"
+														: "hover:bg-indigo-100 dark:hover:bg-slate-700")
+												}
+												onMouseDown={() => insertPdfMention(pdf)}
+											>
+												{pdf.originalName}
+											</li>
+										))}
+									</ul>
+								)}
+							</div>
 							<button
 								disabled={!draftComment.trim()}
 								onClick={() => {
@@ -381,24 +468,25 @@ const IndividualCard: React.FC<{
 								Envoyer
 							</button>
 						</div>
-						<div>
-							{comments
-								.filter((c) => !c.replyTo)
-								.map((c) => (
-									<CommentBlock
-										key={c.id}
-										comment={c}
-										allComments={comments}
-										snapshot={snapshot}
-										onAddReply={(parent, body) =>
-											handleCreateComment(body, parent)
-										}
-										onEdit={handleEditComment}
-										onDelete={handleDeleteComment}
-										currentUserIri={currentUserIri || ""}
-									/>
-								))}
-						</div>
+												<div>
+													{comments
+														.filter((c) => !c.replyTo)
+														.map((c) => (
+															<CommentBlock
+																key={c.id}
+																comment={c}
+																allComments={comments}
+																snapshot={snapshot}
+																onAddReply={(parent, body) =>
+																	handleCreateComment(body, parent)
+																}
+																onEdit={handleEditComment}
+																onDelete={handleDeleteComment}
+																currentUserIri={currentUserIri || ""}
+																renderBody={(body: string) => renderCommentWithPdfLinks(body, pdfs)}
+															/>
+														))}
+												</div>
 					</div>
 
 					{dataProps.length === 0 && relProps.length === 0 && (
