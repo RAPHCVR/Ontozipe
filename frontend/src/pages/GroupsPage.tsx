@@ -1,10 +1,17 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { XMarkIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { useQueryClient } from "@tanstack/react-query";
 // util pour encoder un IRI dans les URL
 const enc = encodeURIComponent;
 import { useApi } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
+import {
+    useGroups,
+    useOrganizationMembers,
+    useOrganizations,
+    useProfile,
+} from "../hooks/apiQueries";
 
 type Group = {
     iri: string;
@@ -17,51 +24,52 @@ type Group = {
 type GroupDetails = Group & { members: string[] };
 
 export default function GroupsPage() {
+    const queryClient = useQueryClient();
     const api = useApi();
     const { user } = useAuth();
     const currentUserIri = user?.sub;
-    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-    const [isRolesLoaded, setIsRolesLoaded] = useState(false);
-    const [groups, setGroups] = useState<Group[]>([]);
+
+    const profileQuery = useProfile();
+    const roles = profileQuery.data?.roles ?? [];
+    const isSuperAdmin = roles.some((r) => r.endsWith("SuperAdminRole"));
+    const isRolesLoaded = !profileQuery.isLoading && !profileQuery.isFetching;
+
+    const groupsQuery = useGroups();
+    const groups = useMemo(
+        () =>
+            (groupsQuery.data ?? []).map(
+                (g: any): Group => ({
+                    iri: g.iri,
+                    label: g.label,
+                    createdBy: g.createdBy,
+                    members: g.members ?? [],
+                    organizationIri: g.organizationIri,
+                })
+            ),
+        [groupsQuery.data]
+    );
+
+    const organizationsScope = isSuperAdmin ? "all" : "mine";
+    const organizationsQuery = useOrganizations(organizationsScope, {
+        enabled: isRolesLoaded,
+    });
+    const organizations = useMemo(
+        () =>
+            (organizationsQuery.data ?? []).map((org: any) => ({
+                iri: org.iri,
+                label: org.label ?? org.iri.split(/[#/]/).pop() ?? org.iri,
+            })),
+        [organizationsQuery.data]
+    );
+
     const [showNew, setShowNew] = useState(false);
     const [selected, setSelected] = useState<GroupDetails | null>(null);
 
-    const load = useCallback(() =>
-        api("/ontology/groups")
-            .then((r) => r.json())
-            .then((data) =>
-                setGroups(
-                    data.map((g: any) => ({
-                        iri: g.iri,
-                        label: g.label,
-                        createdBy: g.createdBy,
-                        members: g.members ?? [],
-                        organizationIri: g.organizationIri,
-                    }))
-                )
-            ), [api]);
+    const refreshGroups = () =>
+        queryClient.invalidateQueries({ queryKey: ["groups"] });
 
-    useEffect(() => {
-        if (!currentUserIri) return;
-
-        api("/auth/me")
-            .then(res => res.json())
-            .then(profile => {
-                const roles: string[] = profile.roles || [];
-                setIsSuperAdmin(roles.some(r => r.endsWith("SuperAdminRole")));
-            })
-            .catch(e => {
-                console.error("Impossible de déterminer les rôles", e);
-                setIsSuperAdmin(false);
-            })
-            .finally(() => {
-                setIsRolesLoaded(true);
-            });
-    }, [api, currentUserIri]);
-
-    useEffect(() => {
-        load();
-    }, [load]);
+    const refreshOrganizations = () =>
+        queryClient.invalidateQueries({ queryKey: ["organizations", organizationsScope] });
 
     return (
         <div className="container mx-auto py-8 space-y-6">
@@ -94,11 +102,11 @@ export default function GroupsPage() {
                                         className="text-red-600 text-sm"
                                         onClick={() =>
                                             api(
-                                                `/ontology/groups/${encodeURIComponent(
+                                                `/groups/${encodeURIComponent(
                                                     g.iri
                                                 )}`,
                                                 { method: "DELETE" }
-                                            ).then(load)
+                                            ).then(refreshGroups)
                                         }>
                                         🗑
                                     </button>
@@ -115,9 +123,13 @@ export default function GroupsPage() {
             {showNew && (
                 <GroupFormModal
                     currentUserIri={currentUserIri!}
-                    isSuperAdmin={isSuperAdmin}
+                    organizations={organizations}
+                    organizationsLoading={organizationsQuery.isLoading}
                     onClose={() => setShowNew(false)}
-                    onSaved={load}
+                    onSaved={() => {
+                        refreshGroups();
+                        refreshOrganizations();
+                    }}
                 />
             )}
 
@@ -125,9 +137,12 @@ export default function GroupsPage() {
                 <GroupDetailsModal
                     group={selected}
                     currentUserIri={currentUserIri!}
-                    isSuperAdmin={isSuperAdmin}
+                    organizations={organizations}
                     onClose={() => setSelected(null)}
-                    onReload={load}
+                    onReload={() => {
+                        refreshGroups();
+                        refreshOrganizations();
+                    }}
                 />
             )}
         </div>
@@ -143,83 +158,73 @@ interface PersonOption {
 
 function GroupFormModal({
                             currentUserIri,
-                            isSuperAdmin,
+                            organizations,
+                            organizationsLoading,
                             onClose,
                             onSaved,
                         }: {
     currentUserIri: string;
-    isSuperAdmin: boolean;
+    organizations: { iri: string; label: string }[];
+    organizationsLoading: boolean;
     onClose: () => void;
     onSaved: () => void;
 }) {
     const api = useApi();
-
     const [label, setLabel] = useState("");
-    const [organizations, setOrganizations] = useState<
-        { iri: string; label: string }[]
-    >([]);
     const [selectedOrg, setSelectedOrg] = useState<string>("");
-    const [allPersons, setAllPersons] = useState<PersonOption[]>([]);
     const [selected, setSelected] = useState<string[]>([]);
 
-    const disabled = label.trim() === "";
+    const disabled = label.trim() === "" || !selectedOrg;
 
-    /* Charge les organisations accessibles */
     useEffect(() => {
-        (async () => {
-            const url = isSuperAdmin
-                ? "/ontology/organizations"
-                : "/ontology/organizations?mine=true";
-            const res = await api(url);
-            const data = await res.json();
-            console.log("Organisations:", isSuperAdmin, data);
-            setOrganizations(
-                data.map((o: any) => {
-                    const iri: string = o.id ?? o.iri;
-                    return {
-                        iri,
-                        // si aucun label, on dérive le nom depuis l’IRI
-                        label: o.label ?? iri.split(/[#/]/).pop(),
-                    };
-                })
-            );
-        })();
-    }, [isSuperAdmin, api]);
+        if (!selectedOrg && organizations.length > 0) {
+            setSelectedOrg(organizations[0].iri);
+        }
+    }, [organizations, selectedOrg]);
 
-    /* Quand une organisation est choisie, charger ses membres */
+    const { data: members = [], isFetching: membersLoading } = useOrganizationMembers(
+        selectedOrg,
+        { enabled: Boolean(selectedOrg) }
+    );
+
+    const personOptions = useMemo<PersonOption[]>(
+        () =>
+            members.map((u: any) => {
+                const iri: string = u.id ?? u.iri;
+                const email = u.properties?.find((p: any) =>
+                    p.predicate?.endsWith("#email")
+                )?.value;
+                return {
+                    id: iri,
+                    label: u.label ?? iri.split(/[#/]/).pop(),
+                    display: email ?? u.label ?? iri.split(/[#/]/).pop(),
+                };
+            }),
+        [members]
+    );
+
     useEffect(() => {
-        if (!selectedOrg) return;
-        (async () => {
-            const res = await api(
-                `/ontology/organizations/${enc(
-                    selectedOrg
-                )}/members`
+        if (!selectedOrg) {
+            setSelected([]);
+            return;
+        }
+        setSelected((prev) => {
+            const hasCurrent = prev.includes(currentUserIri);
+            const memberListHasCurrent = members.some(
+                (u: any) => (u.id ?? u.iri) === currentUserIri
             );
-            const data = await res.json();
-            setAllPersons(
-                data.map((u: any) => {
-                    const iri: string = u.id ?? u.iri;
-                    const email = u.properties?.find((p: any) =>
-                        p.predicate?.endsWith("#email")
-                    )?.value;
-                    return {
-                        id: iri,
-                        label: u.label ?? iri.split(/[#/]/).pop(),
-                        display: email ?? u.label ?? iri.split(/[#/]/).pop(),
-                    };
-                })
-            );
-            // Pré‑sélectionner le créateur s’il appartient à l’orga
-            setSelected(
-                data.find((u: any) => (u.id ?? u.iri) === currentUserIri)
-                    ? [currentUserIri]
-                    : []
-            );
-        })();
-    }, [selectedOrg, api, currentUserIri]);
+            if (memberListHasCurrent && !hasCurrent) {
+                return [...prev, currentUserIri];
+            }
+            if (!memberListHasCurrent && hasCurrent) {
+                return prev.filter((id) => id !== currentUserIri);
+            }
+            return prev;
+        });
+    }, [members, currentUserIri, selectedOrg]);
 
     const save = () =>
-        api("/ontology/groups", {
+        api("/groups", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -236,19 +241,18 @@ function GroupFormModal({
                 <h3 className="font-semibold text-lg">Nouveau groupe</h3>
 
                 {/* --- Organisation selector --- */}
-                {organizations.length > 0 && (
-                    <select
-                        className="input w-full"
-                        value={selectedOrg}
-                        onChange={(e) => setSelectedOrg(e.target.value)}>
-                        <option value="">— Choisir une organisation —</option>
-                        {organizations.map((o) => (
-                            <option key={o.iri} value={o.iri}>
-                                {o.label}
-                            </option>
-                        ))}
-                    </select>
-                )}
+                <select
+                    className="input w-full"
+                    value={selectedOrg}
+                    onChange={(e) => setSelectedOrg(e.target.value)}
+                    disabled={organizationsLoading || organizations.length === 0}>
+                    <option value="">— Choisir une organisation —</option>
+                    {organizations.map((o) => (
+                        <option key={o.iri} value={o.iri}>
+                            {o.label}
+                        </option>
+                    ))}
+                </select>
 
                 {/* --- Nom du groupe --- */}
                 <input
@@ -260,7 +264,17 @@ function GroupFormModal({
 
                 {selectedOrg && (
                     <div className="space-y-1 max-h-40 overflow-y-auto border rounded p-2">
-                        {allPersons.map((p) => (
+                        {membersLoading && (
+                            <p className="text-xs text-gray-500">
+                                Chargement des membres…
+                            </p>
+                        )}
+                        {!membersLoading && personOptions.length === 0 && (
+                            <p className="text-xs text-gray-500">
+                                Aucun membre disponible pour cette organisation.
+                            </p>
+                        )}
+                        {personOptions.map((p) => (
                             <label
                                 key={p.id}
                                 className={`flex items-center gap-2 text-xs p-1 rounded cursor-pointer ${
@@ -306,80 +320,55 @@ function GroupFormModal({
 function GroupDetailsModal({
                                group,
                                currentUserIri,
-                               isSuperAdmin,
+                               organizations,
                                onClose,
                                onReload,
                            }: {
     group: GroupDetails & { organizationIri?: string };
     currentUserIri: string;
-    isSuperAdmin: boolean;
+    organizations: { iri: string; label: string }[];
     onClose: () => void;
     onReload: () => void;
 }) {
     const api = useApi();
+    const queryClient = useQueryClient();
     const isOwner = group.createdBy === currentUserIri;
 
     const [label, setLabel] = useState(group.label);
     const [members, setMembers] = useState<string[]>(group.members);
-
-    const [organizations, setOrganizations] = useState<
-        { iri: string; label: string }[]
-    >([]);
     const [selectedOrg, setSelectedOrg] = useState(group.organizationIri ?? "");
 
-    const [allPersons, setAllPersons] = useState<PersonOption[]>([]);
-
     useEffect(() => {
-        (async () => {
-            const url = isSuperAdmin
-                ? "/ontology/organizations"
-                : "/ontology/organizations?mine=true";
-            const res = await api(url);
-            const data = await res.json();
-            setOrganizations(
-                data.map((o: any) => {
-                    const iri: string = o.id ?? o.iri;
-                    return {
-                        iri,
-                        label: o.label ?? iri.split(/[#/]/).pop(),
-                    };
-                })
-            );
-        })();
-    }, [isSuperAdmin, api]);
-
-    useEffect(() => {
-        if (!selectedOrg) {
-            setAllPersons([]);
-            return;
+        if (!selectedOrg && organizations.length > 0) {
+            setSelectedOrg(organizations[0].iri);
         }
-        (async () => {
-            const res = await api(
-                `/ontology/organizations/${enc(
-                    selectedOrg
-                )}/members`
-            );
-            const data = await res.json();
-            setAllPersons(
-                data.map((u: any) => {
-                    const iri: string = u.id ?? u.iri;
-                    const email = u.properties?.find((p: any) =>
-                        p.predicate?.endsWith("#email")
-                    )?.value;
-                    return {
-                        id: iri,
-                        display: email ?? u.label ?? iri.split(/[#/]/).pop(),
-                    };
-                })
-            );
-        })();
-    }, [selectedOrg, api]);
+    }, [organizations, selectedOrg]);
+
+    const { data: orgMembers = [], isFetching: memberOptionsLoading } = useOrganizationMembers(
+        selectedOrg,
+        { enabled: Boolean(selectedOrg) }
+    );
+
+    const personOptions = useMemo<PersonOption[]>(
+        () =>
+            orgMembers.map((u: any) => {
+                const iri: string = u.id ?? u.iri;
+                const email = u.properties?.find((p: any) =>
+                    p.predicate?.endsWith("#email")
+                )?.value;
+                return {
+                    id: iri,
+                    display: email ?? u.label ?? iri.split(/[#/]/).pop(),
+                };
+            }),
+        [orgMembers]
+    );
 
     /* ----- Mutations ----- */
     const patchLabel = async () => {
         if (label === group.label) return;
         await api(
-            `/ontology/groups/${encodeURIComponent(group.iri)}`,
+            `/groups/${encodeURIComponent(group.iri)}`,
             {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -390,7 +379,7 @@ function GroupDetailsModal({
 
     const addMember = async (personIri: string) => {
         await api(
-            `/ontology/groups/${encodeURIComponent(
+            `/groups/${encodeURIComponent(
                 group.iri
             )}/members`,
             {
@@ -399,17 +388,23 @@ function GroupDetailsModal({
                 body: JSON.stringify({ userIri: personIri }),
             }
         );
-        setMembers((m) => [...m, personIri]);
+        setMembers((m) => [...new Set([...m, personIri])]);
+        await queryClient.invalidateQueries({
+            queryKey: ["organizations", "members", selectedOrg],
+        });
     };
 
     const removeMember = async (personIri: string) => {
         await api(
-            `/ontology/groups/${encodeURIComponent(
+            `/groups/${encodeURIComponent(
                 group.iri
             )}/members/${encodeURIComponent(personIri)}`,
             { method: "DELETE" }
         );
         setMembers((m) => m.filter((x) => x !== personIri));
+        await queryClient.invalidateQueries({
+            queryKey: ["organizations", "members", selectedOrg],
+        });
     };
 
     const saveAndClose = async () => {
@@ -418,7 +413,7 @@ function GroupDetailsModal({
                 if (label !== group.label) await patchLabel();
                 if (selectedOrg && selectedOrg !== group.organizationIri) {
                     await api(
-                        `/ontology/groups/${encodeURIComponent(
+                        `/groups/${encodeURIComponent(
                             group.iri
                         )}`,
                         {
@@ -427,6 +422,9 @@ function GroupDetailsModal({
                             body: JSON.stringify({ organizationIri: selectedOrg }),
                         }
                     );
+                    await queryClient.invalidateQueries({
+                        queryKey: ["organizations", "members", selectedOrg],
+                    });
                 }
             }
             onReload();
@@ -473,7 +471,7 @@ function GroupDetailsModal({
                     <label className="block text-sm font-medium">Membres</label>
                     <ul className="space-y-1 border rounded p-2">
                         {members.map((m) => {
-                            const person = allPersons.find(
+                            const person = personOptions.find(
                                 (p) => p.id.toLowerCase() === m.toLowerCase()
                             );
                             const display = person?.display || formatLabel(m);
@@ -514,9 +512,10 @@ function GroupDetailsModal({
                                     if (!iri) return;
                                     addMember(iri);
                                     e.target.value = "";
-                                }}>
+                                }}
+                                disabled={memberOptionsLoading}>
                                 <option value="">— choisir —</option>
-                                {allPersons
+                                {personOptions
                                     .filter((p) => !members.includes(p.id))
                                     .map((p) => (
                                         <option key={p.id} value={p.id}>
@@ -534,7 +533,7 @@ function GroupDetailsModal({
                             className="btn-secondary text-red-600 border-red-400 hover:bg-red-50"
                             onClick={async () => {
                                 await api(
-                                    `/ontology/groups/${encodeURIComponent(
+                                    `/groups/${encodeURIComponent(
                                         group.iri
                                     )}`,
                                     { method: "DELETE" }

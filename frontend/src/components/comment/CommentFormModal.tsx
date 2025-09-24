@@ -13,9 +13,11 @@ export default function CommentFormModal({
 }) {
 	const api = useApi();
 	const [text, setText] = useState("");
+	const params = new URLSearchParams(window.location.search);
+	const ontologyIri = params.get("iri") || "";
 
 	const save = () =>
-		api("/ontology/individuals", {
+		api("/individuals", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
@@ -34,6 +36,7 @@ export default function CommentFormModal({
 						isLiteral: false,
 					},
 				],
+				ontologyIri,
 			}),
 		})
 			.then(onSaved)

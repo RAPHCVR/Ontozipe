@@ -89,7 +89,7 @@ const IndividualCard: React.FC<{
 
 	// helper: refresh from API after mutation
 	const fetchComments = async () => {
-		const url = `/ontology/comments?resource=${encodeURIComponent(
+		const url = `/comments?resource=${encodeURIComponent(
 			ind.id
 		)}&ontology=${encodeURIComponent(ontologyIri)}`;
 		const res = await api(url);
@@ -108,7 +108,7 @@ const IndividualCard: React.FC<{
 			replyTo: parent?.id,
 			ontologyIri: ontologyIri,
 		};
-		await api("/ontology/comments", {
+		await api("/comments", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(payload),
@@ -119,7 +119,7 @@ const IndividualCard: React.FC<{
 	// UPDATE
 	const handleEditComment = async (comment: CommentNode, body: string) => {
 		await api(
-			`/ontology/comments/${encodeURIComponent(
+			`/comments/${encodeURIComponent(
 				comment.id
 			)}`,
 			{
@@ -137,7 +137,7 @@ const IndividualCard: React.FC<{
 	// DELETE
 	const handleDeleteComment = async (comment: CommentNode) => {
 		await api(
-			`/ontology/comments/${encodeURIComponent(
+			`/comments/${encodeURIComponent(
 				comment.id
 			)}?ontology=${encodeURIComponent(ontologyIri)}`,
 			{ method: "DELETE" }

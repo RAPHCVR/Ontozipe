@@ -1,67 +1,54 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { useApi } from "../lib/api";
 import SimpleModal from "../components/SimpleModal";
+import { useOntologies, useProfile } from "../hooks/apiQueries";
 
 type Ontology = { iri: string; label?: string };
 
 export default function HomePage() {
+    const queryClient = useQueryClient();
     const { token } = useAuth();
     const payload = token ? JSON.parse(atob(token.split(".")[1])) : {};
     const username = payload.name || payload.email || "Utilisateur";
 
-    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-    const [rolesLoaded, setRolesLoaded] = useState(false);
+    const profileQuery = useProfile();
+    const ontologiesQuery = useOntologies();
+
     const api = useApi();
     const [showNew, setShowNew] = useState(false);
     const [newLabel, setNewLabel] = useState("");
     const [newIri, setNewIri] = useState("");
     const [rdfFile, setRdfFile] = useState<File | null>(null);
-    const [ontos, setOntos] = useState<Ontology[]>([]);
-    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
-
-    const load = () => {
-        setLoading(true);
-        return api("/ontology/projects")
-            .then((r) => r.json())
-            .then(setOntos)
-            .catch((err) => {
-                console.error(err);
-                alert("Impossible de récupérer les ontologies");
-            })
-            .finally(() => setLoading(false));
-    };
 
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] || null;
         setRdfFile(file);
     };
 
-    useEffect(() => {
-        load();
-    }, []);
+    const roles = profileQuery.data?.roles ?? [];
+    const isSuperAdmin = roles.some((r) => r.endsWith("SuperAdminRole"));
+    const rolesLoaded = !profileQuery.isLoading && !profileQuery.isFetching;
 
-    useEffect(() => {
-        api("/auth/me")
-            .then(res => res.json())
-            .then(profile => {
-                const roles: string[] = profile.roles || [];
-                setIsSuperAdmin(roles.some(r => r.endsWith("SuperAdminRole")));
-            })
-            .catch(err => {
-                console.error("Échec de la récupération du profil utilisateur", err);
-            })
-            .finally(() => {
-                setRolesLoaded(true);
-            });
-    }, [api]);
+    const ontos = (ontologiesQuery.data ?? []) as Ontology[];
 
-    if (loading) {
+    if (ontologiesQuery.isLoading) {
         return (
             <div className="flex items-center justify-center h-screen">
                 Chargement…
+            </div>
+        );
+    }
+
+    if (ontologiesQuery.isError) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-sm text-red-500">
+                    Impossible de charger les ontologies.
+                </div>
             </div>
         );
     }
@@ -161,11 +148,13 @@ export default function HomePage() {
                         fd.append("label", newLabel.trim());
                         if (rdfFile) fd.append("file", rdfFile);
 
-                        api("/ontology/projects", {
+                        api("/ontologies", {
                             method: "POST",
                             body: fd,
                         })
-                            .then(load)
+                            .then(async () => {
+                                await queryClient.invalidateQueries({ queryKey: ["ontologies"] });
+                            })
                             .finally(() => {
                                 setShowNew(false);
                                 setNewLabel("");

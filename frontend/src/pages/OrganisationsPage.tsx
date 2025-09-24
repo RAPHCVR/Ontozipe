@@ -1,8 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { XMarkIcon, PlusIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { useQueryClient } from "@tanstack/react-query";
 import { useApi } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
+import {
+    useOrganizationMembers,
+    useOrganizations,
+    usePersons,
+    useProfile,
+} from "../hooks/apiQueries";
 
 type Organisation = {
     iri: string;
@@ -16,57 +23,55 @@ type OrganisationDetails = Organisation;
 /** Page de gestion des organisations (super‑admin only) */
 export default function OrganisationsPage() {
     const api = useApi();
+    const queryClient = useQueryClient();
     const { user } = useAuth();
     const currentUserIri = user?.sub;
-    const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null); // null = inconnu
-    const [orgs, setOrgs] = useState<Organisation[]>([]);
+
+    const profileQuery = useProfile();
+    const roles = profileQuery.data?.roles ?? [];
+    const isSuperAdmin = roles.some((r) => r.endsWith("SuperAdminRole"));
+    const rolesLoaded = !profileQuery.isLoading && !profileQuery.isFetching;
+
+    const organizationsScope = isSuperAdmin ? "all" : "mine";
+    const organizationsQuery = useOrganizations(organizationsScope, {
+        enabled: rolesLoaded,
+    });
+    const orgs = useMemo(
+        () =>
+            (organizationsQuery.data ?? []).map(
+                (o: any): Organisation => ({
+                    iri: o.iri,
+                    label: o.label,
+                    owner: o.owner,
+                    createdAt: o.createdAt,
+                })
+            ),
+        [organizationsQuery.data]
+    );
+
+    const personsQuery = usePersons();
+    const persons = useMemo<PersonOption[]>(
+        () =>
+            (personsQuery.data ?? []).map((u: any) => ({
+                id: u.id,
+                display:
+                    u.properties?.find((p: any) => p.predicate.endsWith("#name"))
+                        ?.value ||
+                    u.properties?.find((p: any) => p.predicate.endsWith("#email"))
+                        ?.value ||
+                    u.label ||
+                    u.id.split(/[#/]/).pop(),
+            })),
+        [personsQuery.data]
+    );
+
     const [showNew, setShowNew] = useState(false);
     const [selected, setSelected] = useState<OrganisationDetails | null>(null);
-    const [persons, setPersons] = useState<PersonOption[]>([]);
 
-    const fetchOrgs = useCallback(async () => {
-        if (isSuperAdmin === null) return;
-        const url = isSuperAdmin
-            ? "/ontology/organizations"
-            : "/ontology/organizations?mine=true";
-        const data = await api(url).then((r) => r.json());
-        setOrgs(data);
-    }, [api, isSuperAdmin]);
-
-    useEffect(() => {
-        api("/auth/me")
-            .then(res => res.json())
-            .then(profile => {
-                const roles: string[] = profile.roles || [];
-                setIsSuperAdmin(roles.some(r => r.endsWith("SuperAdminRole")));
-            })
-            .catch(err => {
-                console.error("Échec de la récupération du profil utilisateur", err);
-                setIsSuperAdmin(false); // Sécurité par défaut
-            });
-    }, [api]);
-
-    useEffect(() => {
-        fetchOrgs();
-    }, [fetchOrgs]); // Se redéclenche si isSuperAdmin change
-
-    // Charge la liste de tous les utilisateurs une seule fois pour les modales
-    useEffect(() => {
-        api("/ontology/persons")
-            .then((r) => r.json())
-            .then((data) => {
-                setPersons(
-                    data.map((u: any) => ({
-                        id: u.id,
-                        display:
-                            u.properties?.find((p: any) => p.predicate.endsWith("#name"))
-                                ?.value ||
-                            u.label ||
-                            u.id.split(/[#/]/).pop(),
-                    }))
-                );
-            });
-    }, [api]);
+    const refreshOrganizations = () =>
+        queryClient.invalidateQueries({
+            queryKey: ["organizations", organizationsScope],
+        });
 
     return (
         <div className="container mx-auto py-8 space-y-6">
@@ -83,7 +88,11 @@ export default function OrganisationsPage() {
             </h1>
 
             <ul className="grid md:grid-cols-2 gap-4">
-                {orgs.map((o) => (
+                {organizationsQuery.isLoading && (
+                    <li className="text-sm text-gray-500">Chargement…</li>
+                )}
+                {!organizationsQuery.isLoading &&
+                    orgs.map((o) => (
                     <li key={o.iri} className="card space-y-2 shadow-sm">
                         <div className="flex justify-between items-center">
 							<span className="font-medium">
@@ -102,11 +111,11 @@ export default function OrganisationsPage() {
                                         className="text-red-600 text-sm"
                                         onClick={() =>
                                             api(
-                                                `/ontology/organizations/${encodeURIComponent(
+                                                `/organizations/${encodeURIComponent(
                                                     o.iri
                                                 )}`,
                                                 { method: "DELETE" }
-                                            ).then(fetchOrgs)
+                                            ).then(refreshOrganizations)
                                         }>
                                         🗑
                                     </button>
@@ -125,8 +134,9 @@ export default function OrganisationsPage() {
             {showNew && (
                 <OrganisationFormModal
                     onClose={() => setShowNew(false)}
-                    onSaved={fetchOrgs}
-                    existingPersonsEndpoint="/ontology/persons"
+                    onSaved={refreshOrganizations}
+                    persons={persons}
+                    personsLoading={personsQuery.isLoading}
                 />
             )}
 
@@ -136,8 +146,9 @@ export default function OrganisationsPage() {
                     isSuperAdmin={isSuperAdmin || false}
                     isManager={isSuperAdmin || selected.owner === currentUserIri}
                     onClose={() => setSelected(null)}
-                    onReload={fetchOrgs}
-                    existingPersonsEndpoint="/ontology/persons"
+                    onReload={refreshOrganizations}
+                    persons={persons}
+                    personsLoading={personsQuery.isLoading}
                 />
             )}
         </div>
@@ -153,42 +164,21 @@ interface PersonOption {
 function OrganisationFormModal({
                                    onClose,
                                    onSaved,
-                                   existingPersonsEndpoint,
+                                   persons,
+                                   personsLoading,
                                }: {
     onClose: () => void;
     onSaved: () => void;
-    existingPersonsEndpoint: string;
+    persons: PersonOption[];
+    personsLoading: boolean;
 }) {
     const api = useApi();
     const [label, setLabel] = useState("");
     const [owner, setOwner] = useState<string>("");
-    const [allPersons, setAllPersons] = useState<PersonOption[]>([]);
-
     const disabled = label.trim() === "" || owner === "";
 
-    const loadPersons = useCallback(async () => {
-        const res = await api(existingPersonsEndpoint);
-        const data = await res.json();
-        setAllPersons(
-            data.map((u: any) => ({
-                id: u.id,
-                display:
-                    u.properties?.find((p: any) => p.predicate.endsWith("name"))?.value ||
-                    u.properties?.find((p: any) => p.predicate.endsWith("email"))
-                        ?.value ||
-                    u.label ||
-                    u.id,
-            }))
-        );
-    }, [api, existingPersonsEndpoint]);
-
-    useEffect(() => {
-        loadPersons();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // charge une fois à l’ouverture de la modale
-
     const save = () =>
-        api("/ontology/organizations", {
+        api("/organizations", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ label, ownerIri: owner }),
@@ -209,9 +199,10 @@ function OrganisationFormModal({
                 <select
                     className="input"
                     value={owner}
-                    onChange={(e) => setOwner(e.target.value)}>
+                    onChange={(e) => setOwner(e.target.value)}
+                    disabled={personsLoading}>
                     <option value="">— Choisir un admin —</option>
-                    {allPersons.map((p) => (
+                    {persons.map((p) => (
                         <option key={p.id} value={p.id}>
                             {p.display}
                         </option>
@@ -242,96 +233,76 @@ function OrganisationDetailsModal({
                                       isManager,
                                       onClose,
                                       onReload,
-                                      existingPersonsEndpoint,
+                                      persons,
+                                      personsLoading,
                                   }: {
     org: OrganisationDetails;
     isSuperAdmin: boolean;
     isManager: boolean;
     onClose: () => void;
     onReload: () => void;
-    existingPersonsEndpoint: string;
+    persons: PersonOption[];
+    personsLoading: boolean;
 }) {
     const api = useApi();
+    const queryClient = useQueryClient();
     const [label, setLabel] = useState(org.label || "");
     const [owner, setOwner] = useState(org.owner);
-    const [allPersons, setAllPersons] = useState<PersonOption[]>([]);
-    const [members, setMembers] = useState<string[]>([]); // IRIs
+    const [members, setMembers] = useState<string[]>([]);
 
     const canEditLabelAdmin = isSuperAdmin;
-    const canManageMembers = isManager;
+    const canManageMembers = isSuperAdmin || isManager;
 
-    const loadPersons = useCallback(async () => {
-        const res = await api(existingPersonsEndpoint);
-        const data = await res.json();
-        const mapped = data.map((u: any) => ({
-            id: u.id,
-            display:
-                u.properties?.find((p: any) => p.predicate.endsWith("name"))?.value ||
-                u.properties?.find((p: any) => p.predicate.endsWith("email"))?.value ||
-                u.label ||
-                u.id,
-        }));
-        setAllPersons(mapped);
-    }, [api, existingPersonsEndpoint]);
-
-    const loadMembers = useCallback(async () => {
-        const res = await api(
-            `/ontology/organizations/${encodeURIComponent(
-                org.iri
-            )}/members`
-        );
-        const data = await res.json(); // [{ iri, label? }]
-        setMembers(data.map((m: any) => m.iri));
-    }, [api, org.iri]);
+    const { data: memberList = [], isFetching: membersLoading } = useOrganizationMembers(
+        org.iri,
+        { enabled: true }
+    );
 
     useEffect(() => {
-        loadPersons();
-        loadMembers();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [org.iri]); // se déclenche uniquement à l’affichage ou changement d’orga
+        setMembers(memberList.map((m: any) => m.iri));
+    }, [memberList]);
 
     const save = async () => {
-        const payload: any = {};
+        const payload: Record<string, unknown> = {};
         if (canEditLabelAdmin) payload.label = label;
         if (canEditLabelAdmin) payload.ownerIri = owner;
 
-        await api(
-            `/ontology/organizations/${encodeURIComponent(
-                org.iri
-            )}`,
-            {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            }
-        );
+        await api(`/organizations/${encodeURIComponent(org.iri)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
         onReload();
         onClose();
     };
 
     const addMember = async (personIri: string) => {
-        await api(
-            `/ontology/organizations/${encodeURIComponent(
-                org.iri
-            )}/members`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userIri: personIri }),
-            }
-        );
-        setMembers((m) => [...m, personIri]);
+        await api(`/organizations/${encodeURIComponent(org.iri)}/members`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userIri: personIri }),
+        });
+        setMembers((m) => [...new Set([...m, personIri])]);
+        await queryClient.invalidateQueries({
+            queryKey: ["organizations", "members", org.iri],
+        });
     };
 
     const removeMember = async (personIri: string) => {
         await api(
-            `/ontology/organizations/${encodeURIComponent(
-                org.iri
-            )}/members/${encodeURIComponent(personIri)}`,
+            `/organizations/${encodeURIComponent(org.iri)}/members/${encodeURIComponent(personIri)}`,
             { method: "DELETE" }
         );
         setMembers((m) => m.filter((x) => x !== personIri));
+        await queryClient.invalidateQueries({
+            queryKey: ["organizations", "members", org.iri],
+        });
     };
+
+    const availablePersons = useMemo(
+        () => persons.filter((p) => !members.includes(p.id)),
+        [persons, members]
+    );
 
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -356,8 +327,8 @@ function OrganisationDetailsModal({
                     className="input"
                     value={owner}
                     onChange={(e) => setOwner(e.target.value)}
-                    disabled={!canEditLabelAdmin}>
-                    {allPersons.map((p) => (
+                    disabled={!canEditLabelAdmin || personsLoading}>
+                    {persons.map((p) => (
                         <option key={p.id} value={p.id}>
                             {p.display}
                         </option>
@@ -368,7 +339,7 @@ function OrganisationDetailsModal({
                 <ul className="space-y-1 border rounded p-2 max-h-40 overflow-y-auto">
                     {members.map((m) => {
                         const disp =
-                            allPersons.find((p) => p.id === m)?.display || formatLabel(m);
+                            persons.find((p) => p.id === m)?.display || formatLabel(m);
                         return (
                             <li
                                 key={m}
@@ -385,6 +356,12 @@ function OrganisationDetailsModal({
                             </li>
                         );
                     })}
+                    {members.length === 0 && !membersLoading && (
+                        <li className="text-xs text-gray-500">Aucun membre pour l’instant.</li>
+                    )}
+                    {membersLoading && (
+                        <li className="text-xs text-gray-500">Chargement…</li>
+                    )}
                 </ul>
 
                 {canManageMembers && (
@@ -399,15 +376,14 @@ function OrganisationDetailsModal({
                                 if (!iri) return;
                                 addMember(iri);
                                 e.target.value = "";
-                            }}>
+                            }}
+                            disabled={membersLoading || personsLoading}>
                             <option value="">— choisir —</option>
-                            {allPersons
-                                .filter((p) => !members.includes(p.id))
-                                .map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                        {p.display}
-                                    </option>
-                                ))}
+                            {availablePersons.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                    {p.display}
+                                </option>
+                            ))}
                         </select>
                     </>
                 )}
@@ -417,12 +393,9 @@ function OrganisationDetailsModal({
                         <button
                             className="btn-secondary text-red-600 border-red-400 hover:bg-red-50"
                             onClick={async () => {
-                                await api(
-                                    `/ontology/organizations/${encodeURIComponent(
-                                        org.iri
-                                    )}`,
-                                    { method: "DELETE" }
-                                );
+                                await api(`/organizations/${encodeURIComponent(org.iri)}`, {
+                                    method: "DELETE",
+                                });
                                 onReload();
                                 onClose();
                             }}>
