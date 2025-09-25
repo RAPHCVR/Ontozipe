@@ -6,3 +6,5 @@ dist/
 coverage/
 fuseki_data/*
 ontologies/pizza.ttl
+.yarn
+.yarnrc.yml
