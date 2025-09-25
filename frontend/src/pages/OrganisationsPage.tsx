@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { XMarkIcon, PlusIcon, EyeIcon } from "@heroicons/react/24/outline";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
@@ -10,6 +10,7 @@ import {
     usePersons,
     useProfile,
 } from "../hooks/apiQueries";
+import { useToast } from "../hooks/toast";
 
 type Organisation = {
     iri: string;
@@ -20,12 +21,24 @@ type Organisation = {
 
 type OrganisationDetails = Organisation;
 
+type CreateOrganizationInput = {
+    label: string;
+    ownerIri: string;
+};
+
+type DeleteOrganizationInput = { iri: string };
+
+type OrganizationsMutationContext = {
+    previousOrganizations: Organisation[];
+};
+
 /** Page de gestion des organisations (super‑admin only) */
 export default function OrganisationsPage() {
     const api = useApi();
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const currentUserIri = user?.sub;
+    const { success: toastSuccess, error: toastError } = useToast();
 
     const profileQuery = useProfile();
     const roles = profileQuery.data?.roles ?? [];
@@ -61,6 +74,10 @@ export default function OrganisationsPage() {
                         ?.value ||
                     u.label ||
                     u.id.split(/[#/]/).pop(),
+                label:
+                    u.properties?.find((p: any) => p.predicate.endsWith("#name"))?.value ||
+                    u.label ||
+                    u.id.split(/[#/]/).pop() || u.id,
             })),
         [personsQuery.data]
     );
@@ -72,6 +89,94 @@ export default function OrganisationsPage() {
         queryClient.invalidateQueries({
             queryKey: ["organizations", organizationsScope],
         });
+
+    const createOrganizationMutation = useMutation<string | undefined, Error, CreateOrganizationInput, OrganizationsMutationContext>({
+        mutationFn: async ({ label, ownerIri }) => {
+            const res = await api("/organizations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ label, ownerIri }),
+            });
+            if (!res.ok) {
+                throw new Error(await res.text());
+            }
+            const contentType = res.headers.get("content-type");
+            if (contentType?.includes("application/json")) {
+                const json = await res.json();
+                return typeof json === "string" ? json : json?.iri;
+            }
+            return (await res.text()) || undefined;
+        },
+        onMutate: async ({ label, ownerIri }) => {
+            await queryClient.cancelQueries({ queryKey: ["organizations", organizationsScope] });
+            const previousOrganizations = (queryClient.getQueryData<Organisation[]>([
+                "organizations",
+                organizationsScope,
+            ]) ?? []).slice();
+            const optimistic: Organisation = {
+                iri: `temp-${Date.now()}`,
+                label,
+                owner: ownerIri,
+                createdAt: new Date().toISOString(),
+            };
+            queryClient.setQueryData<Organisation[]>(
+                ["organizations", organizationsScope],
+                [...previousOrganizations, optimistic]
+            );
+            return { previousOrganizations };
+        },
+        onError: (_error, _input, context) => {
+            if (context) {
+                queryClient.setQueryData(
+                    ["organizations", organizationsScope],
+                    context.previousOrganizations
+                );
+            }
+            toastError("Impossible de créer l'organisation.");
+        },
+        onSuccess: () => {
+            toastSuccess("Organisation créée avec succès.");
+        },
+        onSettled: () => {
+            refreshOrganizations();
+        },
+    });
+
+    const deleteOrganizationMutation = useMutation<void, Error, DeleteOrganizationInput, OrganizationsMutationContext>({
+        mutationFn: async ({ iri }) => {
+            const res = await api(`/organizations/${encodeURIComponent(iri)}`, { method: "DELETE" });
+            if (!res.ok) {
+                throw new Error(await res.text());
+            }
+        },
+        onMutate: async ({ iri }) => {
+            await queryClient.cancelQueries({ queryKey: ["organizations", organizationsScope] });
+            const previousOrganizations = (queryClient.getQueryData<Organisation[]>([
+                "organizations",
+                organizationsScope,
+            ]) ?? []).slice();
+            queryClient.setQueryData<Organisation[]>(
+                ["organizations", organizationsScope],
+                previousOrganizations.filter((org) => org.iri !== iri)
+            );
+            return { previousOrganizations };
+        },
+        onError: (_error, _input, context) => {
+            if (context) {
+                queryClient.setQueryData(
+                    ["organizations", organizationsScope],
+                    context.previousOrganizations
+                );
+            }
+            toastError("Suppression de l'organisation impossible.");
+        },
+        onSuccess: () => {
+            toastSuccess("Organisation supprimée.");
+        },
+        onSettled: () => {
+            refreshOrganizations();
+        },
+    });
 
     return (
         <div className="container mx-auto py-8 space-y-6">
@@ -105,18 +210,12 @@ export default function OrganisationsPage() {
                                     onClick={() => setSelected(o)}>
                                     <EyeIcon className="w-4 h-4" />
                                 </button>
-                                {isSuperAdmin && (
-                                    <button
+                               {isSuperAdmin && (
+                                   <button
                                         title="Supprimer"
-                                        className="text-red-600 text-sm"
-                                        onClick={() =>
-                                            api(
-                                                `/organizations/${encodeURIComponent(
-                                                    o.iri
-                                                )}`,
-                                                { method: "DELETE" }
-                                            ).then(refreshOrganizations)
-                                        }>
+                                        className="text-red-600 text-sm disabled:opacity-40"
+                                        disabled={deleteOrganizationMutation.isPending}
+                                        onClick={() => deleteOrganizationMutation.mutate({ iri: o.iri })}>
                                         🗑
                                     </button>
                                 )}
@@ -134,9 +233,12 @@ export default function OrganisationsPage() {
             {showNew && (
                 <OrganisationFormModal
                     onClose={() => setShowNew(false)}
-                    onSaved={refreshOrganizations}
+                    onCreate={async (input) => {
+                        await createOrganizationMutation.mutateAsync(input);
+                    }}
                     persons={persons}
                     personsLoading={personsQuery.isLoading}
+                    isSubmitting={createOrganizationMutation.isPending}
                 />
             )}
 
@@ -149,6 +251,10 @@ export default function OrganisationsPage() {
                     onReload={refreshOrganizations}
                     persons={persons}
                     personsLoading={personsQuery.isLoading}
+                    onDeleteOrganization={async (iri) => {
+                        await deleteOrganizationMutation.mutateAsync({ iri });
+                    }}
+                    deleting={deleteOrganizationMutation.isPending}
                 />
             )}
         </div>
@@ -157,34 +263,33 @@ export default function OrganisationsPage() {
 
 interface PersonOption {
     id: string;
+    label: string;
     display: string;
     roles?: string[];
 }
 
 function OrganisationFormModal({
                                    onClose,
-                                   onSaved,
+                                   onCreate,
                                    persons,
                                    personsLoading,
+                                   isSubmitting,
                                }: {
     onClose: () => void;
-    onSaved: () => void;
+    onCreate: (input: CreateOrganizationInput) => Promise<void>;
     persons: PersonOption[];
     personsLoading: boolean;
+    isSubmitting: boolean;
 }) {
-    const api = useApi();
     const [label, setLabel] = useState("");
     const [owner, setOwner] = useState<string>("");
     const disabled = label.trim() === "" || owner === "";
 
-    const save = () =>
-        api("/organizations", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ label, ownerIri: owner }),
-        })
-            .then(onSaved)
-            .finally(onClose);
+    const save = async () => {
+        if (disabled) return;
+        await onCreate({ label: label.trim(), ownerIri: owner });
+        onClose();
+    };
 
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -215,11 +320,11 @@ function OrganisationFormModal({
                     </button>
                     <button
                         className={`btn-primary ${
-                            disabled ? "opacity-50 cursor-not-allowed" : ""
+                            disabled || isSubmitting ? "opacity-50 cursor-not-allowed" : ""
                         }`}
-                        disabled={disabled}
+                        disabled={disabled || isSubmitting}
                         onClick={save}>
-                        Créer
+                        {isSubmitting ? "Création…" : "Créer"}
                     </button>
                 </div>
             </div>
@@ -235,6 +340,8 @@ function OrganisationDetailsModal({
                                       onReload,
                                       persons,
                                       personsLoading,
+                                      onDeleteOrganization,
+                                      deleting,
                                   }: {
     org: OrganisationDetails;
     isSuperAdmin: boolean;
@@ -243,9 +350,12 @@ function OrganisationDetailsModal({
     onReload: () => void;
     persons: PersonOption[];
     personsLoading: boolean;
+    onDeleteOrganization: (iri: string) => Promise<void>;
+    deleting: boolean;
 }) {
     const api = useApi();
     const queryClient = useQueryClient();
+    const { success: toastSuccess, error: toastError } = useToast();
     const [label, setLabel] = useState(org.label || "");
     const [owner, setOwner] = useState(org.owner);
     const [members, setMembers] = useState<string[]>([]);
@@ -267,36 +377,51 @@ function OrganisationDetailsModal({
         if (canEditLabelAdmin) payload.label = label;
         if (canEditLabelAdmin) payload.ownerIri = owner;
 
-        await api(`/organizations/${encodeURIComponent(org.iri)}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
-        onReload();
-        onClose();
+        try {
+            await api(`/organizations/${encodeURIComponent(org.iri)}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            toastSuccess("Organisation mise à jour.");
+            onReload();
+            onClose();
+        } catch (error) {
+            toastError("Mise à jour impossible.");
+        }
     };
 
     const addMember = async (personIri: string) => {
-        await api(`/organizations/${encodeURIComponent(org.iri)}/members`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userIri: personIri }),
-        });
-        setMembers((m) => [...new Set([...m, personIri])]);
-        await queryClient.invalidateQueries({
-            queryKey: ["organizations", "members", org.iri],
-        });
+        try {
+            await api(`/organizations/${encodeURIComponent(org.iri)}/members`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userIri: personIri }),
+            });
+            setMembers((m) => [...new Set([...m, personIri])]);
+            await queryClient.invalidateQueries({
+                queryKey: ["organizations", "members", org.iri],
+            });
+            toastSuccess("Membre ajouté.");
+        } catch (error) {
+            toastError("Impossible d'ajouter ce membre.");
+        }
     };
 
     const removeMember = async (personIri: string) => {
-        await api(
-            `/organizations/${encodeURIComponent(org.iri)}/members/${encodeURIComponent(personIri)}`,
-            { method: "DELETE" }
-        );
-        setMembers((m) => m.filter((x) => x !== personIri));
-        await queryClient.invalidateQueries({
-            queryKey: ["organizations", "members", org.iri],
-        });
+        try {
+            await api(
+                `/organizations/${encodeURIComponent(org.iri)}/members/${encodeURIComponent(personIri)}`,
+                { method: "DELETE" }
+            );
+            setMembers((m) => m.filter((x) => x !== personIri));
+            await queryClient.invalidateQueries({
+                queryKey: ["organizations", "members", org.iri],
+            });
+            toastSuccess("Membre retiré.");
+        } catch (error) {
+            toastError("Impossible de retirer ce membre.");
+        }
     };
 
     const availablePersons = useMemo(
@@ -391,18 +516,21 @@ function OrganisationDetailsModal({
                 <footer className="flex justify-end gap-3 pt-2">
                     {isSuperAdmin && (
                         <button
-                            className="btn-secondary text-red-600 border-red-400 hover:bg-red-50"
+                            className="btn-secondary text-red-600 border-red-400 hover:bg-red-50 disabled:opacity-40"
+                            disabled={deleting}
                             onClick={async () => {
-                                await api(`/organizations/${encodeURIComponent(org.iri)}`, {
-                                    method: "DELETE",
-                                });
-                                onReload();
-                                onClose();
+                                try {
+                                    await onDeleteOrganization(org.iri);
+                                    onReload();
+                                    onClose();
+                                } catch (error) {
+                                    /* le toast est géré par la mutation */
+                                }
                             }}>
-                            Supprimer
+                            {deleting ? "Suppression…" : "Supprimer"}
                         </button>
                     )}
-                    <button className="btn-primary" onClick={save}>
+                    <button className="btn-primary" onClick={save} disabled={deleting}>
                         Sauvegarder
                     </button>
                 </footer>

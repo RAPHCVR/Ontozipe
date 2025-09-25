@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { XMarkIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/outline";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 // util pour encoder un IRI dans les URL
 const enc = encodeURIComponent;
 import { useApi } from "../lib/api";
@@ -12,22 +12,36 @@ import {
     useOrganizations,
     useProfile,
 } from "../hooks/apiQueries";
+import { useToast } from "../hooks/toast";
 
 type Group = {
     iri: string;
-    label: string;
+    label?: string;
     members?: string[];
-    createdBy: string;
+    createdBy?: string;
     organizationIri?: string;
 };
 
 type GroupDetails = Group & { members: string[] };
+
+type CreateGroupInput = {
+    label: string;
+    organizationIri: string;
+    members: string[];
+};
+
+type DeleteGroupInput = { iri: string };
+
+type GroupsMutationContext = {
+    previousGroups: Group[];
+};
 
 export default function GroupsPage() {
     const queryClient = useQueryClient();
     const api = useApi();
     const { user } = useAuth();
     const currentUserIri = user?.sub;
+    const { success: toastSuccess, error: toastError } = useToast();
 
     const profileQuery = useProfile();
     const roles = profileQuery.data?.roles ?? [];
@@ -48,6 +62,84 @@ export default function GroupsPage() {
             ),
         [groupsQuery.data]
     );
+
+    const createGroupMutation = useMutation<string | undefined, Error, CreateGroupInput, GroupsMutationContext>({
+        mutationFn: async (input) => {
+            const res = await api("/groups", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    label: input.label,
+                    organizationIri: input.organizationIri,
+                    members: input.members,
+                }),
+            });
+            if (!res.ok) {
+                throw new Error(await res.text());
+            }
+            const contentType = res.headers.get("content-type");
+            if (contentType?.includes("application/json")) {
+                const json = await res.json();
+                return typeof json === "string" ? json : json?.iri;
+            }
+            return (await res.text()) || undefined;
+        },
+        onMutate: async (input) => {
+            await queryClient.cancelQueries({ queryKey: ["groups"] });
+            const previousGroups = (queryClient.getQueryData<Group[]>(["groups"]) ?? []).slice();
+            const optimistic: Group = {
+                iri: `temp-${Date.now()}`,
+                label: input.label,
+                createdBy: currentUserIri,
+                members: input.members,
+                organizationIri: input.organizationIri,
+            };
+            queryClient.setQueryData<Group[]>(["groups"], [...previousGroups, optimistic]);
+            return { previousGroups };
+        },
+        onError: (_error, _input, context) => {
+            if (context) {
+                queryClient.setQueryData<Group[]>(["groups"], context.previousGroups);
+            }
+            toastError("Impossible de créer le groupe.");
+        },
+        onSuccess: () => {
+            toastSuccess("Groupe créé avec succès.");
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["groups"] });
+        },
+    });
+
+    const deleteGroupMutation = useMutation<void, Error, DeleteGroupInput, GroupsMutationContext>({
+        mutationFn: async ({ iri }) => {
+            const res = await api(`/groups/${encodeURIComponent(iri)}`, { method: "DELETE" });
+            if (!res.ok) {
+                throw new Error(await res.text());
+            }
+        },
+        onMutate: async ({ iri }) => {
+            await queryClient.cancelQueries({ queryKey: ["groups"] });
+            const previousGroups = (queryClient.getQueryData<Group[]>(["groups"]) ?? []).slice();
+            queryClient.setQueryData<Group[]>(
+                ["groups"],
+                previousGroups.filter((group) => group.iri !== iri)
+            );
+            return { previousGroups };
+        },
+        onError: (_error, _input, context) => {
+            if (context) {
+                queryClient.setQueryData<Group[]>(["groups"], context.previousGroups);
+            }
+            toastError("Suppression du groupe impossible.");
+        },
+        onSuccess: () => {
+            toastSuccess("Groupe supprimé.");
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["groups"] });
+        },
+    });
 
     const organizationsScope = isSuperAdmin ? "all" : "mine";
     const organizationsQuery = useOrganizations(organizationsScope, {
@@ -86,7 +178,7 @@ export default function GroupsPage() {
                 {groups.map((g) => (
                     <li key={g.iri} className="card space-y-2 shadow-sm">
                         <div className="flex justify-between items-center">
-                            <span className="font-medium">{formatLabel(g.label)}</span>
+                            <span className="font-medium">{formatLabel(g.label ?? g.iri)}</span>
                             <div className="flex items-center gap-2">
                                 {/* Voir les membres */}
                                 <button
@@ -99,15 +191,9 @@ export default function GroupsPage() {
                                 {g.createdBy === currentUserIri && (
                                     <button
                                         title="Supprimer"
-                                        className="text-red-600 text-sm"
-                                        onClick={() =>
-                                            api(
-                                                `/groups/${encodeURIComponent(
-                                                    g.iri
-                                                )}`,
-                                                { method: "DELETE" }
-                                            ).then(refreshGroups)
-                                        }>
+                                        className="text-red-600 text-sm disabled:opacity-40"
+                                        disabled={deleteGroupMutation.isPending}
+                                        onClick={() => deleteGroupMutation.mutate({ iri: g.iri })}>
                                         🗑
                                     </button>
                                 )}
@@ -122,12 +208,13 @@ export default function GroupsPage() {
 
             {showNew && (
                 <GroupFormModal
-                    currentUserIri={currentUserIri!}
+                    currentUserIri={currentUserIri ?? ""}
                     organizations={organizations}
                     organizationsLoading={organizationsQuery.isLoading}
+                    isSubmitting={createGroupMutation.isPending}
                     onClose={() => setShowNew(false)}
-                    onSaved={() => {
-                        refreshGroups();
+                    onCreate={async (input) => {
+                        await createGroupMutation.mutateAsync(input);
                         refreshOrganizations();
                     }}
                 />
@@ -136,13 +223,17 @@ export default function GroupsPage() {
             {selected && (
                 <GroupDetailsModal
                     group={selected}
-                    currentUserIri={currentUserIri!}
+                    currentUserIri={currentUserIri ?? ""}
                     organizations={organizations}
                     onClose={() => setSelected(null)}
                     onReload={() => {
                         refreshGroups();
                         refreshOrganizations();
                     }}
+                    onDeleteGroup={async (iri) => {
+                        await deleteGroupMutation.mutateAsync({ iri });
+                    }}
+                    deleting={deleteGroupMutation.isPending}
                 />
             )}
         </div>
@@ -160,16 +251,17 @@ function GroupFormModal({
                             currentUserIri,
                             organizations,
                             organizationsLoading,
+                            isSubmitting,
                             onClose,
-                            onSaved,
+                            onCreate,
                         }: {
     currentUserIri: string;
     organizations: { iri: string; label: string }[];
     organizationsLoading: boolean;
+    isSubmitting: boolean;
     onClose: () => void;
-    onSaved: () => void;
+    onCreate: (input: CreateGroupInput) => Promise<void>;
 }) {
-    const api = useApi();
     const [label, setLabel] = useState("");
     const [selectedOrg, setSelectedOrg] = useState<string>("");
     const [selected, setSelected] = useState<string[]>([]);
@@ -223,18 +315,15 @@ function GroupFormModal({
         });
     }, [members, currentUserIri, selectedOrg]);
 
-    const save = () =>
-        api("/groups", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                label,
-                organizationIri: selectedOrg,
-                members: selected,
-            }),
-        })
-            .then(onSaved)
-            .finally(onClose);
+    const save = async () => {
+        if (disabled) return;
+        await onCreate({
+            label: label.trim(),
+            organizationIri: selectedOrg,
+            members: selected,
+        });
+        onClose();
+    };
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="card w-[26rem] space-y-4">
@@ -305,11 +394,11 @@ function GroupFormModal({
                     </button>
                     <button
                         className={`btn-primary ${
-                            disabled ? "opacity-50 cursor-not-allowed" : ""
+                            disabled || isSubmitting ? "opacity-50 cursor-not-allowed" : ""
                         }`}
                         onClick={save}
-                        disabled={disabled}>
-                        Créer
+                        disabled={disabled || isSubmitting}>
+                        {isSubmitting ? "Création…" : "Créer"}
                     </button>
                 </div>
             </div>
@@ -323,15 +412,20 @@ function GroupDetailsModal({
                                organizations,
                                onClose,
                                onReload,
+                               onDeleteGroup,
+                               deleting,
                            }: {
     group: GroupDetails & { organizationIri?: string };
     currentUserIri: string;
     organizations: { iri: string; label: string }[];
     onClose: () => void;
     onReload: () => void;
+    onDeleteGroup: (iri: string) => Promise<void>;
+    deleting: boolean;
 }) {
     const api = useApi();
     const queryClient = useQueryClient();
+    const { success: toastSuccess, error: toastError } = useToast();
     const isOwner = group.createdBy === currentUserIri;
 
     const [label, setLabel] = useState(group.label);
@@ -356,9 +450,11 @@ function GroupDetailsModal({
                 const email = u.properties?.find((p: any) =>
                     p.predicate?.endsWith("#email")
                 )?.value;
+                const fallback = iri.split(/[#/]/).pop() ?? iri;
                 return {
                     id: iri,
-                    display: email ?? u.label ?? iri.split(/[#/]/).pop(),
+                    label: u.label ?? fallback,
+                    display: email ?? u.label ?? fallback,
                 };
             }),
         [orgMembers]
@@ -378,58 +474,64 @@ function GroupDetailsModal({
     };
 
     const addMember = async (personIri: string) => {
-        await api(
-            `/groups/${encodeURIComponent(
-                group.iri
-            )}/members`,
-            {
+        try {
+            await api(`/groups/${encodeURIComponent(group.iri)}/members`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userIri: personIri }),
-            }
-        );
-        setMembers((m) => [...new Set([...m, personIri])]);
-        await queryClient.invalidateQueries({
-            queryKey: ["organizations", "members", selectedOrg],
-        });
+            });
+            setMembers((m) => [...new Set([...m, personIri])]);
+            await queryClient.invalidateQueries({
+                queryKey: ["organizations", "members", selectedOrg],
+            });
+            toastSuccess("Membre ajouté au groupe.");
+        } catch (error) {
+            toastError("Impossible d'ajouter ce membre.");
+        }
     };
 
     const removeMember = async (personIri: string) => {
-        await api(
-            `/groups/${encodeURIComponent(
-                group.iri
-            )}/members/${encodeURIComponent(personIri)}`,
-            { method: "DELETE" }
-        );
-        setMembers((m) => m.filter((x) => x !== personIri));
-        await queryClient.invalidateQueries({
-            queryKey: ["organizations", "members", selectedOrg],
-        });
+        try {
+            await api(`/groups/${encodeURIComponent(group.iri)}/members/${encodeURIComponent(personIri)}`, {
+                method: "DELETE",
+            });
+            setMembers((m) => m.filter((x) => x !== personIri));
+            await queryClient.invalidateQueries({
+                queryKey: ["organizations", "members", selectedOrg],
+            });
+            toastSuccess("Membre retiré du groupe.");
+        } catch (error) {
+            toastError("Impossible de retirer ce membre.");
+        }
     };
 
     const saveAndClose = async () => {
         try {
+            let changed = false;
             if (isOwner) {
-                if (label !== group.label) await patchLabel();
+                if (label !== group.label) {
+                    await patchLabel();
+                    changed = true;
+                }
                 if (selectedOrg && selectedOrg !== group.organizationIri) {
-                    await api(
-                        `/groups/${encodeURIComponent(
-                            group.iri
-                        )}`,
-                        {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ organizationIri: selectedOrg }),
-                        }
-                    );
+                    await api(`/groups/${encodeURIComponent(group.iri)}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ organizationIri: selectedOrg }),
+                    });
                     await queryClient.invalidateQueries({
                         queryKey: ["organizations", "members", selectedOrg],
                     });
+                    changed = true;
                 }
             }
+            if (changed) {
+                toastSuccess("Modifications enregistrées.");
+            }
             onReload();
-        } finally {
             onClose();
+        } catch (error) {
+            toastError("Impossible de mettre à jour le groupe.");
         }
     };
 
@@ -530,18 +632,18 @@ function GroupDetailsModal({
                 <footer className="flex justify-end gap-3 pt-2">
                     {deletable && (
                         <button
-                            className="btn-secondary text-red-600 border-red-400 hover:bg-red-50"
+                            className="btn-secondary text-red-600 border-red-400 hover:bg-red-50 disabled:opacity-40"
+                            disabled={deleting}
                             onClick={async () => {
-                                await api(
-                                    `/groups/${encodeURIComponent(
-                                        group.iri
-                                    )}`,
-                                    { method: "DELETE" }
-                                );
-                                onReload();
-                                onClose();
+                                try {
+                                    await onDeleteGroup(group.iri);
+                                    onReload();
+                                    onClose();
+                                } catch (error) {
+                                    /* le toast est géré par la mutation */
+                                }
                             }}>
-                            Supprimer le groupe
+                            {deleting ? "Suppression…" : "Supprimer le groupe"}
                         </button>
                     )}
                     <button className="btn-primary" onClick={saveAndClose}>
