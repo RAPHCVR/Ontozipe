@@ -119,7 +119,12 @@ const IndividualCard: React.FC<{
     const filteredProps =
         (uniqueProps || []).filter((prop) => !prop.predicate.endsWith("label")) || [];
 
-    const dataProps = filteredProps.filter((p) => p.isLiteral);
+	const dataProps = filteredProps.filter(
+		(p) =>
+			p.isLiteral &&
+			p.predicate !== "http://example.org/core#pdfUrl" &&
+			p.predicate !== "http://example.org/core#pdfOriginalName"
+	);
     const relProps  = filteredProps.filter((p) => !p.isLiteral);
 
 	const hasData = dataProps.length > 0 || relProps.length > 0;
