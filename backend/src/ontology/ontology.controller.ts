@@ -14,10 +14,11 @@ import {
     UseInterceptors,
     BadRequestException,
     UploadedFile,
+    UploadedFiles,
 } from "@nestjs/common";
 import { Request, Express } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { FileInterceptor } from "@nestjs/platform-express";
+import { FileInterceptor, FilesInterceptor } from "@nestjs/platform-express";
 import {
     IsArray,
     IsBoolean,
@@ -635,27 +636,27 @@ export class OntologyController {
      * Retourne l'URL du fichier uploadé
      */
     @Post('upload-pdf')
-    @UseInterceptors(FileInterceptor('file', {
+    @UseInterceptors(FilesInterceptor('files', 10, {
         storage: diskStorage({
             destination: './uploads',
-            filename: (req, file, cb) => {
+            filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
                 const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
                 cb(null, uniqueSuffix + extname(file.originalname));
             }
         }),
-        fileFilter: (req, file, cb) => {
+        fileFilter: (req: Request, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
             if (file.mimetype === 'application/pdf') cb(null, true);
             else cb(new BadRequestException('Seuls les fichiers PDF sont acceptés.'), false);
         }
     }))
-    uploadPdf(@UploadedFile() file: Express.Multer.File) {
-        if (!file) {
+    uploadPdfs(@UploadedFiles() files: Express.Multer.File[]) {
+        if (!files || files.length === 0) {
             throw new BadRequestException('Aucun fichier PDF reçu.');
         }
-        return {
+        return files.map(file => ({
             url: `/uploads/${file.filename}`,
             originalName: file.originalname
-        };
+        }));
     }
 
     /** Suppression d’un commentaire */

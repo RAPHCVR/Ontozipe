@@ -62,25 +62,22 @@ const IndividualFormModal: React.FC<{
 	// --- PDF Upload Handler ---
 	const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
-		if (!files) return;
-		const uploaded: PdfMeta[] = [];
+		if (!files || files.length === 0) return;
+		const formData = new FormData();
 		for (let i = 0; i < files.length; i++) {
-			const file = files[i];
-			const formData = new FormData();
-			formData.append("file", file);
-			const res = await fetch("/ontology/upload-pdf", {
-				method: "POST",
-				body: formData,
-				headers: {
-					Authorization: token ? `Bearer ${token}` : "",
-				},
-			});
-			if (res.ok) {
-				const { url, originalName } = await res.json();
-				uploaded.push({ url, originalName });
-			}
+			formData.append("files", files[i]);
 		}
-		setPdfs((prev) => [...prev, ...uploaded]);
+		const res = await fetch("/ontology/upload-pdf", {
+			method: "POST",
+			body: formData,
+			headers: {
+				Authorization: token ? `Bearer ${token}` : "",
+			},
+		});
+		if (res.ok) {
+			const uploaded = await res.json(); // tableau [{url, originalName}]
+			setPdfs((prev) => [...prev, ...uploaded]);
+		}
 	};
 	const isEdit = Boolean(initial.id);
 	const api = useApi();
