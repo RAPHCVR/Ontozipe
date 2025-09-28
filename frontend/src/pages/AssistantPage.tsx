@@ -9,13 +9,27 @@ import { formatLabel } from "../utils/formatLabel";
 import { PaperAirplaneIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
 import { useOntologies } from "../hooks/apiQueries";
 
-type ChatMsg = { role: "user" | "assistant"; content: string, agentSteps?: AgentStep[] };
+interface AgentStep {
+    id: string;
+    type: "tool_call";
+    name: string;
+    args: unknown;
+    result?: unknown;
+}
+
+type ChatMsg = { role: "user" | "assistant"; content: string; agentSteps?: AgentStep[] };
 type Ontology = { iri: string; label?: string };
-type AgentStep = { id: string; type: 'tool_call'; name: string; args: any; result?: string; };
+
+const buildToolCallStep = (payload: { id?: string; name?: string; args?: unknown }): AgentStep => ({
+    id: typeof payload.id === "string" && payload.id.trim().length > 0 ? payload.id : uuidv4(),
+    type: "tool_call",
+    name: typeof payload.name === "string" && payload.name.trim().length > 0 ? payload.name : "outil",
+    args: payload.args ?? {},
+});
 
 /**
- * Tente de parser une chaîne de caractères comme du JSON et de la formater joliment.
- * Si ce n'est pas du JSON, retourne la chaîne originale.
+ * Tente de parser une cha?f?'?,�ne de caract?f?'?,�res comme du JSON et de la formater joliment.
+ * Si ce n'est pas du JSON, retourne la cha?f?'?,�ne originale.
  */
 const formatObservation = (obs: unknown): string => {
     if (obs == null) return "";
@@ -39,17 +53,17 @@ export default function AssistantPage() {
     const [messages, setMessages] = useState<ChatMsg[]>([
         {
             role: "assistant",
-            content: "Bonjour, je suis l’assistant OntoZIPE. Posez-moi une question sur votre ontologie.",
+            content: "Bonjour, je suis l?f��??s��??z�assistant OntoZIPE. Posez-moi une question sur votre ontologie.",
         },
     ]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const base = useMemo(() => (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, ""), []);
-    // Identifiant de session de conversation côté client (par onglet/page)
+    // Identifiant de session de conversation c?f?'?,�t?f?'?,� client (par onglet/page)
     const sessionId = useMemo(() => uuidv4(), []);
     useEffect(() => { if (!activeIri && ontos.length > 0) { setActiveIri(ontos[0].iri); } }, [ontos, activeIri]);
 
-    // Charge la prompt système initiale (lecture seule) pour l'utilisateur/ontologie active
+    // Charge la prompt syst?f?'?,�me initiale (lecture seule) pour l'utilisateur/ontologie active
     useEffect(() => {
         let cancelled = false;
         setSystemPromptLoading(true);
@@ -99,53 +113,81 @@ export default function AssistantPage() {
                         case 'system_prompt':
                             if (typeof data === 'string') setSystemPrompt(data);
                             break;
-                        case 'tool_call':
-                            setMessages(prev => {
-                                const lastMsg = prev[prev.length - 1];
-                                const updatedSteps = [...(lastMsg.agentSteps || []), { id: data.id, type: 'tool_call', name: data.name, args: data.args }];
-                                const newLastMsg = { ...lastMsg, agentSteps: updatedSteps };
-                                return [...prev.slice(0, -1), newLastMsg];
-                            });
+                        case 'tool_call': {
+                            const payload = (data ?? {}) as { id?: string; name?: string; args?: unknown };
+                            const step = buildToolCallStep(payload);
+                            setMessages((prev) =>
+                                prev.map((msg, index) =>
+                                    index === prev.length - 1 && msg.role === 'assistant'
+                                        ? { ...msg, agentSteps: [...(msg.agentSteps ?? []), step] }
+                                        : msg
+                                )
+                            );
                             break;
+                        }
 
-                        case 'tool_result':
-                            setMessages(prev => {
-                                const lastMsg = prev[prev.length - 1];
-                                const currentSteps = lastMsg.agentSteps || [];
-                                const idx = currentSteps.findIndex(s => s.id === data.id);
-                                let updatedSteps;
-                                if (idx >= 0) {
-                                    updatedSteps = currentSteps.slice();
-                                    updatedSteps[idx] = { ...updatedSteps[idx], result: data.observation };
-                                } else {
-                                    // Si le tool_result arrive avant le tool_call (rare mais possible), on crée une entrée.
-                                    updatedSteps = [...currentSteps, { id: data.id, type: 'tool_call', name: data.name, args: {}, result: data.observation }];
-                                }
-                                const newLastMsg = { ...lastMsg, agentSteps: updatedSteps };
-                                return [...prev.slice(0, -1), newLastMsg];
-                            });
+                        case 'tool_result': {
+                            const payload = (data ?? {}) as { id?: string; name?: string; observation?: unknown; args?: unknown };
+                            setMessages((prev) =>
+                                prev.map((msg, index) => {
+                                    if (index !== prev.length - 1 || msg.role !== 'assistant') {
+                                        return msg;
+                                    }
+                                    const steps = [...(msg.agentSteps ?? [])];
+                                    const targetId = typeof payload.id === 'string' && payload.id.trim().length > 0 ? payload.id : undefined;
+                                    const resultValue = payload.observation ?? null;
+                                    if (targetId) {
+                                        const stepIndex = steps.findIndex((step) => step.id === targetId);
+                                        if (stepIndex >= 0) {
+                                            steps[stepIndex] = { ...steps[stepIndex], result: resultValue };
+                                            return { ...msg, agentSteps: steps };
+                                        }
+                                    }
+                                    return {
+                                        ...msg,
+                                        agentSteps: [...steps, {
+                                            id: targetId ?? uuidv4(),
+                                            type: 'tool_call',
+                                            name: typeof payload.name === 'string' && payload.name.trim().length > 0 ? payload.name : 'outil',
+                                            args: payload.args ?? {},
+                                            result: resultValue,
+                                        }],
+                                    };
+                                })
+                            );
                             break;
+                        }
 
-                        case 'chunk':
-                            setMessages((prev) => {
-                                const lastMsg = prev[prev.length - 1];
-                                const newLastMsg = { ...lastMsg, content: lastMsg.content + data };
-                                return [...prev.slice(0, -1), newLastMsg];
-                            });
+                        case 'chunk': {
+                            if (typeof data === 'string') {
+                                setMessages((prev) =>
+                                    prev.map((msg, index) =>
+                                        index === prev.length - 1 && msg.role === 'assistant'
+                                            ? { ...msg, content: msg.content + data }
+                                            : msg
+                                    )
+                                );
+                            }
                             break;
+                        }
 
                         case 'done':
                             setSending(false);
                             break;
 
-                        case 'error':
-                            console.error("Received error from server:", data);
-                            setMessages((prev) => {
-                                const lastMsg = prev[prev.length - 1];
-                                const errorMsg = { ...lastMsg, content: `Erreur du serveur: ${data}` };
-                                return [...prev.slice(0, -1), errorMsg];
-                            });
+                        case 'error': {
+                            const message = typeof data === 'string' ? data : 'Erreur du serveur.';
+                            console.error('Received error from server:', data);
+                            setMessages((prev) =>
+                                prev.map((msg, index) =>
+                                    index === prev.length - 1 && msg.role === 'assistant'
+                                        ? { ...msg, content: 'Erreur du serveur: ' + message }
+                                        : msg
+                                )
+                            );
                             break;
+                        }
+
                     }
                 } catch (e) {
                     console.error("Failed to parse SSE data chunk:", event.data, e);
@@ -156,11 +198,13 @@ export default function AssistantPage() {
 
             onerror(err) {
                 console.error("SSE connection error:", err);
-                setMessages((prev) => {
-                    const lastMsg = prev[prev.length - 1];
-                    const errorMsg = { ...lastMsg, content: "Une erreur de connexion est survenue." };
-                    return [...prev.slice(0, -1), errorMsg];
-                });
+                setMessages((prev) =>
+                    prev.map((msg, index) =>
+                        index === prev.length - 1 && msg.role === "assistant"
+                            ? { ...msg, content: "Une erreur de connexion est survenue." }
+                            : msg
+                    )
+                );
                 setSending(false);
                 throw err;
             },
@@ -199,10 +243,10 @@ export default function AssistantPage() {
                 </div>
             </header>
 
-            {/* Affichage lecture seule de la prompt système */}
+            {/* Affichage lecture seule de la prompt syst?f?'?,�me */}
             <div className="card p-3 mb-3">
                 <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-semibold">Prompt système</h2>
+                    <h2 className="text-sm font-semibold">Prompt syst?f?'?,�me</h2>
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500">lecture seule</span>
                         <button
@@ -210,14 +254,14 @@ export default function AssistantPage() {
                             className="btn-secondary text-xs px-2 py-1"
                             onClick={() => navigator.clipboard?.writeText(systemPrompt)}
                             disabled={!systemPrompt}
-                            aria-label="Copier la prompt système"
+                            aria-label="Copier la prompt syst?f?'?,�me"
                         >
                             Copier
                         </button>
                     </div>
                 </div>
                 <pre className="whitespace-pre-wrap break-words text-xs bg-gray-50 dark:bg-slate-800 p-2 rounded max-h-48 overflow-auto">
-                    {systemPromptLoading ? 'Chargement…' : (systemPrompt || 'Aucune prompt pour le moment.')}
+                    {systemPromptLoading ? 'Chargement?f��??s�?,�' : (systemPrompt || 'Aucune prompt pour le moment.')}
                 </pre>
             </div>
 
@@ -247,7 +291,7 @@ export default function AssistantPage() {
                                                 </pre>
                                                 {step.result ? (
                                                     <div className="mt-1 border-t border-gray-200 dark:border-slate-600 pt-1">
-                                                        <p className="font-semibold">Résultat :</p>
+                                                        <p className="font-semibold">R?f?'?,�sultat :</p>
                                                         <pre className="whitespace-pre-wrap break-words text-gray-600 dark:text-gray-400">
                                                             <code>{formatObservation(step.result)}</code>
                                                         </pre>
@@ -280,7 +324,7 @@ export default function AssistantPage() {
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Posez votre question (Maj+Entrée pour nouvelle ligne)…"
+                        placeholder="Posez votre question (Maj+Entr?f?'?,�e pour nouvelle ligne)?f��??s�?,�"
                         rows={2}
                         className="flex-1 text-sm border rounded-md px-3 py-2 dark:bg-slate-800 dark:border-slate-600 resize-none"
                         onKeyDown={(e) => {
@@ -300,8 +344,9 @@ export default function AssistantPage() {
                 </button>
             </form>
             <p className="text-xs text-gray-500">
-                L'assistant peut utiliser des outils pour interroger l'ontologie sélectionnée.
+                L'assistant peut utiliser des outils pour interroger l'ontologie s?f?'?,�lectionn?f?'?,�e.
             </p>
         </div>
     );
 }
+

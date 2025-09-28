@@ -1,44 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { useApi } from "../lib/api";
-
-type QueryOptions = {
-    enabled?: boolean;
-    staleTime?: number;
-};
-
-type Fetcher = <T>(path: string) => Promise<T>;
-
-const useJsonFetcher = (): Fetcher => {
+const useJsonFetcher = () => {
     const api = useApi();
-    return async <T>(path: string) => {
+    return async (path) => {
         const res = await api(path);
-        return res.json() as Promise<T>;
+        return res.json();
     };
 };
-
-type RawProfileResponse = {
-    name?: string;
-    avatar?: string;
-    email?: string;
-    isVerified?: boolean;
-    roles?: string[];
-};
-
-type Profile = {
-    name?: string;
-    avatar?: string;
-    email?: string;
-    isVerified: boolean;
-    roles: string[];
-};
-
-export const useProfile = (options: QueryOptions = {}) => {
+export const useProfile = (options = {}) => {
     const { token } = useAuth();
     const fetchJson = useJsonFetcher();
-    return useQuery<RawProfileResponse, Error, Profile>({
+    return useQuery({
         queryKey: ["auth", "profile", token],
-        queryFn: () => fetchJson<RawProfileResponse>("/auth/me"),
+        queryFn: () => fetchJson("/auth/me"),
         enabled: Boolean(token) && (options.enabled ?? true),
         staleTime: options.staleTime ?? 5 * 60 * 1000,
         select: (data) => ({
@@ -50,69 +25,51 @@ export const useProfile = (options: QueryOptions = {}) => {
         }),
     });
 };
-
-export const useOntologies = (options: QueryOptions = {}) => {
+export const useOntologies = (options = {}) => {
     const { token } = useAuth();
     const fetchJson = useJsonFetcher();
     return useQuery({
         queryKey: ["ontologies"],
-        queryFn: () => fetchJson<Array<{ iri: string; label?: string }>>("/ontologies"),
+        queryFn: () => fetchJson("/ontologies"),
         enabled: Boolean(token) && (options.enabled ?? true),
         staleTime: options.staleTime ?? 30 * 1000,
     });
 };
-
-export const useGroups = (options: QueryOptions = {}) => {
+export const useGroups = (options = {}) => {
     const { token } = useAuth();
     const fetchJson = useJsonFetcher();
     return useQuery({
         queryKey: ["groups"],
-        queryFn: () => fetchJson<Array<any>>("/groups"),
+        queryFn: () => fetchJson("/groups"),
         enabled: Boolean(token) && (options.enabled ?? true),
         staleTime: options.staleTime ?? 15 * 1000,
     });
 };
-
-export const useOrganizations = (
-    scope: "all" | "mine",
-    options: QueryOptions = {}
-) => {
+export const useOrganizations = (scope, options = {}) => {
     const { token } = useAuth();
     const fetchJson = useJsonFetcher();
     return useQuery({
         queryKey: ["organizations", scope],
-        queryFn: () =>
-            fetchJson<Array<{ iri: string; label?: string; owner?: string }>>(
-                scope === "all" ? "/organizations" : "/organizations?mine=true"
-            ),
+        queryFn: () => fetchJson(scope === "all" ? "/organizations" : "/organizations?mine=true"),
         enabled: Boolean(token) && (options.enabled ?? true),
         staleTime: options.staleTime ?? 60 * 1000,
     });
 };
-
-export const useOrganizationMembers = (
-    organizationIri?: string,
-    options: QueryOptions = {}
-) => {
+export const useOrganizationMembers = (organizationIri, options = {}) => {
     const fetchJson = useJsonFetcher();
     return useQuery({
         queryKey: ["organizations", "members", organizationIri],
-        queryFn: () =>
-            fetchJson<Array<any>>(
-                `/organizations/${encodeURIComponent(organizationIri ?? "")}/members`
-            ),
-        enabled:
-            Boolean(organizationIri) && (options.enabled ?? true),
+        queryFn: () => fetchJson(`/organizations/${encodeURIComponent(organizationIri ?? "")}/members`),
+        enabled: Boolean(organizationIri) && (options.enabled ?? true),
         staleTime: options.staleTime ?? 30 * 1000,
     });
 };
-
-export const usePersons = (options: QueryOptions = {}) => {
+export const usePersons = (options = {}) => {
     const { token } = useAuth();
     const fetchJson = useJsonFetcher();
     return useQuery({
         queryKey: ["individuals", "persons"],
-        queryFn: () => fetchJson<Array<any>>("/individuals/persons"),
+        queryFn: () => fetchJson("/individuals/persons"),
         enabled: Boolean(token) && (options.enabled ?? true),
         staleTime: options.staleTime ?? 5 * 60 * 1000,
     });

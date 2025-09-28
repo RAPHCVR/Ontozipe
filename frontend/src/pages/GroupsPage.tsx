@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { XMarkIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useQueryClient } from "@tanstack/react-query";
 // util pour encoder un IRI dans les URL
@@ -95,7 +95,7 @@ export default function GroupsPage() {
                                     onClick={() => setSelected(g as GroupDetails)}>
                                     <EyeIcon className="w-4 h-4" />
                                 </button>
-                                {/* Actions réservées au créateur */}
+                                {/* Actions rÃ©servÃ©es au crÃ©ateur */}
                                 {g.createdBy === currentUserIri && (
                                     <button
                                         title="Supprimer"
@@ -108,7 +108,7 @@ export default function GroupsPage() {
                                                 { method: "DELETE" }
                                             ).then(refreshGroups)
                                         }>
-                                        🗑
+                                        ðŸ—‘
                                     </button>
                                 )}
                             </div>
@@ -152,7 +152,7 @@ export default function GroupsPage() {
 interface PersonOption {
     id: string; // full IRI of the user individual
     label: string; // rdfs:label or fallback
-    display: string; // string shown in the list (e‑mail or name)
+    display: string; // string shown in the list (eâ€‘mail or name)
     email?: string;
 }
 
@@ -191,13 +191,21 @@ function GroupFormModal({
         () =>
             members.map((u: any) => {
                 const iri: string = u.id ?? u.iri;
-                const email = u.properties?.find((p: any) =>
+                const emailValue = u.properties?.find((p: any) =>
                     p.predicate?.endsWith("#email")
                 )?.value;
+                const localName = iri.split(/[#/]/).pop() ?? iri;
+                const normalizedLabel =
+                    (typeof u.label === "string" && u.label.trim().length > 0 ? u.label : undefined) ??
+                    formatLabel(localName);
+                const display =
+                    (typeof emailValue === "string" && emailValue.trim().length > 0 ? emailValue : undefined) ??
+                    normalizedLabel;
                 return {
                     id: iri,
-                    label: u.label ?? iri.split(/[#/]/).pop(),
-                    display: email ?? u.label ?? iri.split(/[#/]/).pop(),
+                    label: normalizedLabel,
+                    display,
+                    email: typeof emailValue === "string" ? emailValue : undefined,
                 };
             }),
         [members]
@@ -246,7 +254,7 @@ function GroupFormModal({
                     value={selectedOrg}
                     onChange={(e) => setSelectedOrg(e.target.value)}
                     disabled={organizationsLoading || organizations.length === 0}>
-                    <option value="">— Choisir une organisation —</option>
+                    <option value="">â€” Choisir une organisation â€”</option>
                     {organizations.map((o) => (
                         <option key={o.iri} value={o.iri}>
                             {o.label}
@@ -266,7 +274,7 @@ function GroupFormModal({
                     <div className="space-y-1 max-h-40 overflow-y-auto border rounded p-2">
                         {membersLoading && (
                             <p className="text-xs text-gray-500">
-                                Chargement des membres…
+                                Chargement des membresâ€¦
                             </p>
                         )}
                         {!membersLoading && personOptions.length === 0 && (
@@ -309,7 +317,7 @@ function GroupFormModal({
                         }`}
                         onClick={save}
                         disabled={disabled}>
-                        Créer
+                        CrÃ©er
                     </button>
                 </div>
             </div>
@@ -353,12 +361,21 @@ function GroupDetailsModal({
         () =>
             orgMembers.map((u: any) => {
                 const iri: string = u.id ?? u.iri;
-                const email = u.properties?.find((p: any) =>
+                const emailValue = u.properties?.find((p: any) =>
                     p.predicate?.endsWith("#email")
                 )?.value;
+                const localName = iri.split(/[#/]/).pop() ?? iri;
+                const normalizedLabel =
+                    (typeof u.label === "string" && u.label.trim().length > 0 ? u.label : undefined) ??
+                    formatLabel(localName);
+                const display =
+                    (typeof emailValue === "string" && emailValue.trim().length > 0 ? emailValue : undefined) ??
+                    normalizedLabel;
                 return {
                     id: iri,
-                    display: email ?? u.label ?? iri.split(/[#/]/).pop(),
+                    label: normalizedLabel,
+                    display,
+                    email: typeof emailValue === "string" ? emailValue : undefined,
                 };
             }),
         [orgMembers]
@@ -439,7 +456,7 @@ function GroupDetailsModal({
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="card w-[28rem] max-h-[80vh] overflow-y-auto space-y-4">
                 <header className="flex items-center justify-between">
-                    <h3 className="font-semibold text-lg">Détails du groupe</h3>
+                    <h3 className="font-semibold text-lg">DÃ©tails du groupe</h3>
                     <button onClick={onClose}>
                         <XMarkIcon className="w-5 h-5" />
                     </button>
@@ -452,7 +469,7 @@ function GroupDetailsModal({
                         disabled={!isOwner}
                         value={selectedOrg}
                         onChange={(e) => setSelectedOrg(e.target.value)}>
-                        <option value="">— choisir —</option>
+                        <option value="">â€” choisir â€”</option>
                         {organizations.map((o) => (
                             <option key={o.iri} value={o.iri}>
                                 {o.label}
@@ -514,7 +531,7 @@ function GroupDetailsModal({
                                     e.target.value = "";
                                 }}
                                 disabled={memberOptionsLoading}>
-                                <option value="">— choisir —</option>
+                                <option value="">â€” choisir â€”</option>
                                 {personOptions
                                     .filter((p) => !members.includes(p.id))
                                     .map((p) => (

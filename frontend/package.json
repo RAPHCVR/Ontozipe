@@ -11,10 +11,13 @@
 		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@egjs/hammerjs": "^2.0.17",
 		"@heroicons/react": "^2.2.0",
 		"@microsoft/fetch-event-source": "^2.0.1",
 		"@tanstack/react-query": "^5.76.1",
+		"component-emitter": "1.3.0",
 		"dayjs": "^1.11.13",
+		"keycharm": "0.3.1",
 		"react": "^19.1.0",
 		"react-dom": "^19.1.0",
 		"react-icons": "^5.5.0",
@@ -22,7 +25,9 @@
 		"react-router-dom": "^7.6.0",
 		"remark-gfm": "^4.0.1",
 		"uuid": "^11.1.0",
+		"vis-data": "7.1.4",
 		"vis-network": "^9.1.10",
+		"vis-util": "5.0.2",
 		"zod": "^3.24.4",
 		"zustand": "^5.0.4"
 	},
