@@ -3,6 +3,7 @@ import {
     Controller,
     Delete,
     Get,
+    Headers,
     Param,
     Patch,
     Post,
@@ -73,13 +74,34 @@ export class IndividualsController {
         );
     }
 
+    private resolveLang(lang?: string, acceptLanguage?: string): string | undefined {
+        const direct = lang?.trim();
+        if (direct) return direct;
+        if (!acceptLanguage) return undefined;
+        for (const part of acceptLanguage.split(',')) {
+            const value = part.split(';')[0]?.trim();
+            if (value) return value;
+        }
+        return undefined;
+    }
+
     @Get("persons")
-    getAllPersons(): Promise<IndividualNode[]> {
-        return this.individualsService.getAllPersons();
+    getAllPersons(
+        @Headers("accept-language") acceptLanguage?: string,
+        @Query("lang") lang?: string
+    ): Promise<IndividualNode[]> {
+        return this.individualsService.getAllPersons(this.resolveLang(lang, acceptLanguage));
     }
 
     @Get("persons/:iri")
-    getPerson(@Param("iri") iri: string): Promise<IndividualNode | null> {
-        return this.individualsService.getPerson(decodeURIComponent(iri));
+    getPerson(
+        @Param("iri") iri: string,
+        @Headers("accept-language") acceptLanguage?: string,
+        @Query("lang") lang?: string
+    ): Promise<IndividualNode | null> {
+        return this.individualsService.getPerson(
+            decodeURIComponent(iri),
+            this.resolveLang(lang, acceptLanguage)
+        );
     }
 }

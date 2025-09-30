@@ -2,9 +2,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { HiOutlineMenu, HiX } from "react-icons/hi";
 import { useAuth } from "../../auth/AuthContext";
+import { SUPPORTED_LANGUAGES, useLanguage } from "../../language/LanguageContext";
 
 export default function Navbar() {
     const { logout } = useAuth();
+    const { language, setLanguage } = useLanguage();
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const navItem =
@@ -16,6 +18,23 @@ export default function Navbar() {
                 <Link to="/" className="font-bold tracking-wide text-lg">
                     Onto<span className="text-yellow-300">ZIPE</span>
                 </Link>
+
+                <div className="hidden md:flex items-center gap-2 text-sm">
+                    <label htmlFor="language-select" className="text-white/80">Langue</label>
+                    <select
+                        id="language-select"
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value)}
+                        className="bg-indigo-500/30 text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/50"
+                    >
+                        {SUPPORTED_LANGUAGES.map((code) => (
+                            <option key={code} value={code}>
+                                {code.toUpperCase()}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
 
                 {/* burger mobile */}
                 <button
@@ -62,6 +81,22 @@ export default function Navbar() {
                     </li>
 
                     <li className="md:hidden border-t border-white/20 my-2" />
+
+                    <li className="md:hidden px-4 py-2">
+                        <label htmlFor="language-select-mobile" className="block text-xs text-white/70 mb-1">Langue</label>
+                        <select
+                            id="language-select-mobile"
+                            value={language}
+                            onChange={(e) => setLanguage(e.target.value)}
+                            className="w-full bg-indigo-500/40 text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/50"
+                        >
+                            {SUPPORTED_LANGUAGES.map((code) => (
+                                <option key={code} value={code}>
+                                    {code.toUpperCase()}
+                                </option>
+                            ))}
+                        </select>
+                    </li>
 
                     <li
                         onClick={() => {

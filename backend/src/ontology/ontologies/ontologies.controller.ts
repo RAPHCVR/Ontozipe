@@ -3,6 +3,7 @@ import {
     Controller,
     Delete,
     Get,
+    Headers,
     Param,
     Patch,
     Post,
@@ -28,10 +29,26 @@ type AuthRequest = Request & { user: { sub: string; email?: string } };
 export class OntologiesController {
     constructor(private readonly ontologiesService: OntologiesService) {}
 
-    @Get()
-    getProjects() {
-        return this.ontologiesService.getProjects();
+    private resolveLang(lang?: string, acceptLanguage?: string): string | undefined {
+        const direct = lang?.trim();
+        if (direct) return direct;
+        if (!acceptLanguage) return undefined;
+        for (const part of acceptLanguage.split(',')) {
+            const value = part.split(';')[0]?.trim();
+            if (value) return value;
+        }
+        return undefined;
     }
+
+
+    @Get()
+    getProjects(
+        @Query("lang") lang?: string,
+        @Headers("accept-language") acceptLanguage?: string
+    ) {
+        return this.ontologiesService.getProjects(lang, acceptLanguage);
+    }
+
 
     @Post()
     @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 10 * 1024 * 1024 } }))
@@ -62,7 +79,8 @@ export class OntologiesController {
             req.user.sub,
             decodeURIComponent(iri),
             dto.label,
-            dto.visibleToGroups
+            dto.visibleToGroups,
+            dto.labels
         );
     }
 
@@ -72,25 +90,50 @@ export class OntologiesController {
     }
 
     @Get(":iri/graph")
-    getGraph(@Param("iri") iri: string) {
-        return this.ontologiesService.getGraph(decodeURIComponent(iri));
+    getGraph(
+        @Param("iri") iri: string,
+        @Query("lang") lang?: string,
+        @Headers("accept-language") acceptLanguage?: string
+    ) {
+        const preferredLang = this.resolveLang(lang, acceptLanguage);
+        return this.ontologiesService.getGraph(decodeURIComponent(iri), preferredLang);
     }
+
 
     @Get(":iri/properties")
     getClassProperties(
         @Req() req: AuthRequest,
         @Param("iri") iri: string,
-        @Query("class") classIri: string
+        @Query("class") classIri: string,
+        @Query("lang") lang?: string,
+        @Headers("accept-language") acceptLanguage?: string
     ) {
         if (!classIri) {
             throw new BadRequestException("class query parameter is required");
         }
-        return this.ontologiesService.getClassProperties(classIri, req.user.sub, decodeURIComponent(iri));
+        return this.ontologiesService.getClassProperties(
+            classIri,
+            req.user.sub,
+            decodeURIComponent(iri),
+            lang,
+            acceptLanguage
+        );
     }
 
+
     @Get(":iri/snapshot")
-    getSnapshot(@Req() req: AuthRequest, @Param("iri") iri: string) {
-        return this.ontologiesService.getFullSnapshot(req.user.sub, decodeURIComponent(iri));
+    getSnapshot(
+        @Req() req: AuthRequest,
+        @Param("iri") iri: string,
+        @Query("lang") lang?: string,
+        @Headers("accept-language") acceptLanguage?: string
+    ) {
+        return this.ontologiesService.getFullSnapshot(
+            req.user.sub,
+            decodeURIComponent(iri),
+            lang,
+            acceptLanguage
+        );
     }
 }
 

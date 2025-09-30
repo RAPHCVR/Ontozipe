@@ -33,7 +33,8 @@ export const useOntologies = (options: QueryOptions = {}) => {
     const fetchJson = useJsonFetcher();
     return useQuery({
         queryKey: ["ontologies"],
-        queryFn: () => fetchJson<Array<{ iri: string; label?: string }>>("/ontologies"),
+        queryFn: () =>
+            fetchJson<Array<{ iri: string; label?: string; labelLang?: string; languages?: string[] }>>("/ontologies"),
         enabled: Boolean(token) && (options.enabled ?? true),
         staleTime: options.staleTime ?? 30 * 1000,
     });

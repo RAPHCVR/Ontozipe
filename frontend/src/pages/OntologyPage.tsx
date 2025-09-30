@@ -2,6 +2,7 @@ import React from "react";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { useApi } from "../lib/api";
+import { useLanguage } from "../language/LanguageContext";
 
 import CommentFormModal from "../components/comment/CommentFormModal";
 import IndividualFormModal from "../components/individuals/IndividualFormModal";
@@ -13,6 +14,7 @@ import OntologyGraph from "../components/OntologyGraph";
 export default function OntologyPage() {
     const { token } = useAuth();
     const api = useApi();
+    const { language } = useLanguage();
 
     const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
     const [loading, setLoading] = useState(true);
@@ -79,18 +81,20 @@ export default function OntologyPage() {
     // Charger le snapshot
     useEffect(() => {
         setLoading(true);
-        api(`/ontologies/${encodeURIComponent(ontologyIri)}/snapshot`)
+        const query = `/ontologies/${encodeURIComponent(ontologyIri)}/snapshot${language ? `?lang=${language}` : ''}`;
+        api(query)
             .then((r) => r.json())
             .then((data) => setSnapshot({ ...data }))
             .catch(console.error)
             .finally(() => setLoading(false));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [ontologyIri, token]);
+    }, [ontologyIri, token, api, language]);
 
-    const reloadSnapshot = () =>
-        api(`/ontologies/${encodeURIComponent(ontologyIri)}/snapshot`)
+    const reloadSnapshot = () => {
+        const query = `/ontologies/${encodeURIComponent(ontologyIri)}/snapshot${language ? `?lang=${language}` : ''}`;
+        return api(query)
             .then((r) => r.json())
             .then(setSnapshot);
+    };
 
     if (loading || !snapshot) {
         return (
