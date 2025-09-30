@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import CommentBlock from "../comment/CommentComponent";
 import { v4 as uuidv4 } from "uuid";
 import { useApi } from "../../lib/api";
+import { useTranslation } from "../../language/useTranslation";
 
 const IndividualCard: React.FC<{
 	ind: IndividualNode;
@@ -26,6 +27,7 @@ const IndividualCard: React.FC<{
 	// Utilisateur courant depuis le contexte d’authentification
 	const { user } = useAuth();
 	const api = useApi();
+    const { t } = useTranslation();
 	const currentUserIri: string | undefined = user?.sub;
 
 	// Get ontology IRI from querystring
@@ -154,7 +156,7 @@ const IndividualCard: React.FC<{
 						: "bg-slate-50 dark:bg-slate-800"
 				}`}>
 				<span className="font-medium">{formatLabel(ind.label)}</span>
-				<span className="text-gray-400 text-xs ml-2">(Aucune donnée)</span>
+				<span className="text-gray-400 text-xs ml-2">({t("individual.noDataShort")})</span>
 			</div>
 		);
 	} else {
@@ -173,7 +175,7 @@ const IndividualCard: React.FC<{
 						{isCreator && (
 							<>
 								<button
-									title="Supprimer"
+									title={t("common.delete")}
 									onClick={(e) => {
 										e.stopPropagation();
 										onDelete(ind);
@@ -182,7 +184,7 @@ const IndividualCard: React.FC<{
 									🗑
 								</button>
 								<button
-									title="Modifier"
+									title={t("common.edit")}
 									onClick={(e) => {
 										e.stopPropagation();
 										onEdit(ind);
@@ -246,10 +248,10 @@ const IndividualCard: React.FC<{
 
 						{/* ---- RELATIONS SECTION ---- */}
 						{relProps.length > 0 && (
-							<div>
-								<h4 className="text-xs font-semibold text-emerald-600 mb-1">
-									Relations
-								</h4>
+						<div>
+							<h4 className="text-xs font-semibold text-emerald-600 mb-1">
+								{t("individual.relations.title")}
+							</h4>
 								<div className="flex flex-wrap gap-1">
                                     {relProps.map((prop, idx) => {
                                         const target =
@@ -271,8 +273,8 @@ const IndividualCard: React.FC<{
                                             : "bg-slate-400/10 text-slate-600 dark:bg-slate-400/10 dark:text-slate-300 border border-dashed border-slate-400/50 hover:bg-slate-400/20";
 
                                         const title = hasData
-                                            ? "Ouvrir les détails (données disponibles)"
-                                            : "Ouvrir les détails (aucune donnée spécifique)";
+                                            ? t("individual.relations.openWithData")
+                                            : t("individual.relations.openWithoutData");
 
                                         return (
                                             <span key={idx} className="relative group">
@@ -300,7 +302,7 @@ const IndividualCard: React.FC<{
 						{commonGroups.length > 0 && (
 							<div>
 								<h4 className="text-xs font-semibold text-purple-600 mb-1">
-									Groupes communs
+									{t("individual.commonGroups")}
 								</h4>
 								<div className="flex flex-wrap gap-1">
 									{commonGroups.map((g, idx) => (
@@ -319,14 +321,14 @@ const IndividualCard: React.FC<{
 						{/* ---- COMMENTAIRES ---- */}
 						<div>
 							<h4 className="text-xs font-semibold text-yellow-600 mb-1">
-								Commentaires
+								{t("individual.comments.title")}
 							</h4>
 							{/* zone de saisie */}
 							<div className="flex items-start gap-2 mb-2">
 								<textarea
 									value={draftComment}
 									onChange={(e) => setDraftComment(e.target.value)}
-									placeholder="Ajouter un commentaire…"
+									placeholder={t("individual.comments.placeholder")}
 									rows={2}
 									className="flex-1 text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none"
 								/>
@@ -339,7 +341,7 @@ const IndividualCard: React.FC<{
 										}
 									}}
 									className="self-stretch px-3 py-1 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs rounded">
-									Envoyer
+									{t("common.send")}
 								</button>
 							</div>
 							<div>
@@ -364,7 +366,7 @@ const IndividualCard: React.FC<{
 
 						{dataProps.length === 0 && relProps.length === 0 && (
 							<p className="text-xs italic text-gray-500">
-								Aucune donnée disponible
+								{t("individual.noData")}
 							</p>
 						)}
 					</div>

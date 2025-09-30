@@ -12,6 +12,7 @@ import {
     useOrganizations,
     useProfile,
 } from "../hooks/apiQueries";
+import { useTranslation } from "../language/useTranslation";
 
 type Group = {
     iri: string;
@@ -27,6 +28,7 @@ export default function GroupsPage() {
     const queryClient = useQueryClient();
     const api = useApi();
     const { user } = useAuth();
+    const { t } = useTranslation();
     const currentUserIri = user?.sub;
 
     const profileQuery = useProfile();
@@ -74,10 +76,10 @@ export default function GroupsPage() {
     return (
         <div className="container mx-auto py-8 space-y-6">
             <h1 className="text-2xl font-semibold flex justify-between items-center">
-                Groupes ({groups.length})
+                {t("groups.title", { count: groups.length })}
                 {currentUserIri && isRolesLoaded && (
                     <button className="btn-primary" onClick={() => setShowNew(true)}>
-                        + Nouveau
+                        {t("groups.actions.new")}
                     </button>
                 )}
             </h1>
@@ -90,7 +92,7 @@ export default function GroupsPage() {
                             <div className="flex items-center gap-2">
                                 {/* Voir les membres */}
                                 <button
-                                    title="Voir"
+                                    title={t("groups.actions.view")}
                                     className="text-indigo-600 hover:text-indigo-800"
                                     onClick={() => setSelected(g as GroupDetails)}>
                                     <EyeIcon className="w-4 h-4" />
@@ -98,7 +100,7 @@ export default function GroupsPage() {
                                 {/* Actions réservées au créateur */}
                                 {g.createdBy === currentUserIri && (
                                     <button
-                                        title="Supprimer"
+                                        title={t("groups.actions.delete")}
                                         className="text-red-600 text-sm"
                                         onClick={() =>
                                             api(
@@ -114,7 +116,7 @@ export default function GroupsPage() {
                             </div>
                         </div>
                         <p className="text-xs text-gray-500">
-                            Membres&nbsp;: {g.members?.length ?? 0}{" "}
+                            {t("groups.membersLabel", { count: g.members?.length ?? 0 })}
                         </p>
                     </li>
                 ))}
@@ -173,6 +175,7 @@ function GroupFormModal({
     const [label, setLabel] = useState("");
     const [selectedOrg, setSelectedOrg] = useState<string>("");
     const [selected, setSelected] = useState<string[]>([]);
+    const { t } = useTranslation();
 
     const disabled = label.trim() === "" || !selectedOrg;
 
@@ -238,7 +241,7 @@ function GroupFormModal({
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="card w-[26rem] space-y-4">
-                <h3 className="font-semibold text-lg">Nouveau groupe</h3>
+                <h3 className="font-semibold text-lg">{t("groups.form.title")}</h3>
 
                 {/* --- Organisation selector --- */}
                 <select
@@ -246,7 +249,7 @@ function GroupFormModal({
                     value={selectedOrg}
                     onChange={(e) => setSelectedOrg(e.target.value)}
                     disabled={organizationsLoading || organizations.length === 0}>
-                    <option value="">— Choisir une organisation —</option>
+                    <option value="">{t("groups.form.organizationPlaceholder")}</option>
                     {organizations.map((o) => (
                         <option key={o.iri} value={o.iri}>
                             {o.label}
@@ -257,7 +260,7 @@ function GroupFormModal({
                 {/* --- Nom du groupe --- */}
                 <input
                     className="input w-full"
-                    placeholder="Nom du groupe"
+                    placeholder={t("groups.form.namePlaceholder")}
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                 />
@@ -266,12 +269,12 @@ function GroupFormModal({
                     <div className="space-y-1 max-h-40 overflow-y-auto border rounded p-2">
                         {membersLoading && (
                             <p className="text-xs text-gray-500">
-                                Chargement des membres…
+                                {t("groups.form.loadingMembers")}
                             </p>
                         )}
                         {!membersLoading && personOptions.length === 0 && (
                             <p className="text-xs text-gray-500">
-                                Aucun membre disponible pour cette organisation.
+                                {t("groups.form.noMembers")}
                             </p>
                         )}
                         {personOptions.map((p) => (
@@ -301,7 +304,7 @@ function GroupFormModal({
                 )}
                 <div className="flex justify-end gap-4">
                     <button className="btn-secondary" onClick={onClose}>
-                        Annuler
+                        {t("common.cancel")}
                     </button>
                     <button
                         className={`btn-primary ${
@@ -309,7 +312,7 @@ function GroupFormModal({
                         }`}
                         onClick={save}
                         disabled={disabled}>
-                        Créer
+                        {t("groups.form.submit")}
                     </button>
                 </div>
             </div>
@@ -333,6 +336,7 @@ function GroupDetailsModal({
     const api = useApi();
     const queryClient = useQueryClient();
     const isOwner = group.createdBy === currentUserIri;
+    const { t } = useTranslation();
 
     const [label, setLabel] = useState(group.label);
     const [members, setMembers] = useState<string[]>(group.members);
@@ -439,20 +443,20 @@ function GroupDetailsModal({
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="card w-[28rem] max-h-[80vh] overflow-y-auto space-y-4">
                 <header className="flex items-center justify-between">
-                    <h3 className="font-semibold text-lg">Détails du groupe</h3>
+                    <h3 className="font-semibold text-lg">{t("groups.details.title")}</h3>
                     <button onClick={onClose}>
                         <XMarkIcon className="w-5 h-5" />
                     </button>
                 </header>
 
                 <div className="space-y-3">
-                    <label className="block text-sm font-medium">Organisation</label>
+                    <label className="block text-sm font-medium">{t("groups.details.organization")}</label>
                     <select
                         className="input w-full"
                         disabled={!isOwner}
                         value={selectedOrg}
                         onChange={(e) => setSelectedOrg(e.target.value)}>
-                        <option value="">— choisir —</option>
+                        <option value="">{t("common.selectPlaceholder")}</option>
                         {organizations.map((o) => (
                             <option key={o.iri} value={o.iri}>
                                 {o.label}
@@ -460,7 +464,7 @@ function GroupDetailsModal({
                         ))}
                     </select>
 
-                    <label className="block text-sm font-medium">Nom</label>
+                    <label className="block text-sm font-medium">{t("common.name")}</label>
                     <input
                         className="input w-full"
                         disabled={!isOwner}
@@ -468,7 +472,7 @@ function GroupDetailsModal({
                         onChange={(e) => setLabel(e.target.value)}
                     />
 
-                    <label className="block text-sm font-medium">Membres</label>
+                    <label className="block text-sm font-medium">{t("groups.details.members")}</label>
                     <ul className="space-y-1 border rounded p-2">
                         {members.map((m) => {
                             const person = personOptions.find(
@@ -483,13 +487,13 @@ function GroupDetailsModal({
 										{display}
                                         {m === group.createdBy && (
                                             <span className="ml-1 text-[10px] text-gray-400 italic">
-												(owner)
-											</span>
+												{t("groups.details.ownerTag")}
+                                            </span>
                                         )}
 									</span>
                                     {isOwner && m !== currentUserIri && (
                                         <button
-                                            title="Retirer"
+                                            title={t("groups.details.removeMember")}
                                             onClick={() => removeMember(m)}
                                             className="text-red-600 hover:text-red-800">
                                             <TrashIcon className="w-4 h-4" />
@@ -503,7 +507,7 @@ function GroupDetailsModal({
                     {isOwner && (
                         <>
                             <label className="block text-sm font-medium">
-                                Ajouter un membre
+                                {t("groups.details.addMember")}
                             </label>
                             <select
                                 className="input"
@@ -514,7 +518,7 @@ function GroupDetailsModal({
                                     e.target.value = "";
                                 }}
                                 disabled={memberOptionsLoading}>
-                                <option value="">— choisir —</option>
+                                <option value="">{t("common.selectPlaceholder")}</option>
                                 {personOptions
                                     .filter((p) => !members.includes(p.id))
                                     .map((p) => (
@@ -541,11 +545,11 @@ function GroupDetailsModal({
                                 onReload();
                                 onClose();
                             }}>
-                            Supprimer le groupe
+                            {t("groups.details.delete")}
                         </button>
                     )}
                     <button className="btn-primary" onClick={saveAndClose}>
-                        Terminer
+                        {t("common.done")}
                     </button>
                 </footer>
             </div>

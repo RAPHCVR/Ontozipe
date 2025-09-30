@@ -1,28 +1,32 @@
+import dayjs from "dayjs";
 import { createContext, useContext, useMemo, useState, useEffect, ReactNode } from "react";
 
+import {
+    DAYJS_LOCALES,
+    FALLBACK_LANGUAGE,
+    SUPPORTED_LANGUAGES,
+    normalizeLanguage,
+} from "./config";
+import type { SupportedLanguage } from "./config";
+
+export { SUPPORTED_LANGUAGES } from "./config";
+export type { SupportedLanguage } from "./config";
+
 const STORAGE_KEY = "preferredLanguage";
-const FALLBACK_LANGUAGE = "fr";
-export const SUPPORTED_LANGUAGES = ["fr", "en"] as const;
 
 type LanguageContextValue = {
-    language: string;
+    language: SupportedLanguage;
     setLanguage: (lang: string) => void;
 };
 
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
 
-const normalizeLang = (lang?: string | null): string => {
-    const value = lang?.trim();
-    if (!value) return FALLBACK_LANGUAGE;
-    return value.toLowerCase();
-};
-
 export function LanguageProvider({ children }: { children: ReactNode }) {
-    const [language, setLanguageState] = useState(() => {
+    const [language, setLanguageState] = useState<SupportedLanguage>(() => {
         const stored = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null;
-        if (stored) return normalizeLang(stored);
+        if (stored) return normalizeLanguage(stored);
         if (typeof navigator !== "undefined" && navigator.language) {
-            return normalizeLang(navigator.language.split("-")[0]);
+            return normalizeLanguage(navigator.language);
         }
         return FALLBACK_LANGUAGE;
     });
@@ -34,8 +38,13 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }, [language]);
 
     const setLanguage = (lang: string) => {
-        setLanguageState(normalizeLang(lang));
+        setLanguageState(normalizeLanguage(lang));
     };
+
+    useEffect(() => {
+        const targetLocale = DAYJS_LOCALES[language] ?? DAYJS_LOCALES[FALLBACK_LANGUAGE];
+        dayjs.locale(targetLocale);
+    }, [language]);
 
     const value = useMemo(() => ({ language, setLanguage }), [language]);
 

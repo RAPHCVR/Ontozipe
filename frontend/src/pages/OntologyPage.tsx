@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { useApi } from "../lib/api";
 import { useLanguage } from "../language/LanguageContext";
+import { useTranslation } from "../language/useTranslation";
 
 import CommentFormModal from "../components/comment/CommentFormModal";
 import IndividualFormModal from "../components/individuals/IndividualFormModal";
@@ -15,6 +16,7 @@ export default function OntologyPage() {
     const { token } = useAuth();
     const api = useApi();
     const { language } = useLanguage();
+    const { t } = useTranslation();
 
     const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
     const [loading, setLoading] = useState(true);
@@ -99,7 +101,7 @@ export default function OntologyPage() {
     if (loading || !snapshot) {
         return (
             <div className="flex items-center justify-center h-screen">
-                Chargement des données…
+                {t("ontology.loading")}
             </div>
         );
     }

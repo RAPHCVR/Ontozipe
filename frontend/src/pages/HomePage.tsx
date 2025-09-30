@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useApi } from "../lib/api";
 import SimpleModal from "../components/SimpleModal";
 import { useOntologies, useProfile } from "../hooks/apiQueries";
+import { useTranslation } from "../language/useTranslation";
 
 type Ontology = { iri: string; label?: string };
 
@@ -12,7 +13,8 @@ export default function HomePage() {
     const queryClient = useQueryClient();
     const { token } = useAuth();
     const payload = token ? JSON.parse(atob(token.split(".")[1])) : {};
-    const username = payload.name || payload.email || "Utilisateur";
+    const { t } = useTranslation();
+    const username = payload.name || payload.email || t("common.user");
 
     const profileQuery = useProfile();
     const ontologiesQuery = useOntologies();
@@ -38,7 +40,7 @@ export default function HomePage() {
     if (ontologiesQuery.isLoading) {
         return (
             <div className="flex items-center justify-center h-screen">
-                Chargement…
+                {t("common.loading")}
             </div>
         );
     }
@@ -47,7 +49,7 @@ export default function HomePage() {
         return (
             <div className="flex items-center justify-center h-screen">
                 <div className="text-sm text-red-500">
-                    Impossible de charger les ontologies.
+                    {t("home.loadError")}
                 </div>
             </div>
         );
@@ -59,17 +61,17 @@ export default function HomePage() {
             <section className="w-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 dark:from-slate-800 dark:to-slate-700 text-white mb-8">
                 <div className="max-w-7xl mx-auto py-12 px-6">
                     <h1 className="text-3xl md:text-4xl font-bold">
-                        Bonjour, <span className="text-yellow-300">{username}</span> !
+                        {t("home.greeting", { name: username })}
                     </h1>
                     <p className="mt-2 opacity-90">
-                        Sélectionnez une ontologie ou créez-en une nouvelle.
+                        {t("home.subtitle")}
                     </p>
 
                     {rolesLoaded && isSuperAdmin && (
                         <button
                             className="btn-primary mt-6"
                             onClick={() => setShowNew(true)}>
-                            + Nouvelle ontologie
+                            {t("home.actions.newOntology")}
                         </button>
                     )}
                 </div>
@@ -81,8 +83,8 @@ export default function HomePage() {
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
                         <thead className="bg-gray-50 dark:bg-slate-800/60">
                         <tr className="text-xs font-semibold uppercase tracking-wider text-left">
-                            <th className="px-4 py-3">Ontologie</th>
-                            <th className="px-4 py-3 w-32 text-center">Actions</th>
+                            <th className="px-4 py-3">{t("home.table.ontology")}</th>
+                            <th className="px-4 py-3 w-32 text-center">{t("home.table.actions")}</th>
                         </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-slate-800 divide-y dark:divide-slate-700">
@@ -97,12 +99,12 @@ export default function HomePage() {
                                     <Link
                                         to={`/ontology?iri=${encodeURIComponent(o.iri)}`}
                                         className="btn-primary !py-0.5 !px-2 text-xs"
-                                        title="Ouvrir">
-                                        Ouvrir
+                                        title={t("home.table.openToolTip")}>
+                                        {t("home.table.open")}
                                     </Link>
                                     <button
-                                        onClick={() => alert("config à implémenter")}
-                                        title="Configurer"
+                                        onClick={() => alert(t("home.configure.todo"))}
+                                        title={t("home.table.configure")}
                                         className="btn-secondary !py-0.5 !px-2 text-xs">
                                         ⚙
                                     </button>
@@ -112,7 +114,7 @@ export default function HomePage() {
                                                 `/groups?ontology=${encodeURIComponent(o.iri)}`
                                             )
                                         }
-                                        title="Groupes"
+                                        title={t("home.table.groups")}
                                         className="btn-secondary !py-0.5 !px-2 text-xs">
                                         👥
                                     </button>
@@ -124,7 +126,7 @@ export default function HomePage() {
                                 <td
                                     colSpan={2}
                                     className="px-4 py-8 text-center text-sm text-gray-500">
-                                    Aucune ontologie visible pour le moment.
+                                    {t("home.table.empty")}
                                 </td>
                             </tr>
                         )}
@@ -135,7 +137,7 @@ export default function HomePage() {
 
             {showNew && isSuperAdmin && (
                 <SimpleModal
-                    title="Nouvelle ontologie"
+                    title={t("home.modal.title")}
                     onClose={() => {
                         setShowNew(false);
                         setNewLabel("");
@@ -165,31 +167,35 @@ export default function HomePage() {
                     disableSubmit={!newLabel.trim() || !newIri.trim()}>
                     <div className="space-y-3">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Label</label>
+                            <label className="block text-sm font-medium mb-1">
+                                {t("common.label")}
+                            </label>
                             <input
                                 className="input"
                                 value={newLabel}
                                 onChange={(e) => setNewLabel(e.target.value)}
-                                placeholder="Nom lisible"
+                                placeholder={t("home.modal.labelPlaceholder")}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">IRI</label>
+                            <label className="block text-sm font-medium mb-1">
+                                {t("home.modal.iri")}
+                            </label>
                             <input
                                 className="input"
                                 value={newIri}
                                 onChange={(e) => setNewIri(e.target.value)}
-                                placeholder="http://example.org/monOnto"
+                                placeholder={t("home.modal.iriPlaceholder")}
                             />
                             <p className="text-xs text-gray-500 mt-1">
-                                L’IRI doit être unique dans votre triple store.
+                                {t("home.modal.iriHint")}
                             </p>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium mb-1">
-                                Fichier RDF / TTL (optionnel)
+                                {t("home.modal.fileLabel")}
                             </label>
                             <input
                                 type="file"
@@ -199,8 +205,10 @@ export default function HomePage() {
                             />
                             {rdfFile && (
                                 <p className="text-xs text-green-600 mt-1">
-                                    Fichier sélectionné : {rdfFile.name} (
-                                    {(rdfFile.size / 1024).toFixed(1)} kio)
+                                    {t("home.modal.fileSelected", {
+                                        file: rdfFile.name,
+                                        size: (rdfFile.size / 1024).toFixed(1),
+                                    })}
                                 </p>
                             )}
                         </div>

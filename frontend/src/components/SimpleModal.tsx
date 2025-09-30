@@ -1,5 +1,7 @@
 import { ReactNode } from "react";
 
+import { useTranslation } from "../language/useTranslation";
+
 export default function SimpleModal({
 	title,
 	onClose,
@@ -14,6 +16,7 @@ export default function SimpleModal({
 	/** désactive le bouton Valider si true */
 	disableSubmit?: boolean;
 }) {
+	const { t } = useTranslation();
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
 			<div className="card w-[28rem] max-w-full space-y-4">
@@ -24,13 +27,13 @@ export default function SimpleModal({
 
 				<div className="flex justify-end gap-4 pt-2">
 					<button className="btn-secondary" onClick={onClose}>
-						Annuler
+						{t("common.cancel")}
 					</button>
 					<button
 						className="btn-primary"
 						onClick={onSubmit}
 						disabled={disableSubmit}>
-						Valider
+						{t("common.confirm")}
 					</button>
 				</div>
 			</div>

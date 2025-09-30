@@ -1,16 +1,36 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { HiOutlineMenu, HiX } from "react-icons/hi";
 import { useAuth } from "../../auth/AuthContext";
 import { SUPPORTED_LANGUAGES, useLanguage } from "../../language/LanguageContext";
+import type { SupportedLanguage } from "../../language/LanguageContext";
+import { useTranslation } from "../../language/useTranslation";
 
 export default function Navbar() {
     const { logout } = useAuth();
     const { language, setLanguage } = useLanguage();
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const navItem =
         "block px-4 py-2 hover:bg-indigo-500/30 rounded transition-colors";
+
+    const languageLabels = useMemo(
+        () =>
+            SUPPORTED_LANGUAGES.reduce(
+                (acc, code) => ({
+                    ...acc,
+                    [code]:
+                        code === "fr"
+                            ? t("language.option.fr")
+                            : code === "en"
+                                ? t("language.option.en")
+                                : t("language.option.es"),
+                }),
+                {} as Record<SupportedLanguage, string>
+            ),
+        [t]
+    );
 
     return (
         <nav className="sticky top-0 z-40 bg-indigo-600 dark:bg-slate-800 text-white shadow-md">
@@ -20,7 +40,9 @@ export default function Navbar() {
                 </Link>
 
                 <div className="hidden md:flex items-center gap-2 text-sm">
-                    <label htmlFor="language-select" className="text-white/80">Langue</label>
+                    <label htmlFor="language-select" className="text-white/80">
+                        {t("common.language")}
+                    </label>
                     <select
                         id="language-select"
                         value={language}
@@ -29,7 +51,7 @@ export default function Navbar() {
                     >
                         {SUPPORTED_LANGUAGES.map((code) => (
                             <option key={code} value={code}>
-                                {code.toUpperCase()}
+                                {languageLabels[code]}
                             </option>
                         ))}
                     </select>
@@ -52,38 +74,40 @@ export default function Navbar() {
                 >
                     <li onClick={() => setOpen(false)}>
                         <Link to="/" className={navItem}>
-                            Accueil
+                            {t("navbar.home")}
                         </Link>
                     </li>
 
                     <li onClick={() => setOpen(false)}>
                         <Link to="/assistant" className={navItem}>
-                            Assistant
+                            {t("navbar.assistant")}
                         </Link>
                     </li>
 
                     <li onClick={() => setOpen(false)}>
                         <Link to="/groups" className={navItem}>
-                            Groupes
+                            {t("navbar.groups")}
                         </Link>
                     </li>
 
                     <li onClick={() => setOpen(false)}>
                         <Link to="/organisations" className={navItem}>
-                            Organisations
+                            {t("navbar.organisations")}
                         </Link>
                     </li>
 
                     <li onClick={() => setOpen(false)}>
                         <Link to="/profile" className={navItem}>
-                            Profil
+                            {t("navbar.profile")}
                         </Link>
                     </li>
 
                     <li className="md:hidden border-t border-white/20 my-2" />
 
                     <li className="md:hidden px-4 py-2">
-                        <label htmlFor="language-select-mobile" className="block text-xs text-white/70 mb-1">Langue</label>
+                        <label htmlFor="language-select-mobile" className="block text-xs text-white/70 mb-1">
+                            {t("common.language")}
+                        </label>
                         <select
                             id="language-select-mobile"
                             value={language}
@@ -92,7 +116,7 @@ export default function Navbar() {
                         >
                             {SUPPORTED_LANGUAGES.map((code) => (
                                 <option key={code} value={code}>
-                                    {code.toUpperCase()}
+                                    {languageLabels[code]}
                                 </option>
                             ))}
                         </select>
@@ -105,7 +129,7 @@ export default function Navbar() {
                         }}
                     >
             <span className={`${navItem} md:border md:border-white/40`}>
-              Déconnexion
+              {t("common.logout")}
             </span>
                     </li>
                 </ul>

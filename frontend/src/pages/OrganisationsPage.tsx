@@ -10,6 +10,7 @@ import {
     usePersons,
     useProfile,
 } from "../hooks/apiQueries";
+import { useTranslation } from "../language/useTranslation";
 
 type Organisation = {
     iri: string;
@@ -25,6 +26,7 @@ export default function OrganisationsPage() {
     const api = useApi();
     const queryClient = useQueryClient();
     const { user } = useAuth();
+    const { t } = useTranslation();
     const currentUserIri = user?.sub;
 
     const profileQuery = useProfile();
@@ -76,20 +78,20 @@ export default function OrganisationsPage() {
     return (
         <div className="container mx-auto py-8 space-y-6">
             <h1 className="text-2xl font-semibold flex justify-between items-center">
-                Organisations ({orgs.length})
+                {t("organizations.title", { count: orgs.length })}
                 {isSuperAdmin && currentUserIri && (
                     <button
                         className="btn-primary flex items-center gap-1"
                         onClick={() => setShowNew(true)}>
                         <PlusIcon className="w-4 h-4" />
-                        Nouvelle
+                        {t("organizations.actions.new")}
                     </button>
                 )}
             </h1>
 
             <ul className="grid md:grid-cols-2 gap-4">
                 {organizationsQuery.isLoading && (
-                    <li className="text-sm text-gray-500">Chargement…</li>
+                    <li className="text-sm text-gray-500">{t("common.loading")}</li>
                 )}
                 {!organizationsQuery.isLoading &&
                     orgs.map((o) => (
@@ -100,14 +102,14 @@ export default function OrganisationsPage() {
 							</span>
                             <div className="flex items-center gap-2">
                                 <button
-                                    title="Voir"
+                                    title={t("organizations.actions.view")}
                                     className="text-indigo-600 hover:text-indigo-800"
                                     onClick={() => setSelected(o)}>
                                     <EyeIcon className="w-4 h-4" />
                                 </button>
                                 {isSuperAdmin && (
                                     <button
-                                        title="Supprimer"
+                                        title={t("common.delete")}
                                         className="text-red-600 text-sm"
                                         onClick={() =>
                                             api(
@@ -123,9 +125,11 @@ export default function OrganisationsPage() {
                             </div>
                         </div>
                         <p className="text-xs text-gray-500">
-                            Admin&nbsp;:{" "}
-                            {persons.find((p) => p.id === o.owner)?.display ||
-                                formatLabel(o.owner.split(/[#/]/).pop()!)}
+                            {t("organizations.list.admin", {
+                                name:
+                                    persons.find((p) => p.id === o.owner)?.display ||
+                                    formatLabel(o.owner.split(/[#/]/).pop() || o.owner),
+                            })}
                         </p>
                     </li>
                 ))}
@@ -176,6 +180,7 @@ function OrganisationFormModal({
     const [label, setLabel] = useState("");
     const [owner, setOwner] = useState<string>("");
     const disabled = label.trim() === "" || owner === "";
+    const { t } = useTranslation();
 
     const save = () =>
         api("/organizations", {
@@ -189,10 +194,10 @@ function OrganisationFormModal({
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="card w-[26rem] space-y-4">
-                <h3 className="font-semibold text-lg">Nouvelle organisation</h3>
+                <h3 className="font-semibold text-lg">{t("organizations.form.title")}</h3>
                 <input
                     className="input"
-                    placeholder="Nom de l'organisation"
+                    placeholder={t("organizations.form.namePlaceholder")}
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                 />
@@ -201,7 +206,7 @@ function OrganisationFormModal({
                     value={owner}
                     onChange={(e) => setOwner(e.target.value)}
                     disabled={personsLoading}>
-                    <option value="">— Choisir un admin —</option>
+                    <option value="">{t("organizations.form.ownerPlaceholder")}</option>
                     {persons.map((p) => (
                         <option key={p.id} value={p.id}>
                             {p.display}
@@ -211,7 +216,7 @@ function OrganisationFormModal({
 
                 <div className="flex justify-end gap-4">
                     <button className="btn-secondary" onClick={onClose}>
-                        Annuler
+                        {t("common.cancel")}
                     </button>
                     <button
                         className={`btn-primary ${
@@ -219,7 +224,7 @@ function OrganisationFormModal({
                         }`}
                         disabled={disabled}
                         onClick={save}>
-                        Créer
+                        {t("organizations.form.submit")}
                     </button>
                 </div>
             </div>
@@ -249,6 +254,7 @@ function OrganisationDetailsModal({
     const [label, setLabel] = useState(org.label || "");
     const [owner, setOwner] = useState(org.owner);
     const [members, setMembers] = useState<string[]>([]);
+    const { t } = useTranslation();
 
     const canEditLabelAdmin = isSuperAdmin;
     const canManageMembers = isSuperAdmin || isManager;
@@ -308,13 +314,13 @@ function OrganisationDetailsModal({
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="card w-[28rem] space-y-4">
                 <header className="flex items-center justify-between">
-                    <h3 className="font-semibold text-lg">Organisation</h3>
+                    <h3 className="font-semibold text-lg">{t("organizations.details.title")}</h3>
                     <button onClick={onClose}>
                         <XMarkIcon className="w-5 h-5" />
                     </button>
                 </header>
 
-                <label className="block text-sm font-medium">Nom</label>
+                <label className="block text-sm font-medium">{t("common.name")}</label>
                 <input
                     className="input w-full"
                     value={label}
@@ -322,7 +328,7 @@ function OrganisationDetailsModal({
                     disabled={!canEditLabelAdmin}
                 />
 
-                <label className="block text-sm font-medium">Admin</label>
+                <label className="block text-sm font-medium">{t("organizations.details.owner")}</label>
                 <select
                     className="input"
                     value={owner}
@@ -335,7 +341,7 @@ function OrganisationDetailsModal({
                     ))}
                 </select>
 
-                <label className="block text-sm font-medium mt-2">Membres</label>
+                <label className="block text-sm font-medium mt-2">{t("organizations.details.members")}</label>
                 <ul className="space-y-1 border rounded p-2 max-h-40 overflow-y-auto">
                     {members.map((m) => {
                         const disp =
@@ -347,7 +353,7 @@ function OrganisationDetailsModal({
                                 <span>{disp}</span>
                                 {canManageMembers && (
                                     <button
-                                        title="Retirer"
+                                        title={t("common.remove")}
                                         onClick={() => removeMember(m)}
                                         className="text-red-600 hover:text-red-800 text-[10px]">
                                         🗑
@@ -357,17 +363,17 @@ function OrganisationDetailsModal({
                         );
                     })}
                     {members.length === 0 && !membersLoading && (
-                        <li className="text-xs text-gray-500">Aucun membre pour l’instant.</li>
+                        <li className="text-xs text-gray-500">{t("organizations.details.noMembers")}</li>
                     )}
                     {membersLoading && (
-                        <li className="text-xs text-gray-500">Chargement…</li>
+                        <li className="text-xs text-gray-500">{t("common.loading")}</li>
                     )}
                 </ul>
 
                 {canManageMembers && (
                     <>
                         <label className="block text-sm font-medium">
-                            Ajouter un membre
+                            {t("common.addMember")}
                         </label>
                         <select
                             className="input"
@@ -378,7 +384,7 @@ function OrganisationDetailsModal({
                                 e.target.value = "";
                             }}
                             disabled={membersLoading || personsLoading}>
-                            <option value="">— choisir —</option>
+                            <option value="">{t("common.selectPlaceholder")}</option>
                             {availablePersons.map((p) => (
                                 <option key={p.id} value={p.id}>
                                     {p.display}
@@ -399,11 +405,11 @@ function OrganisationDetailsModal({
                                 onReload();
                                 onClose();
                             }}>
-                            Supprimer
+                            {t("common.delete")}
                         </button>
                     )}
                     <button className="btn-primary" onClick={save}>
-                        Sauvegarder
+                        {t("common.save")}
                     </button>
                 </footer>
             </div>
