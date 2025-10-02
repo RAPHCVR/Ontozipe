@@ -140,6 +140,16 @@ export class AuthService {
         };
     }
 
+    private async getUserCurrentEmail(userIri: string): Promise<string | null> {
+        const sparql = `
+            PREFIX core: <${CORE}>
+            SELECT ?email WHERE { <${userIri}> core:email ?email } LIMIT 1
+        `;
+        const params = new URLSearchParams({ query: sparql, format: "application/sparql-results+json" });
+        const res = await lastValueFrom(this.http.get(this.fusekiUrl, { params }));
+        const row = res.data.results.bindings[0];
+        return row?.email?.value ?? null;
+    }
     private async getAccountsForUser(userIri: string): Promise<string[]> {
         const sparql = `PREFIX core: <${CORE}>
             SELECT ?acc WHERE { <${userIri}> core:hasAccount ?acc }`;
@@ -267,7 +277,12 @@ export class AuthService {
         if (!row || !row.accountIri) {
             throw new NotFoundException("User or local account not found");
         }
+        if (row.hash && (await bcrypt.compare(newPwd, row.hash))) {
+            throw new BadRequestException("Le nouveau mot de passe doit etre different de l'ancien.");
+        }
+
         const hash = await bcrypt.hash(newPwd, 10);
+
         const update = `
       PREFIX core: <${CORE}>
       DELETE { <${row.accountIri}> core:hashedPwd ?h . }
@@ -408,14 +423,29 @@ export class AuthService {
             throw new NotFoundException("User not found");
         }
 
-        if (userIri === adminIri) {
-            throw new BadRequestException("Use profile page to update your own account");
+        const currentEmail = await this.getUserCurrentEmail(userIri);
+        const normalizedCurrentEmail = currentEmail ? this.normalizeEmail(currentEmail) : null;
+
+        let normalizedEmail: string | null | undefined;
+        if (payload.email === undefined) {
+            normalizedEmail = undefined;
+        } else if (payload.email === null) {
+            normalizedEmail = null;
+        } else {
+            normalizedEmail = this.normalizeEmail(payload.email);
         }
 
-        const normalizedEmail = payload.email ? this.normalizeEmail(payload.email) : undefined;
-        if (normalizedEmail) {
+        const emailChanged =
+            normalizedEmail !== undefined &&
+            ((normalizedEmail === null && normalizedCurrentEmail !== null) ||
+                (typeof normalizedEmail === "string" && normalizedEmail !== normalizedCurrentEmail));
+
+        const escapedNormalizedEmail =
+            typeof normalizedEmail === "string" ? escapeSparqlLiteral(normalizedEmail) : null;
+
+        if (escapedNormalizedEmail !== null && emailChanged) {
             const emailTaken = await this.askBoolean(`PREFIX core: <${CORE}>
-                ASK { ?u core:email """${escapeSparqlLiteral(normalizedEmail)}""" FILTER(?u != <${userIri}>) }`);
+                ASK { ?u core:email """${escapedNormalizedEmail}""" FILTER(?u != <${userIri}>) }`);
             if (emailTaken) {
                 throw new ConflictException("Email already used by another account");
             }
@@ -442,18 +472,26 @@ export class AuthService {
             `);
         }
 
-        if (normalizedEmail !== undefined) {
+        if (emailChanged) {
+            const userEmailInsert =
+                escapedNormalizedEmail !== null
+                    ? `<${userIri}> core:email """${escapedNormalizedEmail}""" .`
+                    : "";
             updates.push(`
                 PREFIX core: <${CORE}>
                 DELETE { <${userIri}> core:email ?e . }
-                INSERT { <${userIri}> core:email """${escapeSparqlLiteral(normalizedEmail)}""" . }
+                INSERT { ${userEmailInsert} }
                 WHERE  { OPTIONAL { <${userIri}> core:email ?e . } }
             `);
             for (const acc of accounts) {
+                const accountEmailInsert =
+                    escapedNormalizedEmail !== null
+                        ? `<${acc}> core:email """${escapedNormalizedEmail}""" .`
+                        : "";
                 updates.push(`
                     PREFIX core: <${CORE}>
                     DELETE { <${acc}> core:email ?old . }
-                    INSERT { <${acc}> core:email """${escapeSparqlLiteral(normalizedEmail)}""" . }
+                    INSERT { ${accountEmailInsert} }
                     WHERE  { OPTIONAL { <${acc}> core:email ?old . } }
                 `);
             }
@@ -521,9 +559,3 @@ export class AuthService {
         }
     }
 }
-
-
-
-
-
-

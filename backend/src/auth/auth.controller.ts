@@ -6,6 +6,7 @@ import {
     Post,
     Req,
     UseGuards,
+    BadRequestException,
 } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "./jwt-auth.guard";
@@ -105,7 +106,10 @@ export class AuthController {
     @UseGuards(JwtAuthGuard)
     @Post("change-password")
     async changePwd(@Req() req: any, @Body() dto: ChangePwdDto) {
-        // vérification du mot de passe actuel
+        if (dto.newPassword === dto.oldPassword) {
+            throw new BadRequestException("Le nouveau mot de passe doit etre different de l'ancien.");
+        }
+        // verification du mot de passe actuel
         await this.auth.login(req.user.email, dto.oldPassword);
         await this.auth.changePassword(req.user.email, dto.newPassword);
         return { ok: true };

@@ -1,4 +1,4 @@
-﻿import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { HiOutlineMenu, HiX } from "react-icons/hi";
 import { useAuth } from "../../auth/AuthContext";
@@ -14,7 +14,7 @@ export default function Navbar() {
     const email = profileQuery.data?.email?.toLowerCase();
     const isSuperAdmin =
         roles.some((role) => role.endsWith("SuperAdminRole")) || email === "superadmin@admin.com";
-    const navItem = "block px-4 py-2 hover:bg-indigo-500/30 rounded transition-colors";
+    const navItem = "block px-4 py-2 hover:bg-indigo-500/30 rounded transition-colors cursor-pointer select-none";
 
     const menuClasses = [
         "fixed md:static top-14 inset-x-0 md:flex md:gap-6 bg-indigo-600/95 dark:bg-slate-800/95",
@@ -77,16 +77,24 @@ export default function Navbar() {
 
                     <li className="md:hidden border-t border-white/20 my-2" />
 
-                    <li
-                        onClick={() => {
-                            logout();
-                            navigate("/login");
-                        }}
-                    >
-                        <span className={logoutClasses}>Deconnexion</span>
+                    <li>
+                        <button
+                            type="button"
+                            className={`${logoutClasses} w-full text-left`}
+                            onClick={() => {
+                                closeMenu();
+                                logout();
+                                navigate("/login");
+                            }}
+                        >
+                            Deconnexion
+                        </button>
                     </li>
                 </ul>
             </div>
         </nav>
     );
 }
+
+
+

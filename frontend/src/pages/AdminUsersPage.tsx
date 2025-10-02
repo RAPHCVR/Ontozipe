@@ -63,6 +63,18 @@ export default function AdminUsersPage() {
         setFormRoles(editing.roles ?? []);
     }, [editing, resetStatus]);
 
+    useEffect(() => {
+        if (!errorMessage) return;
+        const timer = window.setTimeout(() => setErrorMessage(null), 6000);
+        return () => window.clearTimeout(timer);
+    }, [errorMessage]);
+
+    useEffect(() => {
+        if (!successMessage) return;
+        const timer = window.setTimeout(() => setSuccessMessage(null), 4000);
+        return () => window.clearTimeout(timer);
+    }, [successMessage]);
+
     const totalUsers = data?.total ?? 0;
     const totalPages = useMemo(() => {
         if (!data) return 1;
@@ -152,7 +164,7 @@ export default function AdminUsersPage() {
 
     return (
         <div className="container mx-auto max-w-6xl space-y-6 px-4 py-10">
-            <header className="flex flex-col gap-4 rounded-3xl bg-white/90 p-6 shadow-lg dark:bg-slate-900/80">
+            <header className="flex flex-col gap-4 rounded-3xl border border-slate-200/80 bg-white/90 p-6 shadow-lg dark:border-slate-700/60 dark:bg-slate-900/80">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">
@@ -343,7 +355,7 @@ export default function AdminUsersPage() {
                 )}
             </div>
 
-            <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm shadow dark:bg-slate-900/70">
+            <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm shadow dark:border-slate-700/60 dark:bg-slate-900/70">
                 <button
                     className="btn-secondary"
                     onClick={() => {

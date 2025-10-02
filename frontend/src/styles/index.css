@@ -81,6 +81,27 @@ h6 {
 	@apply inline-flex items-center gap-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-medium transition-colors;
 }
 
+/* Cursor behavior for interactive controls */
+button,
+a[href],
+[role="button"],
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-link,
+summary {
+	cursor: pointer;
+}
+
+button:disabled,
+button[disabled],
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled,
+[aria-disabled="true"] {
+	cursor: not-allowed;
+}
+
 /* Scrollbar styling (WebKit) */
 ::-webkit-scrollbar {
 	width: 8px;
@@ -91,3 +112,5 @@ h6 {
 ::-webkit-scrollbar-thumb:hover {
 	@apply bg-gray-400 dark:bg-slate-600;
 }
+
+
