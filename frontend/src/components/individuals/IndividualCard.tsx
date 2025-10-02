@@ -178,6 +178,7 @@ const IndividualCard: React.FC<{
 									title={t("common.delete")}
 									onClick={(e) => {
 										e.stopPropagation();
+										if (!window.confirm(t("individual.form.confirmDelete"))) return;
 										onDelete(ind);
 									}}
 									className="text-red-500 hover:text-red-700 text-sm">

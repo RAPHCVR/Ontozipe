@@ -9,6 +9,7 @@ export default function SimpleModal({
 	disableSubmit,
 	submitLabel,
 	cancelLabel,
+	size = "md",
 }: {
 	title: string;
 	onClose: () => void;
@@ -18,6 +19,7 @@ export default function SimpleModal({
 	disableSubmit?: boolean;
 	submitLabel?: string;
 	cancelLabel?: string;
+    size?: "sm" | "md" | "lg";
 }) {
 	const [closing, setClosing] = useState(false);
 	const timeouts = useRef<number[]>([]);
@@ -45,7 +47,7 @@ export default function SimpleModal({
 			role="presentation"
 			onClick={scheduleClose}>
 			<div
-				className="modal"
+				className={`modal modal--${size}`}
 				role="dialog"
 				aria-modal="true"
 				onClick={(event) => event.stopPropagation()}>
@@ -55,7 +57,8 @@ export default function SimpleModal({
 						type="button"
 						className="modal__close"
 						onClick={scheduleClose}
-						aria-label="Fermer la fenêtre">
+						aria-label={t("modal.closeAria")}
+					>
 						<i className="fas fa-times" aria-hidden="true" />
 					</button>
 				</header>
@@ -67,7 +70,7 @@ export default function SimpleModal({
 						type="button"
 						className="button button--ghost"
 						onClick={scheduleClose}>
-						{cancelLabel ?? "Annuler"}
+						{cancelLabel ?? t("common.cancel")}
 					</button>
 					<button
 						className="button button--primary"
@@ -86,7 +89,7 @@ export default function SimpleModal({
 							}
 						}}
 						disabled={disableSubmit}>
-						{submitLabel ?? "Valider"}
+						{submitLabel ?? t("common.confirm")}
 					</button>
 				</footer>
 			</div>

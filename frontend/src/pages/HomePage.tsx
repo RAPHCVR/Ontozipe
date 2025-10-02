@@ -26,6 +26,7 @@ export default function HomePage() {
 	const { token } = useAuth();
 	const payload = token ? JSON.parse(atob(token.split(".")[1])) : {};
 	const { t } = useTranslation();
+	console.log(payload);
 	const username = payload.name || payload.email || t("common.user");
 
 	const profileQuery = useProfile();
@@ -108,7 +109,7 @@ export default function HomePage() {
 		return (
 			<div className="page-state">
 				<div className="page-state__spinner" aria-hidden="true" />
-				<p className="page-state__text">Chargement de vos ontologies…</p>
+				<p className="page-state__text">{t("home.loading")}</p>
 			</div>
 		);
 	}
@@ -120,9 +121,8 @@ export default function HomePage() {
 					className="fas fa-exclamation-triangle page-state__icon"
 					aria-hidden
 				/>
-				<p className="page-state__text">
-					Impossible de charger les ontologies. Merci de réessayer plus tard.
-				</p>
+				<p className="page-state__text">{t("home.loadError")}</p>
+				<p className="page-state__text">{t("home.loadErrorHint")}</p>
 			</div>
 		);
 	}
@@ -134,16 +134,10 @@ export default function HomePage() {
 					<div className="home__welcome">
 						<span className="home__eyebrow">
 							<i className="fas fa-magic" aria-hidden="true" />
-							Bonjour {username}
+							{t("home.greeting", { name: username })}
 						</span>
-						<h1 className="home__title">
-							Naviguez dans vos ontologies en toute fluidité
-						</h1>
-						<p className="home__subtitle">
-							Accédez en un clic à l’ensemble de vos connaissances, partagez-les
-							avec vos équipes et explorez-les grâce à des visualisations
-							immersives.
-						</p>
+						<h1 className="home__title">{t("home.hero.title")}</h1>
+						<p className="home__subtitle">{t("home.hero.subtitle")}</p>
 						<div className="home__cta">
 							{rolesLoaded && isSuperAdmin && (
 								<button
@@ -151,12 +145,12 @@ export default function HomePage() {
 									className="button button--primary"
 									onClick={() => setShowNew(true)}>
 									<i className="fas fa-plus" aria-hidden="true" />
-									Nouvelle ontologie
+									{t("home.actions.newOntology")}
 								</button>
 							)}
 							<Link to="/assistant" className="button button--ghost">
 								<i className="fas fa-magic" aria-hidden="true" />
-								Lancer l’assistant
+								{t("home.actions.launchAssistant")}
 							</Link>
 						</div>
 					</div>
@@ -180,10 +174,9 @@ export default function HomePage() {
 				<div className="app-container home__content-inner">
 					<header className="home__section-header">
 						<div>
-							<h2 className="home__section-title">Vos ontologies</h2>
+							<h2 className="home__section-title">{t("home.section.title")}</h2>
 							<p className="home__section-subtitle">
-								Sélectionnez une ontologie pour l’ouvrir ou démarrez un espace
-								de travail collaboratif instantané.
+								{t("home.section.subtitle")}
 							</p>
 						</div>
 						<div className="home__section-actions">
@@ -193,7 +186,7 @@ export default function HomePage() {
 								aria-pressed={prioritizeFavorites}
 								onClick={() => setPrioritizeFavorites((prev) => !prev)}>
 								<i className="fas fa-star" aria-hidden="true" />
-								Favoris en premier
+								{t("home.filters.favorites")}
 							</button>
 							<button
 								className={`chip ${sortAlphabetical ? "is-active" : ""}`}
@@ -201,7 +194,7 @@ export default function HomePage() {
 								aria-pressed={sortAlphabetical}
 								onClick={() => setSortAlphabetical((prev) => !prev)}>
 								<i className="fas fa-sort-alpha-down" aria-hidden="true" />
-								Tri alphabétique
+								{t("home.filters.alphabetical")}
 							</button>
 						</div>
 					</header>
@@ -229,8 +222,8 @@ export default function HomePage() {
 											}`}
 											aria-label={
 												isFavorite
-													? "Retirer des favoris"
-													: "Ajouter aux favoris"
+													? t("home.favorite.remove", { label })
+													: t("home.favorite.add", { label })
 											}
 											aria-pressed={isFavorite}
 											onClick={() => toggleFavorite(o.iri)}>
@@ -249,7 +242,7 @@ export default function HomePage() {
 											to={`/ontology?iri=${encodeURIComponent(o.iri)}`}
 											className="button button--primary">
 											<i className="fas fa-external-link-alt" aria-hidden />
-											Ouvrir
+											{t("home.table.open")}
 										</Link>
 									</div>
 								</article>
@@ -260,17 +253,14 @@ export default function HomePage() {
 					{ontos.length === 0 && (
 						<div className="home__empty">
 							<i className="fas fa-folder-open home__empty-icon" aria-hidden />
-							<h3>Aucune ontologie pour le moment</h3>
-							<p>
-								Commencez par importer une ontologie ou demandez à votre équipe
-								de vous en partager une.
-							</p>
+							<h3>{t("home.empty.title")}</h3>
+							<p>{t("home.empty.subtitle")}</p>
 							{rolesLoaded && isSuperAdmin && (
 								<button
 									type="button"
 									className="button button--primary"
 									onClick={() => setShowNew(true)}>
-									Importer une ontologie
+									{t("home.empty.import")}
 								</button>
 							)}
 						</div>
@@ -309,7 +299,8 @@ export default function HomePage() {
 								setRdfFile(null);
 							});
 					}}
-					disableSubmit={!newLabel.trim() || !newIri.trim() || !rdfFile}>
+					disableSubmit={!newLabel.trim() || !newIri.trim() || !rdfFile}
+					submitLabel={t("home.modal.submit")}>
 					<div className="form-grid">
 						<div className="form-field-group">
 							<div className="form-field form-field--floating">
@@ -324,7 +315,7 @@ export default function HomePage() {
 								<label
 									className="form-label form-label--floating"
 									htmlFor="newOntologyLabel">
-									Label de l’ontologie
+									{t("home.modal.label")}
 								</label>
 							</div>
 						</div>
@@ -342,19 +333,17 @@ export default function HomePage() {
 								<label
 									className="form-label form-label--floating"
 									htmlFor="newOntologyIri">
-									IRI (identifiant unique)
+									{t("home.modal.iri")}
 								</label>
 							</div>
-							<span className="form-helper">
-								L’IRI doit être unique dans votre triple store.
-							</span>
+							<span className="form-helper">{t("home.modal.iriHint")}</span>
 						</div>
 
 						<div className="form-field-group">
 							<label
 								className="form-label form-label--static"
 								htmlFor="newOntologyFile">
-								Fichier RDF / TTL
+								{t("home.modal.fileLabel")}
 							</label>
 							<input
 								id="newOntologyFile"
@@ -366,13 +355,15 @@ export default function HomePage() {
 							/>
 							{!rdfFile && (
 								<span className="form-helper">
-									Veuillez importer un fichier RDF/TTL valide (obligatoire).
+									{t("home.modal.fileRequired")}
 								</span>
 							)}
 							{rdfFile && (
 								<span className="form-helper form-helper--success">
-									Fichier sélectionné : {rdfFile.name} (
-									{(rdfFile.size / 1024).toFixed(1)} kio)
+									{t("home.modal.fileSelected", {
+										file: rdfFile.name,
+										size: (rdfFile.size / 1024).toFixed(1),
+									})}
 								</span>
 							)}
 						</div>

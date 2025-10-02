@@ -112,43 +112,69 @@ export default function AssistantPage() {
 
                 try {
                     const parsedEvent = JSON.parse(event.data);
-                    const { type, data } = parsedEvent;
+                    const { type, data } = parsedEvent as { type: string; data: any };
 
                     switch (type) {
                         case 'system_prompt':
                             if (typeof data === 'string') setSystemPrompt(data);
                             break;
                         case 'tool_call':
-                            setMessages(prev => {
+                            setMessages((prev) => {
+                                if (prev.length === 0) return prev;
                                 const lastMsg = prev[prev.length - 1];
-                                const updatedSteps = [...(lastMsg.agentSteps || []), { id: data.id, type: 'tool_call', name: data.name, args: data.args }];
-                                const newLastMsg = { ...lastMsg, agentSteps: updatedSteps };
+                                if (lastMsg.role !== "assistant") return prev;
+
+                                const step: AgentStep = {
+                                    id: String(data?.id ?? uuidv4()),
+                                    type: "tool_call",
+                                    name: typeof data?.name === "string" ? data.name : "tool",
+                                    args: data?.args ?? {},
+                                };
+
+                                const updatedSteps: AgentStep[] = [...(lastMsg.agentSteps ?? []), step];
+                                const newLastMsg: ChatMsg = { ...lastMsg, agentSteps: updatedSteps };
                                 return [...prev.slice(0, -1), newLastMsg];
                             });
                             break;
 
                         case 'tool_result':
-                            setMessages(prev => {
+                            setMessages((prev) => {
+                                if (prev.length === 0) return prev;
                                 const lastMsg = prev[prev.length - 1];
-                                const currentSteps = lastMsg.agentSteps || [];
-                                const idx = currentSteps.findIndex(s => s.id === data.id);
-                                let updatedSteps;
+                                if (lastMsg.role !== "assistant") return prev;
+
+                                const currentSteps = [...(lastMsg.agentSteps ?? [])];
+                                const stepId = String(data?.id ?? uuidv4());
+                                const observation = formatObservation(data?.observation);
+                                const idx = currentSteps.findIndex((s) => s.id === stepId);
+
                                 if (idx >= 0) {
-                                    updatedSteps = currentSteps.slice();
-                                    updatedSteps[idx] = { ...updatedSteps[idx], result: data.observation };
+                                    currentSteps[idx] = { ...currentSteps[idx], result: observation };
                                 } else {
-                                    // Si le tool_result arrive avant le tool_call (rare mais possible), on crée une entrée.
-                                    updatedSteps = [...currentSteps, { id: data.id, type: 'tool_call', name: data.name, args: {}, result: data.observation }];
+                                    currentSteps.push({
+                                        id: stepId,
+                                        type: "tool_call",
+                                        name: typeof data?.name === "string" ? data.name : "tool",
+                                        args: data?.args ?? {},
+                                        result: observation,
+                                    });
                                 }
-                                const newLastMsg = { ...lastMsg, agentSteps: updatedSteps };
+
+                                const newLastMsg: ChatMsg = { ...lastMsg, agentSteps: currentSteps };
                                 return [...prev.slice(0, -1), newLastMsg];
                             });
                             break;
 
                         case 'chunk':
                             setMessages((prev) => {
+                                if (prev.length === 0) return prev;
                                 const lastMsg = prev[prev.length - 1];
-                                const newLastMsg = { ...lastMsg, content: lastMsg.content + data };
+                                if (lastMsg.role !== "assistant") return prev;
+                                const chunk = typeof data === "string" ? data : String(data ?? "");
+                                const newLastMsg: ChatMsg = {
+                                    ...lastMsg,
+                                    content: (lastMsg.content ?? "") + chunk,
+                                };
                                 return [...prev.slice(0, -1), newLastMsg];
                             });
                             break;
@@ -160,8 +186,14 @@ export default function AssistantPage() {
                         case 'error':
                             console.error("Received error from server:", data);
                             setMessages((prev) => {
+                                if (prev.length === 0) return prev;
                                 const lastMsg = prev[prev.length - 1];
-                                const errorMsg = { ...lastMsg, content: `Erreur du serveur: ${data}` };
+                                if (lastMsg.role !== "assistant") return prev;
+                                const message = typeof data === "string" ? data : String(data ?? "");
+                                const errorMsg: ChatMsg = {
+                                    ...lastMsg,
+                                    content: `Erreur du serveur: ${message}`,
+                                };
                                 return [...prev.slice(0, -1), errorMsg];
                             });
                             break;
@@ -176,8 +208,13 @@ export default function AssistantPage() {
             onerror(err) {
                 console.error("SSE connection error:", err);
                 setMessages((prev) => {
+                    if (prev.length === 0) return prev;
                     const lastMsg = prev[prev.length - 1];
-                    const errorMsg = { ...lastMsg, content: t("assistant.errors.connection") };
+                    if (lastMsg.role !== "assistant") return prev;
+                    const errorMsg: ChatMsg = {
+                        ...lastMsg,
+                        content: t("assistant.errors.connection"),
+                    };
                     return [...prev.slice(0, -1), errorMsg];
                 });
                 setSending(false);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import SimpleModal from "../components/SimpleModal";
@@ -10,10 +10,16 @@ import {
 	useGroups,
 	useOrganizationMembers,
 	useOrganizations,
+	usePersons,
 	useProfile,
 } from "../hooks/apiQueries";
 import { useToast } from "../hooks/toast";
 import { useTranslation } from "../language/useTranslation";
+import {
+	buildPersonIndex,
+	getPersonDisplay,
+	type PersonDetails,
+} from "../utils/personOptions";
 
 type Group = {
 	iri: string;
@@ -36,6 +42,313 @@ type DeleteGroupInput = { iri: string };
 type GroupsMutationContext = {
 	previousGroups: Group[];
 };
+
+type PersonIndex = Map<string, PersonDetails>;
+
+type GroupModalState =
+	| { mode: "create" }
+	| { mode: "edit"; group: GroupDetails };
+
+type GroupModalProps = {
+	state: GroupModalState;
+	currentUserIri: string;
+	organizations: { iri: string; label: string }[];
+	organizationsLoading: boolean;
+	personIndex: PersonIndex;
+	isSubmitting: boolean;
+	deleting: boolean;
+	onCreate: (input: CreateGroupInput) => Promise<void>;
+	onDeleteGroup: (iri: string) => Promise<void>;
+	onReload: () => void;
+	onClose: () => void;
+};
+
+function GroupModal({
+	state,
+	currentUserIri,
+	organizations,
+	organizationsLoading,
+	personIndex,
+	isSubmitting,
+	deleting,
+	onCreate,
+	onDeleteGroup,
+	onReload,
+	onClose,
+}: GroupModalProps) {
+	const isCreate = state.mode === "create";
+	const group = state.mode === "edit" ? state.group : null;
+
+	const api = useApi();
+	const queryClient = useQueryClient();
+	const { success: toastSuccess, error: toastError } = useToast();
+	const { t } = useTranslation();
+
+	const [label, setLabel] = useState<string>(() =>
+		isCreate ? "" : group?.label ?? ""
+	);
+	const [selectedOrg, setSelectedOrg] = useState<string>(() =>
+		isCreate ? organizations[0]?.iri ?? "" : group?.organizationIri ?? ""
+	);
+	const [members, setMembers] = useState<string[]>(() =>
+		isCreate ? [] : group?.members ?? []
+	);
+	const [saving, setSaving] = useState(false);
+	const initialMembersRef = useRef<string[]>(group?.members ?? []);
+
+	useEffect(() => {
+		if (state.mode === "create") {
+			setLabel("");
+			setMembers([]);
+			setSelectedOrg(organizations[0]?.iri ?? "");
+			initialMembersRef.current = [];
+		} else {
+			const nextGroup = state.group;
+			setLabel(nextGroup.label ?? "");
+			setSelectedOrg(nextGroup.organizationIri ?? "");
+			setMembers(nextGroup.members ?? []);
+			initialMembersRef.current = nextGroup.members ?? [];
+		}
+		setSaving(false);
+	}, [state, organizations]);
+
+	useEffect(() => {
+		if (!isCreate) return;
+		if (selectedOrg) return;
+		if (organizations.length === 0) return;
+		setSelectedOrg(organizations[0].iri);
+	}, [isCreate, organizations, selectedOrg]);
+
+	const { data: orgMembers = [], isFetching } = useOrganizationMembers(
+		selectedOrg,
+		{
+			enabled: Boolean(selectedOrg),
+		}
+	);
+
+	const memberOptions = useMemo(
+		() => mapMembersToOptions(orgMembers, personIndex),
+		[orgMembers, personIndex]
+	);
+
+	useEffect(() => {
+		const available = new Set(memberOptions.map((option) => option.id));
+		setMembers((prev) => {
+			const filtered = prev.filter((id) => available.has(id));
+			let next = filtered;
+			if (
+				isCreate &&
+				currentUserIri &&
+				available.has(currentUserIri) &&
+				!filtered.includes(currentUserIri)
+			) {
+				next = [...filtered, currentUserIri];
+			}
+			if (
+				next.length === prev.length &&
+				next.every((value, index) => value === prev[index])
+			) {
+				return prev;
+			}
+			return next;
+		});
+	}, [memberOptions, isCreate, currentUserIri]);
+
+	const creatorDisplay =
+		!isCreate && group?.createdBy
+			? getPersonDisplay(personIndex, group.createdBy)
+			: undefined;
+	const isOwner = !isCreate && group?.createdBy === currentUserIri;
+
+	const disableSubmit = isCreate
+		? label.trim() === "" ||
+		  selectedOrg === "" ||
+		  members.length === 0 ||
+		  isSubmitting
+		: saving;
+
+	const submitLabel = isCreate
+		? isSubmitting
+			? t("groups.form.submitting")
+			: t("groups.form.submit")
+		: saving
+		? t("groups.details.saving")
+		: t("common.done");
+
+	const title = isCreate ? t("groups.form.title") : t("groups.details.title");
+
+	const handleSubmit = async () => {
+		if (isCreate) {
+			if (label.trim() === "" || selectedOrg === "" || members.length === 0) {
+				return false;
+			}
+			try {
+				await onCreate({
+					label: label.trim(),
+					organizationIri: selectedOrg,
+					members,
+				});
+				return true;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		}
+
+		if (!group) return false;
+		if (saving) return false;
+		setSaving(true);
+		try {
+			if (isOwner && label !== (group.label ?? "")) {
+				await api(`/groups/${encodeURIComponent(group.iri)}`, {
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ label }),
+				});
+			}
+
+			if (
+				isOwner &&
+				selectedOrg &&
+				selectedOrg !== (group.organizationIri ?? "")
+			) {
+				await api(`/groups/${encodeURIComponent(group.iri)}`, {
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ organizationIri: selectedOrg }),
+				});
+			}
+
+			const toAdd = members.filter(
+				(member) => !initialMembersRef.current.includes(member)
+			);
+			const toRemove = initialMembersRef.current.filter(
+				(member) => !members.includes(member)
+			);
+
+			for (const memberId of toAdd) {
+				await api(`/groups/${encodeURIComponent(group.iri)}/members`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ userIri: memberId }),
+				});
+			}
+
+			for (const memberId of toRemove) {
+				await api(
+					`/groups/${encodeURIComponent(
+						group.iri
+					)}/members/${encodeURIComponent(memberId)}`,
+					{ method: "DELETE" }
+				);
+			}
+
+			toastSuccess(t("groups.toast.updateSuccess"));
+			await queryClient.invalidateQueries({
+				queryKey: ["organizations", "members", selectedOrg],
+			});
+			onReload();
+			initialMembersRef.current = members;
+			setSaving(false);
+			return true;
+		} catch (error) {
+			console.error(error);
+			toastError(t("groups.toast.updateError"));
+			setSaving(false);
+			return false;
+		}
+	};
+
+	return (
+		<SimpleModal
+			title={title}
+			size={isCreate ? "md" : "lg"}
+			onClose={onClose}
+			onSubmit={handleSubmit}
+			disableSubmit={disableSubmit}
+			submitLabel={submitLabel}>
+			<div className="form-grid">
+				<div className="form-field">
+					<label
+						className="form-label form-label--static"
+						htmlFor="group-organization">
+						{t("groups.details.organization")}
+					</label>
+					<select
+						id="group-organization"
+						className="form-input"
+						value={selectedOrg}
+						onChange={(event) => setSelectedOrg(event.target.value)}
+						disabled={
+							isCreate
+								? organizationsLoading || organizations.length === 0
+								: !isOwner
+						}>
+						<option value="">{t("groups.form.organizationPlaceholder")}</option>
+						{organizations.map((organization) => (
+							<option key={organization.iri} value={organization.iri}>
+								{organization.label}
+							</option>
+						))}
+					</select>
+				</div>
+
+				<div className="form-field form-field--floating">
+					<input
+						id="group-name"
+						className="form-input"
+						value={label}
+						onChange={(event) => setLabel(event.target.value)}
+						placeholder=" "
+						autoComplete="off"
+						disabled={!isCreate && !isOwner}
+					/>
+					<label
+						className="form-label form-label--floating"
+						htmlFor="group-name">
+						{t("groups.form.nameLabel")}
+					</label>
+				</div>
+
+				<div className="modal-section">
+					<div className="modal-section__header">
+						<label
+							className="form-label form-label--static"
+							htmlFor="group-members">
+							{t("groups.details.members")}
+						</label>
+						<span className="entity-card__meta">
+							{t("groups.card.memberCount", { count: members.length })}
+						</span>
+					</div>
+					{selectedOrg ? (
+						<>
+							{isCreate && (
+								<p className="form-helper">{t("groups.members.helper")}</p>
+							)}
+							<MemberSelector
+								options={memberOptions}
+								selectedIds={members}
+								onChange={setMembers}
+								selectedTitle={t("memberSelector.selectedTitle")}
+								availableTitle={t("memberSelector.availableTitle")}
+								emptyAvailableLabel={
+									isFetching
+										? t("groups.form.loadingMembers")
+										: t("groups.form.noMembers")
+								}
+							/>
+						</>
+					) : (
+						<p className="form-helper">
+							{t("groups.members.selectOrganization")}
+						</p>
+					)}
+				</div>
+			</div>
+		</SimpleModal>
+	);
+}
 
 export default function GroupsPage() {
 	const api = useApi();
@@ -82,8 +395,13 @@ export default function GroupsPage() {
 		return map;
 	}, [organizations]);
 
-	const [showCreateModal, setShowCreateModal] = useState(false);
-	const [focusedGroup, setFocusedGroup] = useState<GroupDetails | null>(null);
+	const personsQuery = usePersons({ enabled: rolesLoaded });
+	const personIndex = useMemo(
+		() => buildPersonIndex(personsQuery.data ?? []),
+		[personsQuery.data]
+	);
+
+	const [modalState, setModalState] = useState<GroupModalState | null>(null);
 
 	const createGroupMutation = useMutation<
 		string | undefined,
@@ -129,10 +447,10 @@ export default function GroupsPage() {
 			if (context) {
 				queryClient.setQueryData<Group[]>(["groups"], context.previousGroups);
 			}
-			toastError("Impossible de créer le groupe.");
+			toastError(t("groups.toast.createError"));
 		},
 		onSuccess: () => {
-			toastSuccess("Groupe créé avec succès.");
+			toastSuccess(t("groups.toast.createSuccess"));
 		},
 		onSettled: () => {
 			queryClient.invalidateQueries({ queryKey: ["groups"] });
@@ -169,10 +487,10 @@ export default function GroupsPage() {
 			if (context) {
 				queryClient.setQueryData<Group[]>(["groups"], context.previousGroups);
 			}
-			toastError("Suppression du groupe impossible.");
+			toastError(t("groups.toast.deleteError"));
 		},
 		onSuccess: () => {
-			toastSuccess("Groupe supprimé.");
+			toastSuccess(t("groups.toast.deleteSuccess"));
 		},
 		onSettled: () => {
 			queryClient.invalidateQueries({ queryKey: ["groups"] });
@@ -187,35 +505,37 @@ export default function GroupsPage() {
 			<div className="app-container page__inner">
 				<header className="page-header">
 					<div>
-						<h1 className="page-title">Groupes</h1>
-						<p className="page-subtitle">
-							Organisez vos collaborateurs en espaces de travail dédiés et
-							contrôlez l’accès aux ontologies partagées.
-							{t("groups.title", { count: groups.length })}
-						</p>
+						<h1 className="page-title">{t("groups.header.title")}</h1>
+						<p className="page-subtitle">{t("groups.header.subtitle")}</p>
 					</div>
-					{currentUserIri && (
-						<button
-							type="button"
-							className="button button--primary"
-							onClick={() => setShowCreateModal(true)}>
-							<i className="fas fa-users" aria-hidden="true" />
-							{t("groups.actions.new")}
-						</button>
-					)}
+					<div className="page-header__actions">
+						<span className="entity-chip">
+							<i className="fas fa-layer-group" aria-hidden="true" />
+							{t("groups.header.count", { count: groups.length })}
+						</span>
+						{currentUserIri && (
+							<button
+								type="button"
+								className="button button--primary"
+								onClick={() => setModalState({ mode: "create" })}>
+								<i className="fas fa-users" aria-hidden="true" />
+								{t("groups.button.create")}
+							</button>
+						)}
+					</div>
 				</header>
 
 				{isLoading && (
 					<div className="page-state">
 						<div className="page-state__spinner" aria-hidden="true" />
-						<p className="page-state__text">Chargement des groupes…</p>
+						<p className="page-state__text">{t("groups.state.loading")}</p>
 					</div>
 				)}
 
 				{!isLoading && !hasGroups && (
 					<div className="page-empty">
-						<p>Vous n’avez pas encore créé de groupe.</p>
-						<p>Invitez vos collègues pour collaborer sur vos ontologies.</p>
+						<p>{t("groups.empty.title")}</p>
+						<p>{t("groups.empty.subtitle")}</p>
 					</div>
 				)}
 
@@ -225,7 +545,12 @@ export default function GroupsPage() {
 							const organizationLabel = group.organizationIri
 								? organizationLabelMap.get(group.organizationIri) ??
 								  formatLabel(group.organizationIri)
-								: "Organisation inconnue";
+								: t("groups.organization.unknown");
+							const memberCount = group.members?.length ?? 0;
+							const creatorDisplay = getPersonDisplay(
+								personIndex,
+								group.createdBy
+							);
 							return (
 								<li key={group.iri} className="entity-card">
 									<div className="entity-card__header">
@@ -242,8 +567,10 @@ export default function GroupsPage() {
 												title={t("groups.actions.view")}
 												type="button"
 												className="icon-button"
-												onClick={() => setFocusedGroup({ ...group })}
-												aria-label="Voir les détails du groupe">
+												onClick={() =>
+													setModalState({ mode: "edit", group: { ...group } })
+												}
+												aria-label={t("groups.actions.view")}>
 												<i className="fas fa-eye" aria-hidden="true" />
 											</button>
 											{group.createdBy === currentUserIri && (
@@ -251,11 +578,13 @@ export default function GroupsPage() {
 													title={t("groups.actions.delete")}
 													type="button"
 													className="icon-button icon-button--danger"
-													aria-label="Supprimer le groupe"
+													aria-label={t("groups.actions.delete")}
 													disabled={deleteGroupMutation.isPending}
-													onClick={() =>
-														deleteGroupMutation.mutate({ iri: group.iri })
-													}>
+													onClick={() => {
+														if (!window.confirm(t("groups.confirm.delete")))
+															return;
+														deleteGroupMutation.mutate({ iri: group.iri });
+													}}>
 													<i className="fas fa-trash" aria-hidden="true" />
 												</button>
 											)}
@@ -264,15 +593,18 @@ export default function GroupsPage() {
 									<div className="entity-card__footer">
 										<span className="entity-chip">
 											<i className="fas fa-user-friends" aria-hidden="true" />
-											{group.members.length} membre
-											{group.members.length > 1 ? "s" : ""}
-											{t("groups.membersLabel", {
-												count: group.members?.length ?? 0,
-											})}
+											{t("groups.card.memberCount", { count: memberCount })}
 										</span>
-										{group.createdBy && (
+										{group.createdBy && creatorDisplay && (
 											<span className="entity-card__meta">
-												Créé par {formatLabel(group.createdBy)}
+												{t("groups.card.createdBy", {
+													name: creatorDisplay.name,
+												})}
+												{creatorDisplay.email && (
+													<span className="entity-card__meta-sub">
+														{creatorDisplay.email}
+													</span>
+												)}
 											</span>
 										)}
 									</div>
@@ -283,395 +615,62 @@ export default function GroupsPage() {
 				)}
 			</div>
 
-			{showCreateModal && (
-				<GroupFormModal
+			{modalState && (
+				<GroupModal
+					state={modalState}
 					currentUserIri={currentUserIri ?? ""}
 					organizations={organizations}
 					organizationsLoading={organizationsQuery.isLoading}
+					personIndex={personIndex}
 					isSubmitting={createGroupMutation.isPending}
+					deleting={deleteGroupMutation.isPending}
 					onCreate={async (payload) => {
 						await createGroupMutation.mutateAsync(payload);
 					}}
-					onClose={() => setShowCreateModal(false)}
-				/>
-			)}
-
-			{focusedGroup && (
-				<GroupDetailsModal
-					group={focusedGroup}
-					currentUserIri={currentUserIri ?? ""}
-					organizations={organizations}
-					onClose={() => setFocusedGroup(null)}
+					onDeleteGroup={async (iri: string) => {
+						await deleteGroupMutation.mutateAsync({ iri });
+					}}
 					onReload={() => {
 						queryClient.invalidateQueries({ queryKey: ["groups"] });
 						queryClient.invalidateQueries({
 							queryKey: ["organizations", organizationsScope],
 						});
 					}}
-					onDeleteGroup={async (iri: string) => {
-						await deleteGroupMutation.mutateAsync({ iri });
-					}}
-					deleting={deleteGroupMutation.isPending}
+					onClose={() => setModalState(null)}
 				/>
 			)}
 		</div>
 	);
 }
 
-function mapMembersToOptions(members: any[]): MemberOption[] {
-	return members.map((member: any) => {
-		const id: string = member.id ?? member.iri;
-		const email = member.properties?.find((prop: any) =>
+function mapMembersToOptions(
+	members: any[],
+	personIndex: PersonIndex
+): MemberOption[] {
+	const seen = new Set<string>();
+	const options: MemberOption[] = [];
+	members.forEach((member: any) => {
+		const id: string | undefined = member.id ?? member.iri;
+		if (!id || seen.has(id)) return;
+		seen.add(id);
+
+		const person = personIndex.get(id);
+		const display = getPersonDisplay(personIndex, id);
+		const properties = member.properties ?? [];
+		const emailFromMember: string | undefined = properties.find((prop: any) =>
 			prop.predicate?.toLowerCase().endsWith("#email")
 		)?.value;
-		const name = member.label ?? id.split(/[#/]/).pop() ?? id;
-		return {
+		const nameFromMember: string | undefined = properties.find((prop: any) =>
+			prop.predicate?.toLowerCase().endsWith("#name")
+		)?.value;
+		const fallback =
+			member.label ?? display?.name ?? id.split(/[#/]/).pop() ?? id;
+
+		options.push({
 			id,
-			label: name,
-			subtitle: email,
-		};
-	});
-}
-
-function GroupFormModal({
-	currentUserIri,
-	organizations,
-	organizationsLoading,
-	isSubmitting,
-	onClose,
-	onCreate,
-}: {
-	currentUserIri: string;
-	organizations: { iri: string; label: string }[];
-	organizationsLoading: boolean;
-	isSubmitting: boolean;
-	onClose: () => void;
-	onCreate: (input: CreateGroupInput) => Promise<void>;
-}) {
-	const [label, setLabel] = useState("");
-	const [selectedOrg, setSelectedOrg] = useState<string>(
-		organizations[0]?.iri ?? ""
-	);
-	const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-	const { t } = useTranslation();
-
-	const { data: orgMembers = [], isFetching } = useOrganizationMembers(
-		selectedOrg,
-		{
-			enabled: Boolean(selectedOrg),
-		}
-	);
-
-	const memberOptions = useMemo(
-		() => mapMembersToOptions(orgMembers),
-		[orgMembers]
-	);
-
-	useEffect(() => {
-		const available = new Set(memberOptions.map((option) => option.id));
-		setSelectedMembers((prev) => {
-			const next = prev.filter((id) => available.has(id));
-			if (available.has(currentUserIri) && !next.includes(currentUserIri)) {
-				return [...next, currentUserIri];
-			}
-			return next;
+			label: person?.name ?? nameFromMember ?? fallback,
+			subtitle: person?.email ?? emailFromMember ?? display?.email,
 		});
-	}, [memberOptions, currentUserIri, selectedOrg]);
-
-	const disabled =
-		label.trim() === "" || selectedOrg === "" || selectedMembers.length === 0;
-
-	const handleSubmit = async () => {
-		if (disabled) return false;
-		try {
-			await onCreate({
-				label: label.trim(),
-				organizationIri: selectedOrg,
-				members: selectedMembers,
-			});
-			return true;
-		} catch (error) {
-			return false;
-		}
-	};
-
-	return (
-		<SimpleModal
-			title={t("groups.form.title")}
-			onClose={onClose}
-			onSubmit={handleSubmit}
-			disableSubmit={disabled || isSubmitting}
-			submitLabel={isSubmitting ? t("common.save") : t("common.create")}>
-			<div className="form-grid">
-				<div className="form-field">
-					<label
-						className="form-label form-label--static"
-						htmlFor="group-organization">
-						{t("groups.form.title")}
-					</label>
-					<select
-						id="group-organization"
-						className="form-input"
-						value={selectedOrg}
-						onChange={(event) => {
-							setSelectedOrg(event.target.value);
-							setSelectedMembers([]);
-						}}
-						disabled={organizationsLoading || organizations.length === 0}>
-						<option value="">{t("groups.form.organizationPlaceholder")}</option>
-						{organizations.map((organization) => (
-							<option key={organization.iri} value={organization.iri}>
-								{organization.label}
-							</option>
-						))}
-					</select>
-				</div>
-
-				<div className="form-field form-field--floating">
-					<input
-						id="group-name"
-						className="form-input"
-						value={label}
-						onChange={(event) => setLabel(event.target.value)}
-						placeholder=" "
-						autoComplete="off"
-					/>
-					<label
-						className="form-label form-label--floating"
-						htmlFor="group-name">
-						{t("groups.form.namePlaceholder")}
-					</label>
-				</div>
-
-				<div className="modal-section">
-					<label
-						className="form-label form-label--static"
-						htmlFor="group-members">
-						{t("groups.form.loadingMembers")}
-					</label>
-					{selectedOrg ? (
-						<>
-							<p className="form-helper">
-								Glissez-déposez ou cliquez pour sélectionner les collaborateurs
-								à inclure dans le groupe.
-							</p>
-							<MemberSelector
-								options={memberOptions}
-								selectedIds={selectedMembers}
-								onChange={setSelectedMembers}
-								selectedTitle="Membres du groupe"
-								availableTitle="Membres de l’organisation"
-								emptyAvailableLabel={
-									isFetching ? "Chargement…" : "Aucun membre disponible"
-								}
-							/>
-						</>
-					) : (
-						<p className="form-helper">
-							Sélectionnez d’abord une organisation pour choisir ses membres.
-						</p>
-					)}
-				</div>
-			</div>
-		</SimpleModal>
-	);
-}
-
-function GroupDetailsModal({
-	group,
-	currentUserIri,
-	organizations,
-	onClose,
-	onReload,
-	onDeleteGroup,
-	deleting,
-}: {
-	group: GroupDetails;
-	currentUserIri: string;
-	organizations: { iri: string; label: string }[];
-	onClose: () => void;
-	onReload: () => void;
-	onDeleteGroup: (iri: string) => Promise<void>;
-	deleting: boolean;
-}) {
-	const api = useApi();
-	const queryClient = useQueryClient();
-	const { success: toastSuccess, error: toastError } = useToast();
-
-	const isOwner = group.createdBy === currentUserIri;
-	const { t } = useTranslation();
-
-	const [label, setLabel] = useState(group.label ?? "");
-	const [selectedOrg, setSelectedOrg] = useState(group.organizationIri ?? "");
-	const [initialMembers] = useState<string[]>(group.members ?? []);
-	const [members, setMembers] = useState<string[]>(group.members ?? []);
-	const [saving, setSaving] = useState(false);
-
-	const { data: orgMembers = [], isFetching } = useOrganizationMembers(
-		selectedOrg,
-		{
-			enabled: Boolean(selectedOrg),
-		}
-	);
-
-	const memberOptions = useMemo(
-		() => mapMembersToOptions(orgMembers),
-		[orgMembers]
-	);
-
-	useEffect(() => {
-		const available = new Set(memberOptions.map((option) => option.id));
-		setMembers((prev) => prev.filter((member) => available.has(member)));
-	}, [memberOptions]);
-
-	const handleSubmit = async () => {
-		if (saving) return false;
-		setSaving(true);
-		try {
-			if (isOwner && label !== group.label) {
-				await api(`/groups/${encodeURIComponent(group.iri)}`, {
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ label }),
-				});
-			}
-
-			if (isOwner && selectedOrg && selectedOrg !== group.organizationIri) {
-				await api(`/groups/${encodeURIComponent(group.iri)}`, {
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ organizationIri: selectedOrg }),
-				});
-			}
-
-			const toAdd = members.filter(
-				(member) => !initialMembers.includes(member)
-			);
-			const toRemove = initialMembers.filter(
-				(member) => !members.includes(member)
-			);
-
-			for (const memberId of toAdd) {
-				await api(`/groups/${encodeURIComponent(group.iri)}/members`, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ userIri: memberId }),
-				});
-			}
-
-			for (const memberId of toRemove) {
-				await api(
-					`/groups/${encodeURIComponent(
-						group.iri
-					)}/members/${encodeURIComponent(memberId)}`,
-					{ method: "DELETE" }
-				);
-			}
-
-			toastSuccess("Groupe mis à jour.");
-			await queryClient.invalidateQueries({
-				queryKey: ["organizations", "members", selectedOrg],
-			});
-			onReload();
-			setSaving(false);
-			return true;
-		} catch (error) {
-			console.error(error);
-			toastError("Impossible de mettre à jour le groupe.");
-			setSaving(false);
-			return false;
-		}
-	};
-
-	const deletable = isOwner;
-
-	return (
-		<SimpleModal
-			title={t("groups.details.title")}
-			onClose={onClose}
-			onSubmit={handleSubmit}
-			disableSubmit={saving}
-			submitLabel={saving ? t("common.save") : t("common.done")}>
-			<div className="form-grid">
-				<div className="form-field form-field--floating">
-					<input
-						id="group-details-name"
-						className="form-input"
-						value={label}
-						onChange={(event) => setLabel(event.target.value)}
-						placeholder=" "
-						autoComplete="off"
-						disabled={!isOwner}
-					/>
-					<label
-						className="form-label form-label--floating"
-						htmlFor="group-details-name">
-						Nom du groupe
-					</label>
-				</div>
-
-				<div className="form-field">
-					<label
-						className="form-label form-label--static"
-						htmlFor="group-details-org">
-						Organisation
-					</label>
-					<select
-						id="group-details-org"
-						className="form-input"
-						value={selectedOrg}
-						onChange={(event) => setSelectedOrg(event.target.value)}
-						disabled={!isOwner}>
-						<option value="">Choisir une organisation</option>
-						{organizations.map((organization) => (
-							<option key={organization.iri} value={organization.iri}>
-								{organization.label}
-							</option>
-						))}
-					</select>
-				</div>
-
-				<div className="modal-section">
-					<div className="modal-section__header">
-						<label
-							className="form-label form-label--static"
-							htmlFor="group-details-members">
-							Membres
-						</label>
-						<span className="entity-card__meta">
-							{members.length} membre{members.length > 1 ? "s" : ""}
-						</span>
-					</div>
-					<MemberSelector
-						options={memberOptions}
-						selectedIds={members}
-						onChange={setMembers}
-						selectedTitle="Dans le groupe"
-						availableTitle="Dans l’organisation"
-						emptyAvailableLabel={isFetching ? "Chargement…" : "Aucun membre"}
-					/>
-				</div>
-
-				{deletable && (
-					<div className="modal-toolbar">
-						<button
-							type="button"
-							className="button button--outline button--danger"
-							disabled={deleting}
-							onClick={async () => {
-								try {
-									await onDeleteGroup(group.iri);
-									onReload();
-									onClose();
-								} catch (error) {
-									/* notification déjà gérée par la mutation */
-								}
-							}}>
-							{deleting ? "Suppression…" : "Supprimer ce groupe"}
-						</button>
-					</div>
-				)}
-			</div>
-		</SimpleModal>
-	);
+	});
+	return options;
 }

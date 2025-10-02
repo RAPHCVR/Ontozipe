@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
 	HiOutlineMenu,
 	HiOutlineMoon,
@@ -7,21 +7,21 @@ import {
 	HiX,
 } from "react-icons/hi";
 import { useAuth } from "../../auth/AuthContext";
+import { useTranslation } from "../../language/useTranslation";
 import {
 	SUPPORTED_LANGUAGES,
 	useLanguage,
 } from "../../language/LanguageContext";
 import type { SupportedLanguage } from "../../language/LanguageContext";
-import { useTranslation } from "../../language/useTranslation";
 
 type ThemeMode = "light" | "dark";
 
 export default function Navbar() {
 	const { logout } = useAuth();
-	const { language, setLanguage } = useLanguage();
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const [open, setOpen] = useState(false);
+	const { language, setLanguage } = useLanguage();
 	const [theme, setTheme] = useState<ThemeMode>(() => {
 		if (typeof window === "undefined") return "light";
 
@@ -82,22 +82,12 @@ export default function Navbar() {
 
 	const closeMenu = () => setOpen(false);
 
-	const languageLabels = useMemo(
-		() =>
-			SUPPORTED_LANGUAGES.reduce(
-				(acc, code) => ({
-					...acc,
-					[code]:
-						code === "fr"
-							? t("language.option.fr")
-							: code === "en"
-							? t("language.option.en")
-							: t("language.option.es"),
-				}),
-				{} as Record<SupportedLanguage, string>
-			),
-		[t]
-	);
+	const languageLabels = useMemo(() => {
+		return SUPPORTED_LANGUAGES.reduce((acc, code) => {
+			const key = `language.option.${code}` as const;
+			return { ...acc, [code]: t(key) };
+		}, {} as Record<SupportedLanguage, string>);
+	}, [t]);
 
 	return (
 		<nav className="navbar">
@@ -116,7 +106,7 @@ export default function Navbar() {
 					<select
 						id="language-select"
 						value={language}
-						onChange={(e) => setLanguage(e.target.value)}
+						onChange={(event) => setLanguage(event.target.value)}
 						className="bg-indigo-500/30 text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/50">
 						{SUPPORTED_LANGUAGES.map((code) => (
 							<option key={code} value={code}>
@@ -175,7 +165,10 @@ export default function Navbar() {
 						<select
 							id="language-select-mobile"
 							value={language}
-							onChange={(e) => setLanguage(e.target.value)}
+							onChange={(event) => {
+								setLanguage(event.target.value);
+								closeMenu();
+							}}
 							className="w-full bg-indigo-500/40 text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/50">
 							{SUPPORTED_LANGUAGES.map((code) => (
 								<option key={code} value={code}>

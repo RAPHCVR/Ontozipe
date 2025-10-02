@@ -98,7 +98,8 @@ body {
 	background-color: var(--surface-app);
 	color: var(--color-text);
 	font-family: "Inter", sans-serif;
-	transition: background-color var(--transition-base), color var(--transition-base);
+	transition: background-color var(--transition-base),
+		color var(--transition-base);
 	-webkit-font-smoothing: antialiased;
 }
 
@@ -163,7 +164,11 @@ button {
 
 .app-footer {
 	border-top: 1px solid var(--border-color);
-	background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(14, 165, 233, 0.05));
+	background: linear-gradient(
+		135deg,
+		rgba(79, 70, 229, 0.08),
+		rgba(14, 165, 233, 0.05)
+	);
 	color: var(--color-muted);
 	padding: 1.25rem 0;
 }
@@ -186,7 +191,8 @@ button {
 	border-radius: 1.1rem;
 	padding: 1.5rem;
 	box-shadow: 0 24px 45px -35px rgba(15, 23, 42, 0.45);
-	transition: background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+	transition: background-color var(--transition-base),
+		border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .card:hover {
@@ -216,7 +222,8 @@ button {
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
-	transition: transform 150ms ease, box-shadow 200ms ease, background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+	transition: transform 150ms ease, box-shadow 200ms ease,
+		background-color 200ms ease, color 200ms ease, border-color 200ms ease;
 }
 
 .button:focus-visible,
@@ -257,7 +264,11 @@ button {
 .button--outline,
 .btn-secondary {
 	border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
-	background: linear-gradient(135deg, rgba(79, 70, 229, 0.05), rgba(14, 165, 233, 0.04));
+	background: linear-gradient(
+		135deg,
+		rgba(79, 70, 229, 0.05),
+		rgba(14, 165, 233, 0.04)
+	);
 }
 
 .button--outline:hover,
@@ -301,7 +312,8 @@ button {
 	font-size: 0.8rem;
 	font-weight: 500;
 	cursor: pointer;
-	transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+	transition: background-color 180ms ease, border-color 180ms ease,
+		color 180ms ease;
 }
 
 .dark .chip {
@@ -358,7 +370,11 @@ button {
 	display: grid;
 	place-items: center;
 	border-radius: 14px;
-	background: radial-gradient(circle at top left, rgba(253, 224, 71, 0.95), rgba(79, 70, 229, 0.95));
+	background: radial-gradient(
+		circle at top left,
+		rgba(253, 224, 71, 0.95),
+		rgba(79, 70, 229, 0.95)
+	);
 	box-shadow: 0 10px 25px -18px rgba(15, 23, 42, 0.6);
 	font-size: 1.1rem;
 }
@@ -546,6 +562,13 @@ button {
 	gap: 1.5rem;
 }
 
+.page-header__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem;
+}
+
 .page-title {
 	font-size: clamp(1.6rem, 2.2vw, 2.1rem);
 	line-height: 1.1;
@@ -573,13 +596,18 @@ button {
 	background: var(--surface-card);
 	border: 1px solid color-mix(in srgb, var(--border-color) 75%, transparent);
 	box-shadow: 0 30px 60px -45px rgba(15, 23, 42, 0.5);
-	transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+	transition: transform 200ms ease, box-shadow 200ms ease,
+		border-color 200ms ease;
 }
 
 .entity-card:hover {
 	transform: translateY(-6px);
 	box-shadow: 0 40px 70px -48px rgba(15, 23, 42, 0.55);
-	border-color: color-mix(in srgb, var(--button-primary-bg) 35%, var(--border-color));
+	border-color: color-mix(
+		in srgb,
+		var(--button-primary-bg) 35%,
+		var(--border-color)
+	);
 }
 
 .entity-card__header {
@@ -616,6 +644,14 @@ button {
 	color: var(--color-muted);
 }
 
+.entity-card__meta-sub {
+	display: block;
+	margin-top: 0.15rem;
+	font-size: 0.72rem;
+	color: var(--color-muted);
+	opacity: 0.85;
+}
+
 .entity-chip {
 	display: inline-flex;
 	align-items: center;
@@ -642,7 +678,8 @@ button {
 	display: grid;
 	place-items: center;
 	font-size: 0.95rem;
-	transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+	transition: background-color 160ms ease, border-color 160ms ease,
+		color 160ms ease, transform 160ms ease;
 }
 
 .icon-button:hover {
@@ -676,9 +713,23 @@ button {
 }
 
 .member-selector {
+	display: flex;
+	flex-direction: row;
+	gap: 1.25rem;
+}
+
+.member-selector--horizontal {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 	gap: 1.2rem;
+}
+
+.member-selector--vertical {
+	gap: 1rem;
+}
+
+.member-selector--vertical .member-selector__panel {
+	width: 100%;
 }
 
 .member-selector__panel {
@@ -763,13 +814,18 @@ button {
 	border-radius: 0.9rem;
 	background: var(--surface-card);
 	border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
-	transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+	transition: transform 160ms ease, box-shadow 160ms ease,
+		border-color 160ms ease;
 	cursor: grab;
 }
 
 .member-selector__item:hover {
 	transform: translateY(-1px);
-	border-color: color-mix(in srgb, var(--button-primary-bg) 35%, var(--border-color));
+	border-color: color-mix(
+		in srgb,
+		var(--button-primary-bg) 35%,
+		var(--border-color)
+	);
 }
 
 .member-selector__item.is-selected {
@@ -852,7 +908,11 @@ button {
 
 .home__hero {
 	position: relative;
-	background: radial-gradient(circle at 15% 20%, rgba(253, 224, 71, 0.28), transparent 55%),
+	background: radial-gradient(
+			circle at 15% 20%,
+			rgba(253, 224, 71, 0.28),
+			transparent 55%
+		),
 		linear-gradient(135deg, rgba(79, 70, 229, 0.82), rgba(14, 165, 233, 0.78));
 	color: #f8fafc;
 	padding: 2.5rem 0 2rem;
@@ -862,9 +922,12 @@ button {
 	overflow: hidden;
 }
 
-
 .dark .home__hero {
-	background: radial-gradient(circle at 20% 20%, rgba(250, 204, 21, 0.12), transparent 60%),
+	background: radial-gradient(
+			circle at 20% 20%,
+			rgba(250, 204, 21, 0.12),
+			transparent 60%
+		),
 		linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
 }
 
@@ -872,7 +935,11 @@ button {
 	content: "";
 	position: absolute;
 	inset: 15% 10% -35% 45%;
-	background: radial-gradient(circle, rgba(14, 165, 233, 0.32), transparent 70%);
+	background: radial-gradient(
+		circle,
+		rgba(14, 165, 233, 0.32),
+		transparent 70%
+	);
 	filter: blur(60px);
 	opacity: 0.65;
 }
@@ -934,7 +1001,11 @@ button {
 	border-radius: 50%;
 	border: 1px dashed rgba(248, 250, 252, 0.35);
 	position: relative;
-	background: radial-gradient(circle at center, rgba(248, 250, 252, 0.08), transparent 70%);
+	background: radial-gradient(
+		circle at center,
+		rgba(248, 250, 252, 0.08),
+		transparent 70%
+	);
 	animation: pulse 4s ease-in-out infinite;
 }
 
@@ -948,7 +1019,11 @@ button {
 	border-radius: 30px;
 	display: grid;
 	place-items: center;
-	background: linear-gradient(135deg, rgba(253, 224, 71, 0.95), rgba(79, 70, 229, 0.95));
+	background: linear-gradient(
+		135deg,
+		rgba(253, 224, 71, 0.95),
+		rgba(79, 70, 229, 0.95)
+	);
 	box-shadow: 0 30px 60px -40px rgba(15, 23, 42, 0.7);
 	font-size: clamp(1.6rem, 3vw, 2rem);
 }
@@ -1034,20 +1109,29 @@ button {
 	position: relative;
 	padding: 1.8rem;
 	border-radius: 1.35rem;
-	background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(226, 232, 240, 0.85));
+	background: linear-gradient(
+		135deg,
+		rgba(255, 255, 255, 0.78),
+		rgba(226, 232, 240, 0.85)
+	);
 	border: 1px solid rgba(148, 163, 184, 0.25);
 	box-shadow: 0 28px 55px -45px rgba(15, 23, 42, 0.65);
 	display: flex;
 	flex-direction: column;
 	gap: 1.2rem;
-	transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+	transition: transform 220ms ease, box-shadow 220ms ease,
+		border-color 220ms ease;
 	opacity: 0;
 	transform: translateY(24px);
 	animation: fade-in-up 0.6s ease forwards;
 }
 
 .dark .ontology-card {
-	background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.88));
+	background: linear-gradient(
+		135deg,
+		rgba(15, 23, 42, 0.9),
+		rgba(30, 41, 59, 0.88)
+	);
 	border: 1px solid rgba(100, 116, 139, 0.3);
 }
 
@@ -1086,7 +1170,11 @@ button {
 	border-radius: 16px;
 	display: grid;
 	place-items: center;
-	background: linear-gradient(135deg, rgba(79, 70, 229, 0.9), rgba(14, 165, 233, 0.9));
+	background: linear-gradient(
+		135deg,
+		rgba(79, 70, 229, 0.9),
+		rgba(14, 165, 233, 0.9)
+	);
 	color: #f8fafc;
 	font-size: 1.2rem;
 	box-shadow: 0 20px 45px -35px rgba(79, 70, 229, 0.6);
@@ -1168,7 +1256,7 @@ button {
 }
 
 .modal {
-	width: min(520px, 100%);
+	max-height: 90vh;
 	background: var(--surface-card);
 	color: var(--color-text);
 	border-radius: 1.25rem;
@@ -1183,6 +1271,18 @@ button {
 	transform: translateY(24px) scale(0.98);
 	opacity: 0;
 	animation: modal-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal--sm {
+	width: min(460px, 100%);
+}
+
+.modal--md {
+	width: min(520px, 100%);
+}
+
+.modal--lg {
+	width: min(680px, 100%);
 }
 
 .dark .modal {
@@ -1220,6 +1320,7 @@ button {
 .modal__body {
 	display: flex;
 	flex-direction: column;
+	overflow: auto;
 	gap: 1rem;
 	padding: 0.35rem 0 0.1rem;
 }
@@ -1303,7 +1404,9 @@ select {
 	color: var(--color-text);
 	padding: 0.75rem 1rem;
 	font-size: 0.95rem;
-	transition: background-color var(--transition-base), color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+	transition: background-color var(--transition-base),
+		color var(--transition-base), border-color var(--transition-base),
+		box-shadow var(--transition-base);
 }
 
 .form-field--floating {
@@ -1325,7 +1428,9 @@ select {
 	color: var(--form-placeholder);
 	opacity: 0.82;
 	pointer-events: none;
-	transition: transform var(--transition-base), color var(--transition-base), font-size var(--transition-base), top var(--transition-base), opacity var(--transition-base);
+	transition: transform var(--transition-base), color var(--transition-base),
+		font-size var(--transition-base), top var(--transition-base),
+		opacity var(--transition-base);
 }
 
 .dark .form-field--floating .form-label {
@@ -1370,12 +1475,237 @@ textarea::placeholder {
 	color: #22c55e;
 }
 
+.form-meta {
+	margin-top: 0.4rem;
+	font-size: 0.75rem;
+	color: #64748b;
+}
+
+.form-meta-secondary {
+	display: block;
+	margin-top: 0.15rem;
+	font-size: 0.7rem;
+	color: #64748b;
+	opacity: 0.85;
+}
+
 .form-input--file {
 	padding: 0.6rem 0.85rem;
 	border-style: dashed;
 	border-color: color-mix(in srgb, var(--border-color) 60%, transparent);
 	border-radius: 0.75rem;
 	cursor: pointer;
+}
+
+.ontology-page {
+	display: flex;
+	gap: 1.5rem;
+	padding: 1.5rem 1.75rem;
+	height: calc(84vh);
+	box-sizing: border-box;
+	background: linear-gradient(
+		145deg,
+		rgba(15, 23, 42, 0.04),
+		rgba(99, 102, 241, 0.07)
+	);
+	overflow: hidden;
+}
+
+.ontology-page__sidebar {
+	display: flex;
+	flex-direction: column;
+	height: calc(100vh - var(--navbar-height));
+	max-height: calc(100vh - var(--navbar-height));
+	transition: width 180ms ease;
+}
+
+.ontology-page__sidebar .card {
+	height: 100%;
+}
+
+.ontology-page__resizer {
+	width: 8px;
+	border-radius: 999px;
+	background: rgba(59, 130, 246, 0.35);
+	box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.25);
+	cursor: col-resize;
+	position: relative;
+	margin: 0 0.4rem;
+	align-self: stretch;
+}
+
+.ontology-page__resizer::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 18px;
+	transform: translateX(-50%);
+	width: 2px;
+	height: calc(100% - 36px);
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.45),
+		rgba(59, 130, 246, 0.55)
+	);
+}
+
+.ontology-page__main {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	min-height: 0;
+}
+
+.ontology-page__summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1rem 1.5rem;
+	border-radius: 1rem;
+	background: linear-gradient(
+		135deg,
+		rgba(59, 130, 246, 0.12),
+		rgba(14, 165, 233, 0.12)
+	);
+	box-shadow: 0 18px 45px -38px rgba(15, 23, 42, 0.45);
+}
+
+.ontology-page__summary-left {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.ontology-page__summary-label {
+	text-transform: uppercase;
+	font-size: 0.72rem;
+	letter-spacing: 0.18em;
+	color: rgba(15, 23, 42, 0.55);
+}
+
+.dark .ontology-page__summary-label {
+	color: rgba(226, 232, 240, 0.65);
+}
+
+.ontology-page__summary-title {
+	font-size: 1.1rem;
+	font-weight: 600;
+}
+
+.ontology-select {
+	font-size: 1.1rem;
+	font-weight: 600;
+	padding: 0.55rem 0.85rem;
+	border-radius: 0.9rem;
+	border: 1px solid rgba(79, 70, 229, 0.35);
+	background: rgba(255, 255, 255, 0.9);
+	box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+	width: 100%;
+}
+
+.dark .ontology-select {
+	background: rgba(15, 23, 42, 0.8);
+	color: inherit;
+	border-color: rgba(129, 140, 248, 0.45);
+}
+
+.ontology-page__class-select {
+	max-width: 260px;
+}
+
+.ontology-page__stats {
+	display: flex;
+	gap: 1rem;
+}
+
+.ontology-page__stat {
+	padding: 0.9rem 1.1rem;
+	border-radius: 0.9rem;
+	background: rgba(255, 255, 255, 0.9);
+	box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.15);
+	text-align: right;
+}
+
+.dark .ontology-page__stat {
+	background: rgba(30, 41, 59, 0.75);
+	box-shadow: inset 0 0 0 1px rgba(129, 140, 248, 0.25);
+}
+
+.ontology-page__stat-value {
+	font-size: 1.6rem;
+	font-weight: 700;
+	color: rgba(30, 41, 59, 0.95);
+}
+
+.dark .ontology-page__stat-value {
+	color: rgba(226, 232, 240, 0.95);
+}
+
+.ontology-page__stat-label {
+	display: block;
+	margin-top: 0.25rem;
+	font-size: 0.75rem;
+	color: rgba(71, 85, 105, 0.8);
+}
+
+.dark .ontology-page__stat-label {
+	color: rgba(148, 163, 184, 0.75);
+}
+
+.ontology-page__graph {
+	flex: 1;
+	min-height: 0;
+	padding: 1.25rem 1.5rem;
+	border-radius: 1.25rem;
+	background: rgba(255, 255, 255, 0.92);
+	box-shadow: 0 28px 50px -42px rgba(15, 23, 42, 0.55);
+	display: flex;
+	min-height: 0;
+	position: relative;
+}
+
+.dark .ontology-page__graph {
+	background: rgba(15, 23, 42, 0.78);
+}
+
+.ontology-page__graph > * {
+	flex: 1;
+	min-height: 0;
+}
+
+.ontology-page__graph-loading {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	background: rgba(15, 23, 42, 0.08);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	backdrop-filter: blur(4px);
+	z-index: 2;
+	border-radius: inherit;
+}
+
+.dark .ontology-page__graph-loading {
+	background: rgba(15, 23, 42, 0.45);
+}
+
+.ontology-page__graph-spinner {
+	width: 40px;
+	height: 40px;
+	border-radius: 999px;
+	border: 4px solid rgba(99, 102, 241, 0.25);
+	border-top-color: rgba(99, 102, 241, 0.95);
+	animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .form-input--file::file-selector-button {
@@ -1522,7 +1852,11 @@ tbody tr:hover {
 input:hover,
 textarea:hover,
 select:hover {
-	border-color: color-mix(in srgb, var(--button-primary-bg) 35%, var(--border-color));
+	border-color: color-mix(
+		in srgb,
+		var(--button-primary-bg) 35%,
+		var(--border-color)
+	);
 }
 
 .form-field--floating .form-input:focus + .form-label,

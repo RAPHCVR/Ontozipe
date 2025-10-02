@@ -447,7 +447,13 @@ export class IndividualsService extends OntologyBaseService {
 
     private iriLocalName(iri: string): string {
         const parts = iri.split(/[#/]/);
-        return parts[parts.length - 1] || iri;
+        const raw = parts[parts.length - 1] || iri;
+        try {
+            const decoded = decodeURIComponent(raw);
+            return decoded || raw;
+        } catch (_error) {
+            return raw;
+        }
     }
 
     async getAllPersons(preferredLang?: string): Promise<IndividualNode[]> {
@@ -456,11 +462,13 @@ export class IndividualsService extends OntologyBaseService {
             PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
             PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX core:  <${this.CORE}>
+            PREFIX foaf:  <http://xmlns.com/foaf/0.1/>
 
-            SELECT ?u ?uLabel ?uLabelLang ?pred ?predLabel ?predLabelLang ?val ?valLabel ?valLabelLang ?grp ?grpLabel ?grpLabelLang WHERE {
+            SELECT ?u ?uLabel ?uLabelLang ?uName ?uNameLang ?pred ?predLabel ?predLabelLang ?val ?valLabel ?valLabelLang ?grp ?grpLabel ?grpLabelLang WHERE {
               ?u rdf:type core:User .
               OPTIONAL { ?u core:hasAccount ?acc }
               OPTIONAL { ?u rdfs:label ?uLabel . BIND(LANG(?uLabel) AS ?uLabelLang) }
+              OPTIONAL { ?u foaf:name ?uName . BIND(LANG(?uName) AS ?uNameLang) }
               OPTIONAL {
                 { ?grp core:hasMember ?u }
                 UNION
@@ -478,6 +486,8 @@ export class IndividualsService extends OntologyBaseService {
             u: { value: string };
             uLabel?: { value: string };
             uLabelLang?: { value: string };
+            uName?: { value: string };
+            uNameLang?: { value: string };
             pred: { value: string };
             predLabel?: { value: string };
             predLabelLang?: { value: string };
@@ -509,7 +519,8 @@ export class IndividualsService extends OntologyBaseService {
             }
             const person = personMap.get(id)!;
 
-            const personState = this.pickLabel(personLabelStates.get(id), row.uLabel?.value, row.uLabelLang?.value, langPreference);
+            let personState = this.pickLabel(personLabelStates.get(id), row.uLabel?.value, row.uLabelLang?.value, langPreference);
+            personState = this.pickLabel(personState, row.uName?.value, row.uNameLang?.value, langPreference);
             if (personState) {
                 personLabelStates.set(id, personState);
                 person.label = personState.value;
@@ -713,4 +724,3 @@ interface LiteralBucket {
     predicateLabel?: string;
     state?: LabelState;
 }
-

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "../../language/useTranslation";
 
 export type MemberOption = {
 	id: string;
@@ -13,8 +14,9 @@ export type MemberSelectorProps = {
 	availableTitle?: string;
 	selectedTitle?: string;
 	searchPlaceholder?: string;
-	emptyAvailableLabel?: any;
+	emptyAvailableLabel?: string;
 	emptySelectedLabel?: string;
+	orientation?: "horizontal" | "vertical";
 };
 
 function formatFallback(id: string) {
@@ -28,12 +30,19 @@ export function MemberSelector({
 	options,
 	selectedIds,
 	onChange,
-	availableTitle = "Disponibles",
-	selectedTitle = "Sélectionnés",
-	searchPlaceholder = "Rechercher un utilisateur…",
-	emptyAvailableLabel = "Aucun résultat",
-	emptySelectedLabel = "Aucun membre sélectionné",
+	availableTitle,
+	selectedTitle,
+	searchPlaceholder,
+	emptyAvailableLabel,
+	emptySelectedLabel,
+	orientation = "horizontal",
 }: MemberSelectorProps) {
+    const { t } = useTranslation();
+    const availableTitleText = availableTitle ?? t("memberSelector.availableTitle");
+    const selectedTitleText = selectedTitle ?? t("memberSelector.selectedTitle");
+    const searchPlaceholderText = searchPlaceholder ?? t("memberSelector.searchPlaceholder");
+    const emptyAvailableText = emptyAvailableLabel ?? t("memberSelector.emptyAvailable");
+    const emptySelectedText = emptySelectedLabel ?? t("memberSelector.emptySelected");
 	const [query, setQuery] = useState("");
 	const [draggedId, setDraggedId] = useState<string | null>(null);
 	const [dropTarget, setDropTarget] = useState<"available" | "selected" | null>(
@@ -131,7 +140,9 @@ export function MemberSelector({
 				className="member-selector__action"
 				onClick={action}
 				aria-label={
-					isSelected ? `Retirer ${option.label}` : `Ajouter ${option.label}`
+					isSelected
+						? t("memberSelector.aria.remove", { label: option.label })
+						: t("memberSelector.aria.add", { label: option.label })
 				}>
 				<i
 					className={`fas fa-${isSelected ? "times" : "chevron-right"}`}
@@ -141,13 +152,15 @@ export function MemberSelector({
 		</article>
 	);
 
+	const layoutClass = `member-selector member-selector--${orientation}`;
+
 	return (
-		<div className="member-selector">
+		<div className={layoutClass}>
 			<div className="member-selector__panel">
 				<header className="member-selector__panel-header">
 					<div>
-						<h4>{availableTitle}</h4>
-						<p>{available.length} résultats</p>
+						<h4>{availableTitleText}</h4>
+						<p>{t("memberSelector.availableCount", { count: available.length })}</p>
 					</div>
 				</header>
 				<div className="member-selector__search">
@@ -156,7 +169,7 @@ export function MemberSelector({
 						type="search"
 						value={query}
 						onChange={(event) => setQuery(event.target.value)}
-						placeholder={searchPlaceholder}
+						placeholder={searchPlaceholderText}
 					/>
 				</div>
 				<div
@@ -166,9 +179,9 @@ export function MemberSelector({
 					onDragOver={handleDragOver("available")}
 					onDragLeave={handleDragLeave}
 					onDrop={handleDrop("available")}>
-					{available.length === 0 && (
-						<p className="member-selector__empty">{emptyAvailableLabel}</p>
-					)}
+                    {available.length === 0 && (
+                        <p className="member-selector__empty">{emptyAvailableText}</p>
+                    )}
 					{available.map((option) =>
 						renderOption(option, false, () => add(option.id))
 					)}
@@ -178,20 +191,20 @@ export function MemberSelector({
 			<div className="member-selector__panel">
 				<header className="member-selector__panel-header">
 					<div>
-						<h4>{selectedTitle}</h4>
-						<p>{selected.length} sélectionnés</p>
+						<h4>{selectedTitleText}</h4>
+						<p>{t("memberSelector.selectedCount", { count: selected.length })}</p>
 					</div>
 				</header>
-				<div
+                <div
 					className={`member-selector__list${
 						dropTarget === "selected" ? " is-dropping" : ""
 					}`}
 					onDragOver={handleDragOver("selected")}
 					onDragLeave={handleDragLeave}
 					onDrop={handleDrop("selected")}>
-					{selected.length === 0 && (
-						<p className="member-selector__empty">{emptySelectedLabel}</p>
-					)}
+                    {selected.length === 0 && (
+                        <p className="member-selector__empty">{emptySelectedText}</p>
+                    )}
 					{selected.map((option) =>
 						renderOption(option, true, () => remove(option.id))
 					)}
