@@ -1,77 +1,178 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { HiOutlineMenu, HiX } from "react-icons/hi";
+import { useEffect, useState } from "react";
+import {
+    HiOutlineMenu,
+    HiOutlineMoon,
+    HiOutlineSun,
+    HiX,
+} from "react-icons/hi";
 import { useAuth } from "../../auth/AuthContext";
+
+type ThemeMode = "light" | "dark";
 
 export default function Navbar() {
     const { logout } = useAuth();
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
-    const navItem =
-        "block px-4 py-2 hover:bg-indigo-500/30 rounded transition-colors";
+    const [theme, setTheme] = useState<ThemeMode>(() => {
+        if (typeof window === "undefined") return "light";
+
+        const root = window.document.documentElement;
+        const stored = window.localStorage.getItem("theme");
+        if (stored === "dark" || stored === "light") {
+            root.classList.toggle("dark", stored === "dark");
+            root.dataset.theme = stored;
+            return stored;
+        }
+
+        const prefersDark = window.matchMedia(
+            "(prefers-color-scheme: dark)"
+        ).matches;
+        const resolved = prefersDark ? "dark" : "light";
+        root.classList.toggle("dark", prefersDark);
+        root.dataset.theme = resolved;
+        return resolved;
+    });
+    const [hasExplicitPreference, setHasExplicitPreference] = useState(() => {
+        if (typeof window === "undefined") return false;
+        const stored = window.localStorage.getItem("theme");
+        return stored === "dark" || stored === "light";
+    });
+    const isDark = theme === "dark";
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const root = window.document.documentElement;
+        root.classList.toggle("dark", isDark);
+        root.dataset.theme = isDark ? "dark" : "light";
+    }, [isDark]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (!hasExplicitPreference) return;
+        window.localStorage.setItem("theme", theme);
+    }, [theme, hasExplicitPreference]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (hasExplicitPreference) return;
+
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const handleChange = (event: MediaQueryListEvent) => {
+            setTheme(event.matches ? "dark" : "light");
+        };
+
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
+    }, [hasExplicitPreference]);
+
+    const handleToggleTheme = () => {
+        setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+        setHasExplicitPreference(true);
+        setOpen(false);
+    };
+
+    const closeMenu = () => setOpen(false);
 
     return (
-        <nav className="sticky top-0 z-40 bg-indigo-600 dark:bg-slate-800 text-white shadow-md">
-            <div className="max-w-7xl mx-auto h-14 px-4 flex items-center justify-between">
-                <Link to="/" className="font-bold tracking-wide text-lg">
-                    Onto<span className="text-yellow-300">ZIPE</span>
+        <nav className="navbar">
+            <div className="app-container navbar__inner">
+                <Link to="/" className="navbar__brand" onClick={closeMenu}>
+                    <span className="navbar__logo" aria-hidden="true">
+                        <i className="fas fa-cubes" />
+                    </span>
+                    <span className="navbar__title">OntoZIPE</span>
                 </Link>
 
-                {/* burger mobile */}
-                <button
-                    onClick={() => setOpen(!open)}
-                    className="md:hidden text-2xl focus:outline-none"
-                >
-                    {open ? <HiX /> : <HiOutlineMenu />}
-                </button>
+                <div className="navbar__actions">
+                    <button
+                        type="button"
+                        className="navbar__toggle"
+                        aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+                        aria-expanded={open}
+                        onClick={() => setOpen((prev) => !prev)}
+                    >
+                        {open ? <HiX /> : <HiOutlineMenu />}
+                    </button>
+                </div>
 
-                {/* menu */}
-                <ul
-                    className={`fixed md:static top-14 inset-x-0 md:flex md:gap-6 bg-indigo-600/95 dark:bg-slate-800/95 backdrop-blur-lg md:backdrop-blur-0 md:bg-transparent transition-transform ${
-                        open ? "translate-y-0" : "-translate-y-full md:translate-y-0"
-                    }`}
-                >
-                    <li onClick={() => setOpen(false)}>
-                        <Link to="/" className={navItem}>
+                <ul className={`navbar__menu ${open ? "is-open" : ""}`}>
+                    <li className="navbar__item">
+                        <Link to="/" className="navbar__link" onClick={closeMenu}>
                             Accueil
                         </Link>
                     </li>
-
-                    <li onClick={() => setOpen(false)}>
-                        <Link to="/assistant" className={navItem}>
+                    <li className="navbar__item">
+                        <Link
+                            to="/assistant"
+                            className="navbar__link"
+                            onClick={closeMenu}
+                        >
                             Assistant
                         </Link>
                     </li>
-
-                    <li onClick={() => setOpen(false)}>
-                        <Link to="/groups" className={navItem}>
+                    <li className="navbar__item">
+                        <Link
+                            to="/groups"
+                            className="navbar__link"
+                            onClick={closeMenu}
+                        >
                             Groupes
                         </Link>
                     </li>
-
-                    <li onClick={() => setOpen(false)}>
-                        <Link to="/organisations" className={navItem}>
+                    <li className="navbar__item">
+                        <Link
+                            to="/organisations"
+                            className="navbar__link"
+                            onClick={closeMenu}
+                        >
                             Organisations
                         </Link>
                     </li>
-
-                    <li onClick={() => setOpen(false)}>
-                        <Link to="/profile" className={navItem}>
+                    <li className="navbar__item">
+                        <Link
+                            to="/profile"
+                            className="navbar__link"
+                            onClick={closeMenu}
+                        >
                             Profil
                         </Link>
                     </li>
-
-                    <li className="md:hidden border-t border-white/20 my-2" />
-
-                    <li
-                        onClick={() => {
-                            logout();
-                            navigate("/login");
-                        }}
-                    >
-            <span className={`${navItem} md:border md:border-white/40`}>
-              Déconnexion
-            </span>
+                    <li className="navbar__item">
+                        <button
+                            type="button"
+                            onClick={handleToggleTheme}
+                            className="navbar__link navbar__theme"
+                            aria-label={
+                                isDark
+                                    ? "Activer le mode clair"
+                                    : "Activer le mode sombre"
+                            }
+                        >
+                            <span className="navbar__theme-label">
+                                {isDark ? "Mode clair" : "Mode sombre"}
+                            </span>
+                            {isDark ? (
+                                <HiOutlineSun className="navbar__theme-icon" />
+                            ) : (
+                                <HiOutlineMoon className="navbar__theme-icon" />
+                            )}
+                        </button>
+                    </li>
+                    <li className="navbar__divider" aria-hidden="true" />
+                    <li className="navbar__item">
+                        <button
+                            type="button"
+                            className="navbar__link navbar__logout"
+                            onClick={() => {
+                                logout();
+                                navigate("/login");
+                                setOpen(false);
+                            }}
+                        >
+                            <span>Déconnexion</span>
+                            <i className="fas fa-sign-out-alt" aria-hidden="true" />
+                        </button>
                     </li>
                 </ul>
             </div>

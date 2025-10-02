@@ -66,6 +66,17 @@ L'application utilise des variables d'environnement pour se configurer.
 
 ⚠️⚠️⚠️ Créez un dossier vide a la racine, du nom de `fuseki_data` ⚠️⚠️⚠️
 
+> 🪟 **Utilisateurs Windows** : Docker Desktop doit fonctionner avec le noyau Linux (WSL 2).<br>
+> Assurez-vous d’avoir activé WSL 2 puis basculé Docker en mode Linux avant de lancer les conteneurs.
+>
+> ```powershell
+> wsl --install                 # Installe WSL si besoin (redémarrage possible)
+> wsl --set-default-version 2   # Force l’utilisation de WSL 2
+> & "C:\Program Files\Docker\Docker\DockerCli.exe" -SwitchLinuxEngine
+> ```
+>
+> Après ces commandes, Docker redémarre en mode Linux et peut exécuter `docker compose` correctement.
+
 Depuis la racine du projet :
 
 ```bash

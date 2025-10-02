@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { XMarkIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-// util pour encoder un IRI dans les URL
-const enc = encodeURIComponent;
+
+import SimpleModal from "../components/SimpleModal";
+import { MemberSelector, MemberOption } from "../components/members";
 import { useApi } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
@@ -17,12 +17,12 @@ import { useToast } from "../hooks/toast";
 type Group = {
     iri: string;
     label?: string;
-    members?: string[];
+    members: string[];
     createdBy?: string;
     organizationIri?: string;
 };
 
-type GroupDetails = Group & { members: string[] };
+type GroupDetails = Group & { organizationIri?: string };
 
 type CreateGroupInput = {
     label: string;
@@ -37,52 +37,68 @@ type GroupsMutationContext = {
 };
 
 export default function GroupsPage() {
-    const queryClient = useQueryClient();
     const api = useApi();
+    const queryClient = useQueryClient();
     const { user } = useAuth();
     const currentUserIri = user?.sub;
     const { success: toastSuccess, error: toastError } = useToast();
 
     const profileQuery = useProfile();
     const roles = profileQuery.data?.roles ?? [];
-    const isSuperAdmin = roles.some((r) => r.endsWith("SuperAdminRole"));
-    const isRolesLoaded = !profileQuery.isLoading && !profileQuery.isFetching;
+    const isSuperAdmin = roles.some((role) => role.endsWith("SuperAdminRole"));
+    const rolesLoaded = !profileQuery.isLoading && !profileQuery.isFetching;
 
     const groupsQuery = useGroups();
-    const groups = useMemo(
+    const rawGroups = groupsQuery.data ?? [];
+    const groups = useMemo<Group[]>(
         () =>
-            (groupsQuery.data ?? []).map(
-                (g: any): Group => ({
-                    iri: g.iri,
-                    label: g.label,
-                    createdBy: g.createdBy,
-                    members: g.members ?? [],
-                    organizationIri: g.organizationIri,
-                })
-            ),
-        [groupsQuery.data]
+            rawGroups.map((group: any) => ({
+                iri: group.iri,
+                label: group.label,
+                createdBy: group.createdBy,
+                members: group.members ?? [],
+                organizationIri: group.organizationIri,
+            })),
+        [rawGroups]
     );
 
+    const organizationsScope = isSuperAdmin ? "all" : "mine";
+    const organizationsQuery = useOrganizations(organizationsScope, {
+        enabled: rolesLoaded,
+    });
+    const organizations = useMemo(
+        () =>
+            (organizationsQuery.data ?? []).map((org: any) => ({
+                iri: org.iri,
+                label: org.label ?? formatLabel(org.iri),
+            })),
+        [organizationsQuery.data]
+    );
+    const organizationLabelMap = useMemo(() => {
+        const map = new Map<string, string>();
+        organizations.forEach((org) => map.set(org.iri, org.label));
+        return map;
+    }, [organizations]);
+
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [focusedGroup, setFocusedGroup] = useState<GroupDetails | null>(null);
+
     const createGroupMutation = useMutation<string | undefined, Error, CreateGroupInput, GroupsMutationContext>({
-        mutationFn: async (input) => {
-            const res = await api("/groups", {
+        mutationFn: async ({ label, organizationIri, members }) => {
+            const response = await api("/groups", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    label: input.label,
-                    organizationIri: input.organizationIri,
-                    members: input.members,
-                }),
+                body: JSON.stringify({ label, organizationIri, members }),
             });
-            if (!res.ok) {
-                throw new Error(await res.text());
+            if (!response.ok) {
+                throw new Error(await response.text());
             }
-            const contentType = res.headers.get("content-type");
+            const contentType = response.headers.get("content-type");
             if (contentType?.includes("application/json")) {
-                const json = await res.json();
+                const json = await response.json();
                 return typeof json === "string" ? json : json?.iri;
             }
-            return (await res.text()) || undefined;
+            return (await response.text()) || undefined;
         },
         onMutate: async (input) => {
             await queryClient.cancelQueries({ queryKey: ["groups"] });
@@ -90,9 +106,9 @@ export default function GroupsPage() {
             const optimistic: Group = {
                 iri: `temp-${Date.now()}`,
                 label: input.label,
+                organizationIri: input.organizationIri,
                 createdBy: currentUserIri,
                 members: input.members,
-                organizationIri: input.organizationIri,
             };
             queryClient.setQueryData<Group[]>(["groups"], [...previousGroups, optimistic]);
             return { previousGroups };
@@ -108,15 +124,18 @@ export default function GroupsPage() {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["groups"] });
+            queryClient.invalidateQueries({
+                queryKey: ["organizations", organizationsScope],
+            });
         },
     });
 
     const deleteGroupMutation = useMutation<void, Error, DeleteGroupInput, GroupsMutationContext>({
         mutationFn: async ({ iri }) => {
-            const res = await api(`/groups/${encodeURIComponent(iri)}`, { method: "DELETE" });
-            if (!res.ok) {
-                throw new Error(await res.text());
-            }
+            const response = await api(`/groups/${encodeURIComponent(iri)}`, {
+                method: "DELETE",
+            });
+            if (!response.ok) throw new Error(await response.text());
         },
         onMutate: async ({ iri }) => {
             await queryClient.cancelQueries({ queryKey: ["groups"] });
@@ -141,96 +160,134 @@ export default function GroupsPage() {
         },
     });
 
-    const organizationsScope = isSuperAdmin ? "all" : "mine";
-    const organizationsQuery = useOrganizations(organizationsScope, {
-        enabled: isRolesLoaded,
-    });
-    const organizations = useMemo(
-        () =>
-            (organizationsQuery.data ?? []).map((org: any) => ({
-                iri: org.iri,
-                label: org.label ?? org.iri.split(/[#/]/).pop() ?? org.iri,
-            })),
-        [organizationsQuery.data]
-    );
-
-    const [showNew, setShowNew] = useState(false);
-    const [selected, setSelected] = useState<GroupDetails | null>(null);
-
-    const refreshGroups = () =>
-        queryClient.invalidateQueries({ queryKey: ["groups"] });
-
-    const refreshOrganizations = () =>
-        queryClient.invalidateQueries({ queryKey: ["organizations", organizationsScope] });
+    const isLoading = groupsQuery.isLoading || groupsQuery.isFetching;
+    const hasGroups = groups.length > 0;
 
     return (
-        <div className="container mx-auto py-8 space-y-6">
-            <h1 className="text-2xl font-semibold flex justify-between items-center">
-                Groupes ({groups.length})
-                {currentUserIri && isRolesLoaded && (
-                    <button className="btn-primary" onClick={() => setShowNew(true)}>
-                        + Nouveau
-                    </button>
-                )}
-            </h1>
-
-            <ul className="grid md:grid-cols-2 gap-4">
-                {groups.map((g) => (
-                    <li key={g.iri} className="card space-y-2 shadow-sm">
-                        <div className="flex justify-between items-center">
-                            <span className="font-medium">{formatLabel(g.label ?? g.iri)}</span>
-                            <div className="flex items-center gap-2">
-                                {/* Voir les membres */}
-                                <button
-                                    title="Voir"
-                                    className="text-indigo-600 hover:text-indigo-800"
-                                    onClick={() => setSelected(g as GroupDetails)}>
-                                    <EyeIcon className="w-4 h-4" />
-                                </button>
-                                {/* Actions réservées au créateur */}
-                                {g.createdBy === currentUserIri && (
-                                    <button
-                                        title="Supprimer"
-                                        className="text-red-600 text-sm disabled:opacity-40"
-                                        disabled={deleteGroupMutation.isPending}
-                                        onClick={() => deleteGroupMutation.mutate({ iri: g.iri })}>
-                                        🗑
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                            Membres&nbsp;: {g.members?.length ?? 0}{" "}
+        <div className="page">
+            <div className="app-container page__inner">
+                <header className="page-header">
+                    <div>
+                        <h1 className="page-title">Groupes</h1>
+                        <p className="page-subtitle">
+                            Organisez vos collaborateurs en espaces de travail dédiés et contrôlez
+                            l’accès aux ontologies partagées.
                         </p>
-                    </li>
-                ))}
-            </ul>
+                    </div>
+                    {currentUserIri && (
+                        <button
+                            type="button"
+                            className="button button--primary"
+                            onClick={() => setShowCreateModal(true)}
+                        >
+                            <i className="fas fa-users" aria-hidden="true" />
+                            Créer un groupe
+                        </button>
+                    )}
+                </header>
 
-            {showNew && (
+                {isLoading && (
+                    <div className="page-state">
+                        <div className="page-state__spinner" aria-hidden="true" />
+                        <p className="page-state__text">Chargement des groupes…</p>
+                    </div>
+                )}
+
+                {!isLoading && !hasGroups && (
+                    <div className="page-empty">
+                        <p>Vous n’avez pas encore créé de groupe.</p>
+                        <p>Invitez vos collègues pour collaborer sur vos ontologies.</p>
+                    </div>
+                )}
+
+                {!isLoading && hasGroups && (
+                    <ul className="entity-grid">
+                        {groups.map((group) => {
+                            const organizationLabel = group.organizationIri
+                                ? organizationLabelMap.get(group.organizationIri) ??
+                                  formatLabel(group.organizationIri)
+                                : "Organisation inconnue";
+                            return (
+                                <li key={group.iri} className="entity-card">
+                                    <div className="entity-card__header">
+                                        <div>
+                                            <h3 className="entity-card__title">
+                                                {formatLabel(group.label ?? group.iri)}
+                                            </h3>
+                                            <p className="entity-card__subtitle">
+                                                {organizationLabel}
+                                            </p>
+                                        </div>
+                                        <div className="entity-card__actions">
+                                            <button
+                                                type="button"
+                                                className="icon-button"
+                                                onClick={() =>
+                                                    setFocusedGroup({ ...group })
+                                                }
+                                                aria-label="Voir les détails du groupe"
+                                            >
+                                                <i className="fas fa-eye" aria-hidden="true" />
+                                            </button>
+                                            {group.createdBy === currentUserIri && (
+                                                <button
+                                                    type="button"
+                                                    className="icon-button icon-button--danger"
+                                                    aria-label="Supprimer le groupe"
+                                                    disabled={deleteGroupMutation.isPending}
+                                                    onClick={() =>
+                                                        deleteGroupMutation.mutate({ iri: group.iri })
+                                                    }
+                                                >
+                                                    <i className="fas fa-trash" aria-hidden="true" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="entity-card__footer">
+                                        <span className="entity-chip">
+                                            <i className="fas fa-user-friends" aria-hidden="true" />
+                                            {group.members.length} membre{group.members.length > 1 ? "s" : ""}
+                                        </span>
+                                        {group.createdBy && (
+                                            <span className="entity-card__meta">
+                                                Créé par {formatLabel(group.createdBy)}
+                                            </span>
+                                        )}
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+            </div>
+
+            {showCreateModal && (
                 <GroupFormModal
                     currentUserIri={currentUserIri ?? ""}
                     organizations={organizations}
                     organizationsLoading={organizationsQuery.isLoading}
                     isSubmitting={createGroupMutation.isPending}
-                    onClose={() => setShowNew(false)}
-                    onCreate={async (input) => {
-                        await createGroupMutation.mutateAsync(input);
-                        refreshOrganizations();
+                    onCreate={async (payload) => {
+                        await createGroupMutation.mutateAsync(payload);
                     }}
+                    onClose={() => setShowCreateModal(false)}
                 />
             )}
 
-            {selected && (
+            {focusedGroup && (
                 <GroupDetailsModal
-                    group={selected}
+                    group={focusedGroup}
                     currentUserIri={currentUserIri ?? ""}
                     organizations={organizations}
-                    onClose={() => setSelected(null)}
+                    onClose={() => setFocusedGroup(null)}
                     onReload={() => {
-                        refreshGroups();
-                        refreshOrganizations();
+                        queryClient.invalidateQueries({ queryKey: ["groups"] });
+                        queryClient.invalidateQueries({
+                            queryKey: ["organizations", organizationsScope],
+                        });
                     }}
-                    onDeleteGroup={async (iri) => {
+                    onDeleteGroup={async (iri: string) => {
                         await deleteGroupMutation.mutateAsync({ iri });
                     }}
                     deleting={deleteGroupMutation.isPending}
@@ -240,21 +297,29 @@ export default function GroupsPage() {
     );
 }
 
-interface PersonOption {
-    id: string; // full IRI of the user individual
-    label: string; // rdfs:label or fallback
-    display: string; // string shown in the list (e‑mail or name)
-    email?: string;
+function mapMembersToOptions(members: any[]): MemberOption[] {
+    return members.map((member: any) => {
+        const id: string = member.id ?? member.iri;
+        const email = member.properties?.find((prop: any) =>
+            prop.predicate?.toLowerCase().endsWith("#email")
+        )?.value;
+        const name = member.label ?? id.split(/[#/]/).pop() ?? id;
+        return {
+            id,
+            label: name,
+            subtitle: email,
+        };
+    });
 }
 
 function GroupFormModal({
-                            currentUserIri,
-                            organizations,
-                            organizationsLoading,
-                            isSubmitting,
-                            onClose,
-                            onCreate,
-                        }: {
+    currentUserIri,
+    organizations,
+    organizationsLoading,
+    isSubmitting,
+    onClose,
+    onCreate,
+}: {
     currentUserIri: string;
     organizations: { iri: string; label: string }[];
     organizationsLoading: boolean;
@@ -263,159 +328,136 @@ function GroupFormModal({
     onCreate: (input: CreateGroupInput) => Promise<void>;
 }) {
     const [label, setLabel] = useState("");
-    const [selectedOrg, setSelectedOrg] = useState<string>("");
-    const [selected, setSelected] = useState<string[]>([]);
-
-    const disabled = label.trim() === "" || !selectedOrg;
-
-    useEffect(() => {
-        if (!selectedOrg && organizations.length > 0) {
-            setSelectedOrg(organizations[0].iri);
-        }
-    }, [organizations, selectedOrg]);
-
-    const { data: members = [], isFetching: membersLoading } = useOrganizationMembers(
-        selectedOrg,
-        { enabled: Boolean(selectedOrg) }
+    const [selectedOrg, setSelectedOrg] = useState<string>(
+        organizations[0]?.iri ?? ""
     );
+    const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
-    const personOptions = useMemo<PersonOption[]>(
-        () =>
-            members.map((u: any) => {
-                const iri: string = u.id ?? u.iri;
-                const email = u.properties?.find((p: any) =>
-                    p.predicate?.endsWith("#email")
-                )?.value;
-                return {
-                    id: iri,
-                    label: u.label ?? iri.split(/[#/]/).pop(),
-                    display: email ?? u.label ?? iri.split(/[#/]/).pop(),
-                };
-            }),
-        [members]
+    const { data: orgMembers = [], isFetching } = useOrganizationMembers(selectedOrg, {
+        enabled: Boolean(selectedOrg),
+    });
+
+    const memberOptions = useMemo(
+        () => mapMembersToOptions(orgMembers),
+        [orgMembers]
     );
 
     useEffect(() => {
-        if (!selectedOrg) {
-            setSelected([]);
-            return;
-        }
-        setSelected((prev) => {
-            const hasCurrent = prev.includes(currentUserIri);
-            const memberListHasCurrent = members.some(
-                (u: any) => (u.id ?? u.iri) === currentUserIri
-            );
-            if (memberListHasCurrent && !hasCurrent) {
-                return [...prev, currentUserIri];
+        const available = new Set(memberOptions.map((option) => option.id));
+        setSelectedMembers((prev) => {
+            const next = prev.filter((id) => available.has(id));
+            if (available.has(currentUserIri) && !next.includes(currentUserIri)) {
+                return [...next, currentUserIri];
             }
-            if (!memberListHasCurrent && hasCurrent) {
-                return prev.filter((id) => id !== currentUserIri);
-            }
-            return prev;
+            return next;
         });
-    }, [members, currentUserIri, selectedOrg]);
+    }, [memberOptions, currentUserIri, selectedOrg]);
 
-    const save = async () => {
-        if (disabled) return;
-        await onCreate({
-            label: label.trim(),
-            organizationIri: selectedOrg,
-            members: selected,
-        });
-        onClose();
+    const disabled =
+        label.trim() === "" || selectedOrg === "" || selectedMembers.length === 0;
+
+    const handleSubmit = async () => {
+        if (disabled) return false;
+        try {
+            await onCreate({
+                label: label.trim(),
+                organizationIri: selectedOrg,
+                members: selectedMembers,
+            });
+            return true;
+        } catch (error) {
+            return false;
+        }
     };
+
     return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="card w-[26rem] space-y-4">
-                <h3 className="font-semibold text-lg">Nouveau groupe</h3>
-
-                {/* --- Organisation selector --- */}
-                <select
-                    className="input w-full"
-                    value={selectedOrg}
-                    onChange={(e) => setSelectedOrg(e.target.value)}
-                    disabled={organizationsLoading || organizations.length === 0}>
-                    <option value="">— Choisir une organisation —</option>
-                    {organizations.map((o) => (
-                        <option key={o.iri} value={o.iri}>
-                            {o.label}
-                        </option>
-                    ))}
-                </select>
-
-                {/* --- Nom du groupe --- */}
-                <input
-                    className="input w-full"
-                    placeholder="Nom du groupe"
-                    value={label}
-                    onChange={(e) => setLabel(e.target.value)}
-                />
-
-                {selectedOrg && (
-                    <div className="space-y-1 max-h-40 overflow-y-auto border rounded p-2">
-                        {membersLoading && (
-                            <p className="text-xs text-gray-500">
-                                Chargement des membres…
-                            </p>
-                        )}
-                        {!membersLoading && personOptions.length === 0 && (
-                            <p className="text-xs text-gray-500">
-                                Aucun membre disponible pour cette organisation.
-                            </p>
-                        )}
-                        {personOptions.map((p) => (
-                            <label
-                                key={p.id}
-                                className={`flex items-center gap-2 text-xs p-1 rounded cursor-pointer ${
-                                    selected.includes(p.id)
-                                        ? "bg-indigo-100 dark:bg-slate-700"
-                                        : "hover:bg-indigo-50 dark:hover:bg-slate-800"
-                                }`}>
-                                <input
-                                    type="checkbox"
-                                    className="accent-indigo-600"
-                                    checked={selected.includes(p.id)}
-                                    onChange={(e) =>
-                                        setSelected((prev) =>
-                                            e.target.checked
-                                                ? [...prev, p.id]
-                                                : prev.filter((x) => x !== p.id)
-                                        )
-                                    }
-                                />
-                                {p.display}
-                            </label>
+        <SimpleModal
+            title="Nouveau groupe"
+            onClose={onClose}
+            onSubmit={handleSubmit}
+            disableSubmit={disabled || isSubmitting}
+            submitLabel={isSubmitting ? "Création…" : "Créer le groupe"}
+        >
+            <div className="form-grid">
+                <div className="form-field">
+                    <label className="form-label form-label--static" htmlFor="group-organization">
+                        Organisation
+                    </label>
+                    <select
+                        id="group-organization"
+                        className="form-input"
+                        value={selectedOrg}
+                        onChange={(event) => {
+                            setSelectedOrg(event.target.value);
+                            setSelectedMembers([]);
+                        }}
+                        disabled={organizationsLoading || organizations.length === 0}
+                    >
+                        <option value="">Choisir une organisation</option>
+                        {organizations.map((organization) => (
+                            <option key={organization.iri} value={organization.iri}>
+                                {organization.label}
+                            </option>
                         ))}
-                    </div>
-                )}
-                <div className="flex justify-end gap-4">
-                    <button className="btn-secondary" onClick={onClose}>
-                        Annuler
-                    </button>
-                    <button
-                        className={`btn-primary ${
-                            disabled || isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                        onClick={save}
-                        disabled={disabled || isSubmitting}>
-                        {isSubmitting ? "Création…" : "Créer"}
-                    </button>
+                    </select>
+                </div>
+
+                <div className="form-field form-field--floating">
+                    <input
+                        id="group-name"
+                        className="form-input"
+                        value={label}
+                        onChange={(event) => setLabel(event.target.value)}
+                        placeholder=" "
+                        autoComplete="off"
+                    />
+                    <label className="form-label form-label--floating" htmlFor="group-name">
+                        Nom du groupe
+                    </label>
+                </div>
+
+                <div className="modal-section">
+                    <label className="form-label form-label--static" htmlFor="group-members">
+                        Membres
+                    </label>
+                    {selectedOrg ? (
+                        <>
+                            <p className="form-helper">
+                                Glissez-déposez ou cliquez pour sélectionner les collaborateurs à
+                                inclure dans le groupe.
+                            </p>
+                            <MemberSelector
+                                options={memberOptions}
+                                selectedIds={selectedMembers}
+                                onChange={setSelectedMembers}
+                                selectedTitle="Membres du groupe"
+                                availableTitle="Membres de l’organisation"
+                                emptyAvailableLabel={
+                                    isFetching ? "Chargement…" : "Aucun membre disponible"
+                                }
+                            />
+                        </>
+                    ) : (
+                        <p className="form-helper">
+                            Sélectionnez d’abord une organisation pour choisir ses membres.
+                        </p>
+                    )}
                 </div>
             </div>
-        </div>
+        </SimpleModal>
     );
 }
 
 function GroupDetailsModal({
-                               group,
-                               currentUserIri,
-                               organizations,
-                               onClose,
-                               onReload,
-                               onDeleteGroup,
-                               deleting,
-                           }: {
-    group: GroupDetails & { organizationIri?: string };
+    group,
+    currentUserIri,
+    organizations,
+    onClose,
+    onReload,
+    onDeleteGroup,
+    deleting,
+}: {
+    group: GroupDetails;
     currentUserIri: string;
     organizations: { iri: string; label: string }[];
     onClose: () => void;
@@ -426,213 +468,152 @@ function GroupDetailsModal({
     const api = useApi();
     const queryClient = useQueryClient();
     const { success: toastSuccess, error: toastError } = useToast();
+
     const isOwner = group.createdBy === currentUserIri;
 
-    const [label, setLabel] = useState(group.label);
-    const [members, setMembers] = useState<string[]>(group.members);
+    const [label, setLabel] = useState(group.label ?? "");
     const [selectedOrg, setSelectedOrg] = useState(group.organizationIri ?? "");
+    const [initialMembers] = useState<string[]>(group.members ?? []);
+    const [members, setMembers] = useState<string[]>(group.members ?? []);
+    const [saving, setSaving] = useState(false);
+
+    const { data: orgMembers = [], isFetching } = useOrganizationMembers(selectedOrg, {
+        enabled: Boolean(selectedOrg),
+    });
+
+    const memberOptions = useMemo(() => mapMembersToOptions(orgMembers), [orgMembers]);
 
     useEffect(() => {
-        if (!selectedOrg && organizations.length > 0) {
-            setSelectedOrg(organizations[0].iri);
-        }
-    }, [organizations, selectedOrg]);
+        const available = new Set(memberOptions.map((option) => option.id));
+        setMembers((prev) => prev.filter((member) => available.has(member)));
+    }, [memberOptions]);
 
-    const { data: orgMembers = [], isFetching: memberOptionsLoading } = useOrganizationMembers(
-        selectedOrg,
-        { enabled: Boolean(selectedOrg) }
-    );
-
-    const personOptions = useMemo<PersonOption[]>(
-        () =>
-            orgMembers.map((u: any) => {
-                const iri: string = u.id ?? u.iri;
-                const email = u.properties?.find((p: any) =>
-                    p.predicate?.endsWith("#email")
-                )?.value;
-                const fallback = iri.split(/[#/]/).pop() ?? iri;
-                return {
-                    id: iri,
-                    label: u.label ?? fallback,
-                    display: email ?? u.label ?? fallback,
-                };
-            }),
-        [orgMembers]
-    );
-
-    /* ----- Mutations ----- */
-    const patchLabel = async () => {
-        if (label === group.label) return;
-        await api(
-            `/groups/${encodeURIComponent(group.iri)}`,
-            {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ label }),
-            }
-        );
-    };
-
-    const addMember = async (personIri: string) => {
+    const handleSubmit = async () => {
+        if (saving) return false;
+        setSaving(true);
         try {
-            await api(`/groups/${encodeURIComponent(group.iri)}/members`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userIri: personIri }),
-            });
-            setMembers((m) => [...new Set([...m, personIri])]);
+            if (isOwner && label !== group.label) {
+                await api(`/groups/${encodeURIComponent(group.iri)}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ label }),
+                });
+            }
+
+            if (isOwner && selectedOrg && selectedOrg !== group.organizationIri) {
+                await api(`/groups/${encodeURIComponent(group.iri)}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ organizationIri: selectedOrg }),
+                });
+            }
+
+            const toAdd = members.filter((member) => !initialMembers.includes(member));
+            const toRemove = initialMembers.filter((member) => !members.includes(member));
+
+            for (const memberId of toAdd) {
+                await api(`/groups/${encodeURIComponent(group.iri)}/members`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userIri: memberId }),
+                });
+            }
+
+            for (const memberId of toRemove) {
+                await api(
+                    `/groups/${encodeURIComponent(group.iri)}/members/${encodeURIComponent(memberId)}`,
+                    { method: "DELETE" }
+                );
+            }
+
+            toastSuccess("Groupe mis à jour.");
             await queryClient.invalidateQueries({
                 queryKey: ["organizations", "members", selectedOrg],
             });
-            toastSuccess("Membre ajouté au groupe.");
-        } catch (error) {
-            toastError("Impossible d'ajouter ce membre.");
-        }
-    };
-
-    const removeMember = async (personIri: string) => {
-        try {
-            await api(`/groups/${encodeURIComponent(group.iri)}/members/${encodeURIComponent(personIri)}`, {
-                method: "DELETE",
-            });
-            setMembers((m) => m.filter((x) => x !== personIri));
-            await queryClient.invalidateQueries({
-                queryKey: ["organizations", "members", selectedOrg],
-            });
-            toastSuccess("Membre retiré du groupe.");
-        } catch (error) {
-            toastError("Impossible de retirer ce membre.");
-        }
-    };
-
-    const saveAndClose = async () => {
-        try {
-            let changed = false;
-            if (isOwner) {
-                if (label !== group.label) {
-                    await patchLabel();
-                    changed = true;
-                }
-                if (selectedOrg && selectedOrg !== group.organizationIri) {
-                    await api(`/groups/${encodeURIComponent(group.iri)}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ organizationIri: selectedOrg }),
-                    });
-                    await queryClient.invalidateQueries({
-                        queryKey: ["organizations", "members", selectedOrg],
-                    });
-                    changed = true;
-                }
-            }
-            if (changed) {
-                toastSuccess("Modifications enregistrées.");
-            }
             onReload();
-            onClose();
+            setSaving(false);
+            return true;
         } catch (error) {
+            console.error(error);
             toastError("Impossible de mettre à jour le groupe.");
+            setSaving(false);
+            return false;
         }
     };
 
-    const deletable = isOwner && members.length === 1; // only owner left
+    const deletable = isOwner;
 
     return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="card w-[28rem] max-h-[80vh] overflow-y-auto space-y-4">
-                <header className="flex items-center justify-between">
-                    <h3 className="font-semibold text-lg">Détails du groupe</h3>
-                    <button onClick={onClose}>
-                        <XMarkIcon className="w-5 h-5" />
-                    </button>
-                </header>
-
-                <div className="space-y-3">
-                    <label className="block text-sm font-medium">Organisation</label>
-                    <select
-                        className="input w-full"
+        <SimpleModal
+            title="Détails du groupe"
+            onClose={onClose}
+            onSubmit={handleSubmit}
+            disableSubmit={saving}
+            submitLabel={saving ? "Enregistrement…" : "Terminer"}
+        >
+            <div className="form-grid">
+                <div className="form-field form-field--floating">
+                    <input
+                        id="group-details-name"
+                        className="form-input"
+                        value={label}
+                        onChange={(event) => setLabel(event.target.value)}
+                        placeholder=" "
+                        autoComplete="off"
                         disabled={!isOwner}
+                    />
+                    <label
+                        className="form-label form-label--floating"
+                        htmlFor="group-details-name"
+                    >
+                        Nom du groupe
+                    </label>
+                </div>
+
+                <div className="form-field">
+                    <label className="form-label form-label--static" htmlFor="group-details-org">
+                        Organisation
+                    </label>
+                    <select
+                        id="group-details-org"
+                        className="form-input"
                         value={selectedOrg}
-                        onChange={(e) => setSelectedOrg(e.target.value)}>
-                        <option value="">— choisir —</option>
-                        {organizations.map((o) => (
-                            <option key={o.iri} value={o.iri}>
-                                {o.label}
+                        onChange={(event) => setSelectedOrg(event.target.value)}
+                        disabled={!isOwner}
+                    >
+                        <option value="">Choisir une organisation</option>
+                        {organizations.map((organization) => (
+                            <option key={organization.iri} value={organization.iri}>
+                                {organization.label}
                             </option>
                         ))}
                     </select>
-
-                    <label className="block text-sm font-medium">Nom</label>
-                    <input
-                        className="input w-full"
-                        disabled={!isOwner}
-                        value={label}
-                        onChange={(e) => setLabel(e.target.value)}
-                    />
-
-                    <label className="block text-sm font-medium">Membres</label>
-                    <ul className="space-y-1 border rounded p-2">
-                        {members.map((m) => {
-                            const person = personOptions.find(
-                                (p) => p.id.toLowerCase() === m.toLowerCase()
-                            );
-                            const display = person?.display || formatLabel(m);
-                            return (
-                                <li
-                                    key={m}
-                                    className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded px-2 py-1">
-									<span className="text-xs flex items-center gap-1">
-										{display}
-                                        {m === group.createdBy && (
-                                            <span className="ml-1 text-[10px] text-gray-400 italic">
-												(owner)
-											</span>
-                                        )}
-									</span>
-                                    {isOwner && m !== currentUserIri && (
-                                        <button
-                                            title="Retirer"
-                                            onClick={() => removeMember(m)}
-                                            className="text-red-600 hover:text-red-800">
-                                            <TrashIcon className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </li>
-                            );
-                        })}
-                    </ul>
-
-                    {isOwner && (
-                        <>
-                            <label className="block text-sm font-medium">
-                                Ajouter un membre
-                            </label>
-                            <select
-                                className="input"
-                                onChange={(e) => {
-                                    const iri = e.target.value;
-                                    if (!iri) return;
-                                    addMember(iri);
-                                    e.target.value = "";
-                                }}
-                                disabled={memberOptionsLoading}>
-                                <option value="">— choisir —</option>
-                                {personOptions
-                                    .filter((p) => !members.includes(p.id))
-                                    .map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.display}
-                                        </option>
-                                    ))}
-                            </select>
-                        </>
-                    )}
                 </div>
 
-                <footer className="flex justify-end gap-3 pt-2">
-                    {deletable && (
+                <div className="modal-section">
+                    <div className="modal-section__header">
+                        <label className="form-label form-label--static" htmlFor="group-details-members">
+                            Membres
+                        </label>
+                        <span className="entity-card__meta">
+                            {members.length} membre{members.length > 1 ? "s" : ""}
+                        </span>
+                    </div>
+                    <MemberSelector
+                        options={memberOptions}
+                        selectedIds={members}
+                        onChange={setMembers}
+                        selectedTitle="Dans le groupe"
+                        availableTitle="Dans l’organisation"
+                        emptyAvailableLabel={isFetching ? "Chargement…" : "Aucun membre"}
+                    />
+                </div>
+
+                {deletable && (
+                    <div className="modal-toolbar">
                         <button
-                            className="btn-secondary text-red-600 border-red-400 hover:bg-red-50 disabled:opacity-40"
+                            type="button"
+                            className="button button--outline button--danger"
                             disabled={deleting}
                             onClick={async () => {
                                 try {
@@ -640,17 +621,15 @@ function GroupDetailsModal({
                                     onReload();
                                     onClose();
                                 } catch (error) {
-                                    /* le toast est géré par la mutation */
+                                    /* notification déjà gérée par la mutation */
                                 }
-                            }}>
-                            {deleting ? "Suppression…" : "Supprimer le groupe"}
+                            }}
+                        >
+                            {deleting ? "Suppression…" : "Supprimer ce groupe"}
                         </button>
-                    )}
-                    <button className="btn-primary" onClick={saveAndClose}>
-                        Terminer
-                    </button>
-                </footer>
+                    </div>
+                )}
             </div>
-        </div>
+        </SimpleModal>
     );
 }

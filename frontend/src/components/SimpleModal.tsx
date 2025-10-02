@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 export default function SimpleModal({
 	title,
@@ -6,33 +6,91 @@ export default function SimpleModal({
 	onSubmit,
 	children,
 	disableSubmit,
+	submitLabel,
+	cancelLabel,
 }: {
 	title: string;
 	onClose: () => void;
-	onSubmit: () => void;
+	onSubmit?: () => void | boolean | Promise<void | boolean>;
 	children: ReactNode;
 	/** désactive le bouton Valider si true */
 	disableSubmit?: boolean;
+	submitLabel?: string;
+	cancelLabel?: string;
 }) {
+	const [closing, setClosing] = useState(false);
+	const timeouts = useRef<number[]>([]);
+
+	useEffect(() => {
+		return () => {
+			timeouts.current.forEach((id) => window.clearTimeout(id));
+		};
+	}, []);
+
+	const scheduleClose = useCallback(() => {
+		if (closing) return;
+		setClosing(true);
+		const timeout = window.setTimeout(() => {
+			onClose();
+		}, 220);
+		timeouts.current.push(timeout);
+	}, [closing, onClose]);
+
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-			<div className="card w-[28rem] max-w-full space-y-4">
-				<h3 className="text-lg font-semibold">{title}</h3>
+		<div
+			className={`modal-backdrop${closing ? " is-leaving" : ""}`}
+			role="presentation"
+			onClick={scheduleClose}
+		>
+			<div
+				className="modal"
+				role="dialog"
+				aria-modal="true"
+				onClick={(event) => event.stopPropagation()}
+			>
+				<header className="modal__header">
+					<h3 className="modal__title">{title}</h3>
+					<button
+						type="button"
+						className="modal__close"
+						onClick={scheduleClose}
+						aria-label="Fermer la fenêtre"
+					>
+						<i className="fas fa-times" aria-hidden="true" />
+					</button>
+				</header>
 
-				{/* corps passé en props */}
-				{children}
+				<div className="modal__body">{children}</div>
 
-				<div className="flex justify-end gap-4 pt-2">
-					<button className="btn-secondary" onClick={onClose}>
-						Annuler
+				<footer className="modal__footer">
+					<button
+						type="button"
+						className="button button--ghost"
+						onClick={scheduleClose}
+					>
+						{cancelLabel ?? "Annuler"}
 					</button>
 					<button
-						className="btn-primary"
-						onClick={onSubmit}
-						disabled={disableSubmit}>
-						Valider
+						className="button button--primary"
+						onClick={async () => {
+							if (disableSubmit) return;
+							if (!onSubmit) {
+								scheduleClose();
+								return;
+							}
+							try {
+								const result = await onSubmit();
+								if (result === false) return;
+								scheduleClose();
+							} catch (error) {
+								console.error(error);
+							}
+						}}
+						disabled={disableSubmit}
+					>
+						{submitLabel ?? "Valider"}
 					</button>
-				</div>
+				</footer>
 			</div>
 		</div>
 	);

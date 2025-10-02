@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { XMarkIcon, PlusIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import SimpleModal from "../components/SimpleModal";
+import { MemberSelector, MemberOption } from "../components/members";
 import { useApi } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
@@ -15,7 +17,7 @@ import { useToast } from "../hooks/toast";
 type Organisation = {
     iri: string;
     label?: string;
-    owner: string; // IRI du user admin/super‑admin désigné
+    owner: string;
     createdAt: string;
 };
 
@@ -28,11 +30,10 @@ type CreateOrganizationInput = {
 
 type DeleteOrganizationInput = { iri: string };
 
-type OrganizationsMutationContext = {
+type OrganisationsMutationContext = {
     previousOrganizations: Organisation[];
 };
 
-/** Page de gestion des organisations (super‑admin only) */
 export default function OrganisationsPage() {
     const api = useApi();
     const queryClient = useQueryClient();
@@ -42,74 +43,71 @@ export default function OrganisationsPage() {
 
     const profileQuery = useProfile();
     const roles = profileQuery.data?.roles ?? [];
-    const isSuperAdmin = roles.some((r) => r.endsWith("SuperAdminRole"));
+    const isSuperAdmin = roles.some((role) => role.endsWith("SuperAdminRole"));
     const rolesLoaded = !profileQuery.isLoading && !profileQuery.isFetching;
 
     const organizationsScope = isSuperAdmin ? "all" : "mine";
     const organizationsQuery = useOrganizations(organizationsScope, {
         enabled: rolesLoaded,
     });
-    const orgs = useMemo(
+    const organizations = useMemo(
         () =>
-            (organizationsQuery.data ?? []).map(
-                (o: any): Organisation => ({
-                    iri: o.iri,
-                    label: o.label,
-                    owner: o.owner,
-                    createdAt: o.createdAt,
-                })
-            ),
+            (organizationsQuery.data ?? []).map((organization: any): Organisation => ({
+                iri: organization.iri,
+                label: organization.label,
+                owner: organization.owner,
+                createdAt: organization.createdAt,
+            })),
         [organizationsQuery.data]
     );
 
-    const personsQuery = usePersons();
-    const persons = useMemo<PersonOption[]>(
+    const personsQuery = usePersons({ enabled: rolesLoaded });
+    const persons = useMemo<MemberOption[]>(
         () =>
-            (personsQuery.data ?? []).map((u: any) => ({
-                id: u.id,
-                display:
-                    u.properties?.find((p: any) => p.predicate.endsWith("#name"))
-                        ?.value ||
-                    u.properties?.find((p: any) => p.predicate.endsWith("#email"))
-                        ?.value ||
-                    u.label ||
-                    u.id.split(/[#/]/).pop(),
-                label:
-                    u.properties?.find((p: any) => p.predicate.endsWith("#name"))?.value ||
-                    u.label ||
-                    u.id.split(/[#/]/).pop() || u.id,
-            })),
+            (personsQuery.data ?? []).map((person: any) => {
+                const id = person.id;
+                const email = person.properties?.find((prop: any) =>
+                    prop.predicate?.toLowerCase().endsWith("#email")
+                )?.value;
+                const name =
+                    person.properties?.find((prop: any) =>
+                        prop.predicate?.toLowerCase().endsWith("#name")
+                    )?.value ?? person.label ?? formatLabel(id);
+                return { id, label: name, subtitle: email };
+            }),
         [personsQuery.data]
     );
 
-    const [showNew, setShowNew] = useState(false);
-    const [selected, setSelected] = useState<OrganisationDetails | null>(null);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [focusedOrganisation, setFocusedOrganisation] = useState<OrganisationDetails | null>(null);
 
-    const refreshOrganizations = () =>
-        queryClient.invalidateQueries({
-            queryKey: ["organizations", organizationsScope],
-        });
+    const refreshOrganizations = () => {
+        queryClient.invalidateQueries({ queryKey: ["organizations", organizationsScope] });
+    };
 
-    const createOrganizationMutation = useMutation<string | undefined, Error, CreateOrganizationInput, OrganizationsMutationContext>({
+    const createOrganizationMutation = useMutation<
+        string | undefined,
+        Error,
+        CreateOrganizationInput,
+        OrganisationsMutationContext
+    >({
         mutationFn: async ({ label, ownerIri }) => {
-            const res = await api("/organizations", {
+            const response = await api("/organizations", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ label, ownerIri }),
             });
-            if (!res.ok) {
-                throw new Error(await res.text());
-            }
-            const contentType = res.headers.get("content-type");
+            if (!response.ok) throw new Error(await response.text());
+            const contentType = response.headers.get("content-type");
             if (contentType?.includes("application/json")) {
-                const json = await res.json();
+                const json = await response.json();
                 return typeof json === "string" ? json : json?.iri;
             }
-            return (await res.text()) || undefined;
+            return (await response.text()) || undefined;
         },
         onMutate: async ({ label, ownerIri }) => {
             await queryClient.cancelQueries({ queryKey: ["organizations", organizationsScope] });
-            const previousOrganizations = (queryClient.getQueryData<Organisation[]>([
+            const previous = (queryClient.getQueryData<Organisation[]>([
                 "organizations",
                 organizationsScope,
             ]) ?? []).slice();
@@ -121,9 +119,9 @@ export default function OrganisationsPage() {
             };
             queryClient.setQueryData<Organisation[]>(
                 ["organizations", organizationsScope],
-                [...previousOrganizations, optimistic]
+                [...previous, optimistic]
             );
-            return { previousOrganizations };
+            return { previousOrganizations: previous };
         },
         onError: (_error, _input, context) => {
             if (context) {
@@ -132,34 +130,35 @@ export default function OrganisationsPage() {
                     context.previousOrganizations
                 );
             }
-            toastError("Impossible de créer l'organisation.");
+            toastError("Impossible de créer l’organisation.");
         },
-        onSuccess: () => {
-            toastSuccess("Organisation créée avec succès.");
-        },
-        onSettled: () => {
-            refreshOrganizations();
-        },
+        onSuccess: () => toastSuccess("Organisation créée avec succès."),
+        onSettled: () => refreshOrganizations(),
     });
 
-    const deleteOrganizationMutation = useMutation<void, Error, DeleteOrganizationInput, OrganizationsMutationContext>({
+    const deleteOrganizationMutation = useMutation<
+        void,
+        Error,
+        DeleteOrganizationInput,
+        OrganisationsMutationContext
+    >({
         mutationFn: async ({ iri }) => {
-            const res = await api(`/organizations/${encodeURIComponent(iri)}`, { method: "DELETE" });
-            if (!res.ok) {
-                throw new Error(await res.text());
-            }
+            const response = await api(`/organizations/${encodeURIComponent(iri)}`, {
+                method: "DELETE",
+            });
+            if (!response.ok) throw new Error(await response.text());
         },
         onMutate: async ({ iri }) => {
             await queryClient.cancelQueries({ queryKey: ["organizations", organizationsScope] });
-            const previousOrganizations = (queryClient.getQueryData<Organisation[]>([
+            const previous = (queryClient.getQueryData<Organisation[]>([
                 "organizations",
                 organizationsScope,
             ]) ?? []).slice();
             queryClient.setQueryData<Organisation[]>(
                 ["organizations", organizationsScope],
-                previousOrganizations.filter((org) => org.iri !== iri)
+                previous.filter((organization) => organization.iri !== iri)
             );
-            return { previousOrganizations };
+            return { previousOrganizations: previous };
         },
         onError: (_error, _input, context) => {
             if (context) {
@@ -168,73 +167,112 @@ export default function OrganisationsPage() {
                     context.previousOrganizations
                 );
             }
-            toastError("Suppression de l'organisation impossible.");
+            toastError("Suppression de l’organisation impossible.");
         },
-        onSuccess: () => {
-            toastSuccess("Organisation supprimée.");
-        },
-        onSettled: () => {
-            refreshOrganizations();
-        },
+        onSuccess: () => toastSuccess("Organisation supprimée."),
+        onSettled: () => refreshOrganizations(),
     });
 
+    const isLoading = organizationsQuery.isLoading || organizationsQuery.isFetching;
+    const hasOrganizations = organizations.length > 0;
+
     return (
-        <div className="container mx-auto py-8 space-y-6">
-            <h1 className="text-2xl font-semibold flex justify-between items-center">
-                Organisations ({orgs.length})
-                {isSuperAdmin && currentUserIri && (
-                    <button
-                        className="btn-primary flex items-center gap-1"
-                        onClick={() => setShowNew(true)}>
-                        <PlusIcon className="w-4 h-4" />
-                        Nouvelle
-                    </button>
-                )}
-            </h1>
-
-            <ul className="grid md:grid-cols-2 gap-4">
-                {organizationsQuery.isLoading && (
-                    <li className="text-sm text-gray-500">Chargement…</li>
-                )}
-                {!organizationsQuery.isLoading &&
-                    orgs.map((o) => (
-                    <li key={o.iri} className="card space-y-2 shadow-sm">
-                        <div className="flex justify-between items-center">
-							<span className="font-medium">
-								{formatLabel(o.label ?? o.iri)}
-							</span>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    title="Voir"
-                                    className="text-indigo-600 hover:text-indigo-800"
-                                    onClick={() => setSelected(o)}>
-                                    <EyeIcon className="w-4 h-4" />
-                                </button>
-                               {isSuperAdmin && (
-                                   <button
-                                        title="Supprimer"
-                                        className="text-red-600 text-sm disabled:opacity-40"
-                                        disabled={deleteOrganizationMutation.isPending}
-                                        onClick={() => deleteOrganizationMutation.mutate({ iri: o.iri })}>
-                                        🗑
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                            Admin&nbsp;:{" "}
-                            {persons.find((p) => p.id === o.owner)?.display ||
-                                formatLabel(o.owner.split(/[#/]/).pop()!)}
+        <div className="page">
+            <div className="app-container page__inner">
+                <header className="page-header">
+                    <div>
+                        <h1 className="page-title">Organisations</h1>
+                        <p className="page-subtitle">
+                            Structurez vos équipes, attribuez des administrateurs et gérez les accès
+                            aux ontologies en un seul endroit.
                         </p>
-                    </li>
-                ))}
-            </ul>
+                    </div>
+                    {isSuperAdmin && (
+                        <button
+                            type="button"
+                            className="button button--primary"
+                            onClick={() => setShowCreateModal(true)}
+                        >
+                            <i className="fas fa-building" aria-hidden="true" />
+                            Nouvelle organisation
+                        </button>
+                    )}
+                </header>
 
-            {showNew && (
+                {isLoading && (
+                    <div className="page-state">
+                        <div className="page-state__spinner" aria-hidden="true" />
+                        <p className="page-state__text">Chargement des organisations…</p>
+                    </div>
+                )}
+
+                {!isLoading && !hasOrganizations && (
+                    <div className="page-empty">
+                        <p>Aucune organisation n’est enregistrée pour le moment.</p>
+                        <p>Créez-en une pour regrouper vos utilisateurs et partager vos ontologies.</p>
+                    </div>
+                )}
+
+                {!isLoading && hasOrganizations && (
+                    <ul className="entity-grid">
+                        {organizations.map((organization) => {
+                            const ownerLabel =
+                                persons.find((person) => person.id === organization.owner)?.label ??
+                                formatLabel(organization.owner);
+                            const createdAt = new Date(organization.createdAt);
+                            return (
+                                <li key={organization.iri} className="entity-card">
+                                    <div className="entity-card__header">
+                                        <div>
+                                            <h3 className="entity-card__title">
+                                                {formatLabel(organization.label ?? organization.iri)}
+                                            </h3>
+                                            <p className="entity-card__subtitle">Admin : {ownerLabel}</p>
+                                        </div>
+                                        <div className="entity-card__actions">
+                                            <button
+                                                type="button"
+                                                className="icon-button"
+                                                aria-label="Voir l’organisation"
+                                                onClick={() => setFocusedOrganisation({ ...organization })}
+                                            >
+                                                <i className="fas fa-eye" aria-hidden="true" />
+                                            </button>
+                                            {isSuperAdmin && (
+                                                <button
+                                                    type="button"
+                                                    className="icon-button icon-button--danger"
+                                                    aria-label="Supprimer l’organisation"
+                                                    disabled={deleteOrganizationMutation.isPending}
+                                                    onClick={() =>
+                                                        deleteOrganizationMutation.mutate({
+                                                            iri: organization.iri,
+                                                        })
+                                                    }
+                                                >
+                                                    <i className="fas fa-trash" aria-hidden="true" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="entity-card__footer">
+                                        <span className="entity-chip">
+                                            <i className="fas fa-calendar" aria-hidden="true" />
+                                            {createdAt.toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+            </div>
+
+            {showCreateModal && (
                 <OrganisationFormModal
-                    onClose={() => setShowNew(false)}
-                    onCreate={async (input) => {
-                        await createOrganizationMutation.mutateAsync(input);
+                    onClose={() => setShowCreateModal(false)}
+                    onCreate={async (payload) => {
+                        await createOrganizationMutation.mutateAsync(payload);
                     }}
                     persons={persons}
                     personsLoading={personsQuery.isLoading}
@@ -242,12 +280,14 @@ export default function OrganisationsPage() {
                 />
             )}
 
-            {selected && (
+            {focusedOrganisation && (
                 <OrganisationDetailsModal
-                    org={selected}
-                    isSuperAdmin={isSuperAdmin || false}
-                    isManager={isSuperAdmin || selected.owner === currentUserIri}
-                    onClose={() => setSelected(null)}
+                    org={focusedOrganisation}
+                    isSuperAdmin={isSuperAdmin}
+                    isManager={
+                        isSuperAdmin || focusedOrganisation.owner === currentUserIri
+                    }
+                    onClose={() => setFocusedOrganisation(null)}
                     onReload={refreshOrganizations}
                     persons={persons}
                     personsLoading={personsQuery.isLoading}
@@ -261,94 +301,98 @@ export default function OrganisationsPage() {
     );
 }
 
-interface PersonOption {
-    id: string;
-    label: string;
-    display: string;
-    roles?: string[];
-}
-
 function OrganisationFormModal({
-                                   onClose,
-                                   onCreate,
-                                   persons,
-                                   personsLoading,
-                                   isSubmitting,
-                               }: {
+    onClose,
+    onCreate,
+    persons,
+    personsLoading,
+    isSubmitting,
+}: {
     onClose: () => void;
     onCreate: (input: CreateOrganizationInput) => Promise<void>;
-    persons: PersonOption[];
+    persons: MemberOption[];
     personsLoading: boolean;
     isSubmitting: boolean;
 }) {
     const [label, setLabel] = useState("");
     const [owner, setOwner] = useState<string>("");
+
     const disabled = label.trim() === "" || owner === "";
 
-    const save = async () => {
-        if (disabled) return;
-        await onCreate({ label: label.trim(), ownerIri: owner });
-        onClose();
+    const handleSubmit = async () => {
+        if (disabled) return false;
+        try {
+            await onCreate({ label: label.trim(), ownerIri: owner });
+            return true;
+        } catch (error) {
+            return false;
+        }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="card w-[26rem] space-y-4">
-                <h3 className="font-semibold text-lg">Nouvelle organisation</h3>
-                <input
-                    className="input"
-                    placeholder="Nom de l'organisation"
-                    value={label}
-                    onChange={(e) => setLabel(e.target.value)}
-                />
-                <select
-                    className="input"
-                    value={owner}
-                    onChange={(e) => setOwner(e.target.value)}
-                    disabled={personsLoading}>
-                    <option value="">— Choisir un admin —</option>
-                    {persons.map((p) => (
-                        <option key={p.id} value={p.id}>
-                            {p.display}
-                        </option>
-                    ))}
-                </select>
+        <SimpleModal
+            title="Nouvelle organisation"
+            onClose={onClose}
+            onSubmit={handleSubmit}
+            disableSubmit={disabled || isSubmitting}
+            submitLabel={isSubmitting ? "Création…" : "Créer"}
+        >
+            <div className="form-grid">
+                <div className="form-field form-field--floating">
+                    <input
+                        id="org-name"
+                        className="form-input"
+                        value={label}
+                        onChange={(event) => setLabel(event.target.value)}
+                        placeholder=" "
+                        autoComplete="off"
+                    />
+                    <label className="form-label form-label--floating" htmlFor="org-name">
+                        Nom de l’organisation
+                    </label>
+                </div>
 
-                <div className="flex justify-end gap-4">
-                    <button className="btn-secondary" onClick={onClose}>
-                        Annuler
-                    </button>
-                    <button
-                        className={`btn-primary ${
-                            disabled || isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                        disabled={disabled || isSubmitting}
-                        onClick={save}>
-                        {isSubmitting ? "Création…" : "Créer"}
-                    </button>
+                <div className="form-field">
+                    <label className="form-label form-label--static" htmlFor="org-owner">
+                        Administrateur principal
+                    </label>
+                    <select
+                        id="org-owner"
+                        className="form-input"
+                        value={owner}
+                        onChange={(event) => setOwner(event.target.value)}
+                        disabled={personsLoading}
+                    >
+                        <option value="">Sélectionner un utilisateur</option>
+                        {persons.map((person) => (
+                            <option key={person.id} value={person.id}>
+                                {person.label}
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </div>
-        </div>
+        </SimpleModal>
     );
 }
 
 function OrganisationDetailsModal({
-                                      org,
-                                      isSuperAdmin,
-                                      isManager,
-                                      onClose,
-                                      onReload,
-                                      persons,
-                                      personsLoading,
-                                      onDeleteOrganization,
-                                      deleting,
-                                  }: {
+    org,
+    isSuperAdmin,
+    isManager,
+    onClose,
+    onReload,
+    persons,
+    personsLoading,
+    onDeleteOrganization,
+    deleting,
+}: {
     org: OrganisationDetails;
     isSuperAdmin: boolean;
     isManager: boolean;
     onClose: () => void;
     onReload: () => void;
-    persons: PersonOption[];
+    persons: MemberOption[];
     personsLoading: boolean;
     onDeleteOrganization: (iri: string) => Promise<void>;
     deleting: boolean;
@@ -356,167 +400,181 @@ function OrganisationDetailsModal({
     const api = useApi();
     const queryClient = useQueryClient();
     const { success: toastSuccess, error: toastError } = useToast();
-    const [label, setLabel] = useState(org.label || "");
-    const [owner, setOwner] = useState(org.owner);
-    const [members, setMembers] = useState<string[]>([]);
 
-    const canEditLabelAdmin = isSuperAdmin;
+    const canEditLabel = isSuperAdmin;
+    const canEditOwner = isSuperAdmin;
     const canManageMembers = isSuperAdmin || isManager;
 
-    const { data: memberList = [], isFetching: membersLoading } = useOrganizationMembers(
-        org.iri,
-        { enabled: true }
-    );
+    const [label, setLabel] = useState(org.label ?? "");
+    const [owner, setOwner] = useState(org.owner);
+    const [initialMembers, setInitialMembers] = useState<string[]>([]);
+    const [members, setMembers] = useState<string[]>([]);
+    const [saving, setSaving] = useState(false);
+
+    const { data: memberList = [], isFetching: membersLoading } = useOrganizationMembers(org.iri, {
+        enabled: true,
+    });
 
     useEffect(() => {
-        setMembers(memberList.map((m: any) => m.iri));
+        const ids = memberList.map((member: any) => member.iri);
+        setInitialMembers(ids);
+        setMembers(ids);
     }, [memberList]);
 
-    const save = async () => {
-        const payload: Record<string, unknown> = {};
-        if (canEditLabelAdmin) payload.label = label;
-        if (canEditLabelAdmin) payload.ownerIri = owner;
-
+    const handleSubmit = async () => {
+        if (saving) return false;
+        setSaving(true);
         try {
-            await api(`/organizations/${encodeURIComponent(org.iri)}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
+            const payload: Record<string, unknown> = {};
+            if (canEditLabel && label !== org.label) payload.label = label;
+            if (canEditOwner && owner !== org.owner) payload.ownerIri = owner;
+
+            if (Object.keys(payload).length > 0) {
+                await api(`/organizations/${encodeURIComponent(org.iri)}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+            }
+
+            if (canManageMembers) {
+                const toAdd = members.filter((member) => !initialMembers.includes(member));
+                const toRemove = initialMembers.filter((member) => !members.includes(member));
+
+                for (const memberId of toAdd) {
+                    await api(`/organizations/${encodeURIComponent(org.iri)}/members`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ userIri: memberId }),
+                    });
+                }
+
+                for (const memberId of toRemove) {
+                    await api(
+                        `/organizations/${encodeURIComponent(org.iri)}/members/${encodeURIComponent(memberId)}`,
+                        { method: "DELETE" }
+                    );
+                }
+            }
+
             toastSuccess("Organisation mise à jour.");
+            await queryClient.invalidateQueries({
+                queryKey: ["organizations", "members", org.iri],
+            });
             onReload();
-            onClose();
+            setSaving(false);
+            return true;
         } catch (error) {
-            toastError("Mise à jour impossible.");
+            console.error(error);
+            toastError("Impossible de mettre à jour l’organisation.");
+            setSaving(false);
+            return false;
         }
     };
 
-    const addMember = async (personIri: string) => {
-        try {
-            await api(`/organizations/${encodeURIComponent(org.iri)}/members`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userIri: personIri }),
-            });
-            setMembers((m) => [...new Set([...m, personIri])]);
-            await queryClient.invalidateQueries({
-                queryKey: ["organizations", "members", org.iri],
-            });
-            toastSuccess("Membre ajouté.");
-        } catch (error) {
-            toastError("Impossible d'ajouter ce membre.");
-        }
-    };
+    const memberOptions = useMemo(() => persons, [persons]);
+    const availableMembers = useMemo(() => new Set(memberOptions.map((option) => option.id)), [memberOptions]);
 
-    const removeMember = async (personIri: string) => {
-        try {
-            await api(
-                `/organizations/${encodeURIComponent(org.iri)}/members/${encodeURIComponent(personIri)}`,
-                { method: "DELETE" }
-            );
-            setMembers((m) => m.filter((x) => x !== personIri));
-            await queryClient.invalidateQueries({
-                queryKey: ["organizations", "members", org.iri],
-            });
-            toastSuccess("Membre retiré.");
-        } catch (error) {
-            toastError("Impossible de retirer ce membre.");
-        }
-    };
-
-    const availablePersons = useMemo(
-        () => persons.filter((p) => !members.includes(p.id)),
-        [persons, members]
-    );
+    useEffect(() => {
+        if (!canManageMembers) return;
+        setMembers((prev) => prev.filter((member) => availableMembers.has(member)));
+    }, [availableMembers, canManageMembers]);
 
     return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="card w-[28rem] space-y-4">
-                <header className="flex items-center justify-between">
-                    <h3 className="font-semibold text-lg">Organisation</h3>
-                    <button onClick={onClose}>
-                        <XMarkIcon className="w-5 h-5" />
-                    </button>
-                </header>
+        <SimpleModal
+            title="Organisation"
+            onClose={onClose}
+            onSubmit={handleSubmit}
+            disableSubmit={saving}
+            submitLabel={saving ? "Enregistrement…" : "Sauvegarder"}
+        >
+            <div className="form-grid">
+                <div className="form-field form-field--floating">
+                    <input
+                        id="org-details-name"
+                        className="form-input"
+                        value={label}
+                        onChange={(event) => setLabel(event.target.value)}
+                        placeholder=" "
+                        autoComplete="off"
+                        disabled={!canEditLabel}
+                    />
+                    <label
+                        className="form-label form-label--floating"
+                        htmlFor="org-details-name"
+                    >
+                        Nom de l’organisation
+                    </label>
+                </div>
 
-                <label className="block text-sm font-medium">Nom</label>
-                <input
-                    className="input w-full"
-                    value={label}
-                    onChange={(e) => setLabel(e.target.value)}
-                    disabled={!canEditLabelAdmin}
-                />
+                <div className="form-field">
+                    <label className="form-label form-label--static" htmlFor="org-details-owner">
+                        Administrateur principal
+                    </label>
+                    <select
+                        id="org-details-owner"
+                        className="form-input"
+                        value={owner}
+                        onChange={(event) => setOwner(event.target.value)}
+                        disabled={!canEditOwner || personsLoading}
+                    >
+                        {memberOptions.map((person) => (
+                            <option key={person.id} value={person.id}>
+                                {person.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
 
-                <label className="block text-sm font-medium">Admin</label>
-                <select
-                    className="input"
-                    value={owner}
-                    onChange={(e) => setOwner(e.target.value)}
-                    disabled={!canEditLabelAdmin || personsLoading}>
-                    {persons.map((p) => (
-                        <option key={p.id} value={p.id}>
-                            {p.display}
-                        </option>
-                    ))}
-                </select>
-
-                <label className="block text-sm font-medium mt-2">Membres</label>
-                <ul className="space-y-1 border rounded p-2 max-h-40 overflow-y-auto">
-                    {members.map((m) => {
-                        const disp =
-                            persons.find((p) => p.id === m)?.display || formatLabel(m);
-                        return (
-                            <li
-                                key={m}
-                                className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded px-2 py-1 text-xs">
-                                <span>{disp}</span>
-                                {canManageMembers && (
-                                    <button
-                                        title="Retirer"
-                                        onClick={() => removeMember(m)}
-                                        className="text-red-600 hover:text-red-800 text-[10px]">
-                                        🗑
-                                    </button>
-                                )}
-                            </li>
-                        );
-                    })}
-                    {members.length === 0 && !membersLoading && (
-                        <li className="text-xs text-gray-500">Aucun membre pour l’instant.</li>
-                    )}
-                    {membersLoading && (
-                        <li className="text-xs text-gray-500">Chargement…</li>
-                    )}
-                </ul>
-
-                {canManageMembers && (
-                    <>
-                        <label className="block text-sm font-medium">
-                            Ajouter un membre
+                <div className="modal-section">
+                    <div className="modal-section__header">
+                        <label className="form-label form-label--static" htmlFor="org-details-members">
+                            Membres
                         </label>
-                        <select
-                            className="input"
-                            onChange={(e) => {
-                                const iri = e.target.value;
-                                if (!iri) return;
-                                addMember(iri);
-                                e.target.value = "";
-                            }}
-                            disabled={membersLoading || personsLoading}>
-                            <option value="">— choisir —</option>
-                            {availablePersons.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                    {p.display}
-                                </option>
-                            ))}
-                        </select>
-                    </>
-                )}
+                        <span className="entity-card__meta">
+                            {members.length} membre{members.length > 1 ? "s" : ""}
+                        </span>
+                    </div>
+                    {canManageMembers ? (
+                        <MemberSelector
+                            options={memberOptions}
+                            selectedIds={members}
+                            onChange={setMembers}
+                            selectedTitle="Membres actuels"
+                            availableTitle="Utilisateurs disponibles"
+                            emptyAvailableLabel={
+                                membersLoading ? "Chargement…" : "Aucun utilisateur"
+                            }
+                        />
+                    ) : (
+                        <ul className="member-list" id="org-details-members">
+                            {membersLoading && (
+                                <li className="member-list__item">Chargement…</li>
+                            )}
+                            {!membersLoading && members.length === 0 && (
+                                <li className="member-list__item">Aucun membre pour l’instant.</li>
+                            )}
+                            {!membersLoading &&
+                                members.map((memberId) => {
+                                    const person = memberOptions.find((option) => option.id === memberId);
+                                    return (
+                                        <li key={memberId} className="member-list__item">
+                                            <span>{person?.label ?? formatLabel(memberId)}</span>
+                                            {person?.subtitle && (
+                                                <span className="member-list__meta">{person.subtitle}</span>
+                                            )}
+                                        </li>
+                                    );
+                                })}
+                        </ul>
+                    )}
+                </div>
 
-                <footer className="flex justify-end gap-3 pt-2">
-                    {isSuperAdmin && (
+                {isSuperAdmin && (
+                    <div className="modal-toolbar">
                         <button
-                            className="btn-secondary text-red-600 border-red-400 hover:bg-red-50 disabled:opacity-40"
+                            type="button"
+                            className="button button--outline button--danger"
                             disabled={deleting}
                             onClick={async () => {
                                 try {
@@ -524,17 +582,15 @@ function OrganisationDetailsModal({
                                     onReload();
                                     onClose();
                                 } catch (error) {
-                                    /* le toast est géré par la mutation */
+                                    /* notification gérée côté mutation */
                                 }
-                            }}>
-                            {deleting ? "Suppression…" : "Supprimer"}
+                            }}
+                        >
+                            {deleting ? "Suppression…" : "Supprimer l’organisation"}
                         </button>
-                    )}
-                    <button className="btn-primary" onClick={save} disabled={deleting}>
-                        Sauvegarder
-                    </button>
-                </footer>
+                    </div>
+                )}
             </div>
-        </div>
+        </SimpleModal>
     );
 }
