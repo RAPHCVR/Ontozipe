@@ -5,21 +5,25 @@ type OntologyGraphProps = {
 	graph: { nodes: any[]; edges: any[] };
 	onClassHover: (id: string | null) => void;
 	onClassClick: (id: string) => void;
+    onReady?: () => void;
 };
 
 const OntologyGraph: React.FC<OntologyGraphProps> = ({
 	graph,
 	onClassHover,
 	onClassClick,
+    onReady,
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const networkRef = useRef<Network | null>(null);
 	const hoverCb = useRef(onClassHover);
 	const clickCb = useRef(onClassClick);
+	const readyCb = useRef(onReady);
 	useEffect(() => {
 		hoverCb.current = onClassHover;
 		clickCb.current = onClassClick;
-	}, [onClassHover, onClassClick]);
+		readyCb.current = onReady;
+	}, [onClassHover, onClassClick, onReady]);
 
 	useEffect(() => {
 		const { nodes: rawNodes, edges: rawEdges } = graph;
@@ -62,6 +66,17 @@ const OntologyGraph: React.FC<OntologyGraphProps> = ({
 			}
 		);
 		networkRef.current = network;
+
+		if (readyCb.current) {
+			let notified = false;
+			const markReady = () => {
+				if (notified) return;
+				notified = true;
+				readyCb.current?.();
+			};
+			network.once("stabilizationIterationsDone", markReady);
+			network.once("afterDrawing", markReady);
+		}
 
 		// --- class hover events ---
 		network.on("hoverNode", (params) => {

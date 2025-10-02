@@ -103,7 +103,10 @@ const CommentBlock: React.FC<{
 								📝
 							</button>
 							<button
-								onClick={() => onDelete(comment)}
+								onClick={() => {
+								if (!window.confirm(t("comment.confirm.delete"))) return;
+								onDelete(comment);
+							}}
 								title={t("common.delete")}
 								className="text-red-500">
 								🗑️

@@ -5,6 +5,17 @@
 		"jsx": "react-jsx",
 		"moduleResolution": "bundler",
 		"strict": true,
-		"baseUrl": "./src"
+		"baseUrl": "./src",
+		"types": [
+			"react",
+			"react-dom",
+			"vite/client"
+		],
+		"lib": [
+			"dom",
+			"dom.iterable",
+			"esnext"
+		],
+		"skipLibCheck": true
 	}
 }
