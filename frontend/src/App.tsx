@@ -3,8 +3,9 @@ import "vis-network/styles/vis-network.css";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/fr";
+import "dayjs/locale/en";
+import "dayjs/locale/es";
 dayjs.extend(relativeTime);
-dayjs.locale("fr");
 import {
     BrowserRouter,
     Routes,
@@ -13,6 +14,7 @@ import {
     useLocation,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { LanguageProvider } from "./language/LanguageContext";
 import Layout from "./components/layout/layout";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
@@ -33,9 +35,10 @@ const RequireAuth: React.FC<{ children: JSX.Element }> = ({ children }) => {
 
 export default function App() {
     return (
-        <AuthProvider>
-            <BrowserRouter>
-                <Routes>
+        <LanguageProvider>
+            <AuthProvider>
+                <BrowserRouter>
+                    <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
 
@@ -91,8 +94,9 @@ export default function App() {
                         }
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-            </BrowserRouter>
-        </AuthProvider>
+                    </Routes>
+                </BrowserRouter>
+            </AuthProvider>
+        </LanguageProvider>
     );
 }

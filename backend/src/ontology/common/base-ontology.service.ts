@@ -26,6 +26,7 @@ export abstract class OntologyBaseService {
     private readonly projectOwnerCache = new Map<string, CacheEntry<boolean>>();
     private readonly organizationOwnerCache = new Map<string, CacheEntry<boolean>>();
     private readonly groupOwnerCache = new Map<string, CacheEntry<boolean>>();
+    private static readonly LANG_TAG_REGEX = /^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i;
 
     protected constructor(protected readonly httpService: HttpService) {
         this.fusekiBase = (process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(/\/$/, "");
@@ -149,6 +150,44 @@ export abstract class OntologyBaseService {
 
     protected async commentExistsInGraph(iri: string, graphIri: string): Promise<boolean> {
         return this.runAsk(`ASK { GRAPH <${graphIri}> { <${iri}> ?p ?o } }`);
+    }
+
+    protected resolveLang(preferred?: string, acceptLanguage?: string): string | undefined {
+        const first = this.sanitizeLang(preferred);
+        if (first) return first;
+        if (!acceptLanguage) return undefined;
+        for (const part of acceptLanguage.split(',')) {
+            const value = part.split(';')[0]?.trim();
+            const lang = this.sanitizeLang(value);
+            if (lang) return lang;
+        }
+        return undefined;
+    }
+
+    protected buildLabelSelection(resourceVar: string, alias: string, preferredLang?: string): string {
+        const safeAlias = alias.replace(/[^A-Za-z0-9_]/g, '');
+        const chunks: string[] = [];
+        const coalesceOrder: string[] = [];
+        if (preferredLang) {
+            chunks.push(`OPTIONAL { ${resourceVar} rdfs:label ?${safeAlias}Preferred . FILTER(LANGMATCHES(LANG(?${safeAlias}Preferred), "${preferredLang}")) }`);
+            coalesceOrder.push(`?${safeAlias}Preferred`);
+        }
+        chunks.push(`OPTIONAL { ${resourceVar} rdfs:label ?${safeAlias}NoLang . FILTER(LANG(?${safeAlias}NoLang) = "") }`);
+        coalesceOrder.push(`?${safeAlias}NoLang`);
+        chunks.push(`OPTIONAL { ${resourceVar} rdfs:label ?${safeAlias}Any }`);
+        coalesceOrder.push(`?${safeAlias}Any`);
+        chunks.push(`BIND(COALESCE(${coalesceOrder.join(', ')}) AS ?${alias})`);
+        chunks.push(`BIND(LANG(?${alias}) AS ?${alias}Lang)`);
+        return chunks.join('\n');
+    }
+
+    protected sanitizeLang(lang?: string | null): string | undefined {
+        if (!lang) return undefined;
+        const trimmed = lang.trim();
+        if (!trimmed) return undefined;
+        const normalized = trimmed.toLowerCase();
+        if (!OntologyBaseService.LANG_TAG_REGEX.test(normalized)) return undefined;
+        return normalized;
     }
 
     protected async enforceWritePermission(userIri: string, ontologyIri: string): Promise<void> {

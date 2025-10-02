@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useApi } from "../lib/api";
+import { useTranslation } from "../language/useTranslation";
 
 export default function RegisterPage() {
     const { token, login } = useAuth();
     const api = useApi();
+    const { t } = useTranslation();
     const [form, setForm] = useState({ name: "", email: "", password: "" });
     const [err, setErr] = useState("");
 
@@ -15,7 +17,7 @@ export default function RegisterPage() {
         setErr("");
 
         if (!form.name.trim() || !form.email.trim() || !form.password) {
-            setErr("Tous les champs sont requis.");
+            setErr(t("auth.register.error.required"));
             return;
         }
 
@@ -33,7 +35,7 @@ export default function RegisterPage() {
             if (error instanceof Error) {
                 setErr(error.message);
             } else {
-                setErr("Impossible de créer le compte. L'email est peut-être déjà utilisé.");
+                setErr(t("auth.register.error.generic"));
             }
             console.error(error);
         }
@@ -42,38 +44,38 @@ export default function RegisterPage() {
     return (
         <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-slate-900">
             <div className="card w-80 p-6 space-y-4">
-                <h1 className="text-lg font-semibold text-center">Créer un compte</h1>
+                <h1 className="text-lg font-semibold text-center">{t("auth.register.title")}</h1>
                 {err && <p className="text-red-500 text-sm text-center">{err}</p>}
 
                 <input
                     className="input w-full"
                     type="text"
-                    placeholder="Nom"
+                    placeholder={t("auth.name")}
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
                 <input
                     className="input w-full"
                     type="email"
-                    placeholder="Email"
+                    placeholder={t("auth.email")}
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
                 <input
                     className="input w-full"
                     type="password"
-                    placeholder="Mot de passe"
+                    placeholder={t("auth.password")}
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                 />
 
                 <button className="btn-primary w-full justify-center" onClick={submit}>
-                    S’inscrire
+                    {t("auth.register.submit")}
                 </button>
                 <div className="text-center text-xs">
-                    Déjà un compte ?{" "}
+                    {t("auth.register.haveAccount")} {" "}
                     <Link to="/login" className="text-indigo-600 hover:underline">
-                        Se connecter
+                        {t("auth.login.submit")}
                     </Link>
                 </div>
             </div>

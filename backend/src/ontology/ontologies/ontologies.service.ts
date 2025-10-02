@@ -6,7 +6,8 @@ import { Express } from "express";
 
 import { OntologyBaseService } from "../common/base-ontology.service";
 import { FullSnapshot, NodeData, EdgeData } from "../common/types";
-import { escapeSparqlLiteral } from "../../utils/sparql.utils";
+import { rdfLiteral } from "../common/rdf.utils";
+import { LocalizedLabelDto } from "./dto/localized-label.dto";
 import { IndividualsService } from "../individuals/individuals.service";
 
 @Injectable()
@@ -18,24 +19,50 @@ export class OntologiesService extends OntologyBaseService {
         super(httpService);
     }
 
-    async getProjects(): Promise<{ iri: string; label?: string }[]> {
+    async getProjects(
+        lang?: string,
+        acceptLanguage?: string
+    ): Promise<Array<{ iri: string; label?: string; labelLang?: string; languages: string[] }>> {
+        const preferredLang = this.resolveLang(lang, acceptLanguage);
+        const labelPattern = this.buildLabelSelection("?proj", "label", preferredLang);
         const data = await this.runSelect(`
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX core: <${this.CORE}>
-            SELECT ?proj ?lbl WHERE {
+            SELECT ?proj ?label ?labelLang (GROUP_CONCAT(DISTINCT ?langsRaw; separator="|") AS ?langs)
+            WHERE {
                 GRAPH <${this.PROJECTS_GRAPH}> {
                     ?proj a core:OntologyProject .
-                    OPTIONAL { ?proj rdfs:label ?lbl }
+                    ${labelPattern}
+                    OPTIONAL {
+                        ?proj rdfs:label ?anyLabel .
+                        BIND(LANG(?anyLabel) AS ?langsTag)
+                        BIND(COALESCE(?langsTag, "") AS ?langsRaw)
+                    }
                 }
             }
-            ORDER BY ?lbl
+            GROUP BY ?proj ?label ?labelLang
+            ORDER BY COALESCE(LCASE(STR(?label)), STR(?proj))
         `);
 
-        type Row = { proj: { value: string }; lbl?: { value: string } };
-        return (data.results.bindings as Row[]).map((row) => ({
-            iri: row.proj.value,
-            label: row.lbl?.value,
-        }));
+        type Row = {
+            proj: { value: string };
+            label?: { value: string };
+            labelLang?: { value: string };
+            langs?: { value: string };
+        };
+
+        return (data.results.bindings as Row[]).map((row) => {
+            const iri = row.proj.value;
+            const label = row.label?.value?.trim() || iri.split(/[#/]/).pop() || iri;
+            const rawLang = row.labelLang?.value?.trim();
+            const labelLang = rawLang ? rawLang.toLowerCase() : undefined;
+            const languages = row.langs?.value
+                ? Array.from(new Set(row.langs.value.split("|").map((l) => l.trim()).filter(Boolean))).map((l) => l.toLowerCase())
+                : labelLang
+                    ? [labelLang]
+                    : [];
+            return { iri, label, labelLang, languages };
+        });
     }
 
     async createProject(
@@ -43,8 +70,9 @@ export class OntologiesService extends OntologyBaseService {
         {
             iri,
             label,
+            labels,
             visibleToGroups = [],
-        }: { iri: string; label: string; visibleToGroups?: string | string[] },
+        }: { iri: string; label?: string; labels?: LocalizedLabelDto[]; visibleToGroups?: string | string[] },
         file?: Express.Multer.File
     ): Promise<void> {
         const groups = Array.isArray(visibleToGroups)
@@ -52,6 +80,16 @@ export class OntologiesService extends OntologyBaseService {
             : visibleToGroups
                 ? [visibleToGroups]
                 : [];
+
+        const normalizedLabels = this.normalizeLabels(labels, label ?? this.iriLocalName(iri));
+        const additionalTriples = [
+            ...normalizedLabels.map(({ value, lang }) => `<${iri}> rdfs:label ${rdfLiteral(value, lang)} .`),
+            ...groups.map((g) => `<${iri}> core:visibleTo <${g}> .`),
+        ];
+        const additionalBlock = additionalTriples.length
+            ? `
+              ${additionalTriples.join('\n              ')}`
+            : "";
 
         const metaTriples = `
           PREFIX core: <${this.CORE}>
@@ -61,9 +99,7 @@ export class OntologiesService extends OntologyBaseService {
           INSERT DATA {
             GRAPH <${this.PROJECTS_GRAPH}> {
               <${iri}> a core:OntologyProject , owl:Ontology ;
-                       rdfs:label """${escapeSparqlLiteral(label)}""" ;
-                       core:createdBy <${requesterIri}> .
-              ${groups.map((g) => `<${iri}> core:visibleTo <${g}> .`).join("\n      ")}
+                       core:createdBy <${requesterIri}> .${additionalBlock}
             }
           }`;
 
@@ -86,35 +122,49 @@ export class OntologiesService extends OntologyBaseService {
         requesterIri: string,
         projectIri: string,
         newLabel?: string,
-        visibleToGroups?: string[]
+        visibleToGroups?: string[],
+        labels?: LocalizedLabelDto[]
     ): Promise<void> {
         const allowed = (await this.isSuperAdmin(requesterIri)) || (await this.isProjectOwner(requesterIri, projectIri));
         if (!allowed) {
             throw new ForbiddenException("Accès refusé. Vous n'avez pas les droits d'écriture sur cette ontologie.");
         }
 
-        let deletePart = "";
-        let insertPart = "";
+        const operations: string[] = [];
 
-        if (newLabel !== undefined) {
-            deletePart += `<${projectIri}> rdfs:label ?lbl .\n`;
-            insertPart += `<${projectIri}> rdfs:label """${escapeSparqlLiteral(newLabel)}""" .\n`;
+        if (labels !== undefined || newLabel !== undefined) {
+            const normalizedLabels = this.normalizeLabels(labels, newLabel ?? this.iriLocalName(projectIri));
+            const labelInsertTriples = normalizedLabels
+                .map(({ value, lang }) => `<${projectIri}> rdfs:label ${rdfLiteral(value, lang)} .`)
+                .join('\n              ');
+            operations.push(`
+            DELETE { GRAPH <${this.PROJECTS_GRAPH}> { <${projectIri}> rdfs:label ?lbl . } }
+            INSERT { GRAPH <${this.PROJECTS_GRAPH}> {
+              ${labelInsertTriples}
+            } }
+            WHERE  { OPTIONAL { GRAPH <${this.PROJECTS_GRAPH}> { <${projectIri}> rdfs:label ?lbl . } } }
+            `);
         }
+
         if (Array.isArray(visibleToGroups)) {
-            deletePart += `<${projectIri}> core:visibleTo ?vg .\n`;
-            insertPart += visibleToGroups
-                .map((g) => `<${projectIri}> core:visibleTo <${g}> .\n`)
-                .join("");
+            const aclInsert = visibleToGroups
+                .map((g) => `<${projectIri}> core:visibleTo <${g}> .`)
+                .join('\n              ');
+            operations.push(`
+            DELETE { GRAPH <${this.PROJECTS_GRAPH}> { <${projectIri}> core:visibleTo ?vg . } }
+            INSERT { GRAPH <${this.PROJECTS_GRAPH}> {
+              ${aclInsert}
+            } }
+            WHERE  { OPTIONAL { GRAPH <${this.PROJECTS_GRAPH}> { <${projectIri}> core:visibleTo ?vg . } } }
+            `);
         }
 
-        if (!deletePart) return;
+        if (operations.length === 0) return;
 
         const update = `
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX core: <${this.CORE}>
-            DELETE { GRAPH <${this.PROJECTS_GRAPH}> { ${deletePart} } }
-            INSERT { GRAPH <${this.PROJECTS_GRAPH}> { ${insertPart} } }
-            WHERE  { OPTIONAL { GRAPH <${this.PROJECTS_GRAPH}> { ${deletePart} } } }
+            ${operations.map((op) => op.trim()).join(';\n')}
         `;
 
         await this.runUpdate(update);
@@ -130,7 +180,9 @@ export class OntologiesService extends OntologyBaseService {
         await this.runUpdate(`DELETE WHERE { GRAPH <${projectIri}> { ?s ?p ?o . } }`);
     }
 
-    async getGraph(ontologyIri: string): Promise<{ nodes: NodeData[]; edges: EdgeData[] }> {
+    async getGraph(ontologyIri: string, preferredLang?: string): Promise<{ nodes: NodeData[]; edges: EdgeData[] }> {
+        const sLabelPattern = this.buildLabelSelection("?s", "sLabel", preferredLang);
+        const oLabelPattern = this.buildLabelSelection("?o", "oLabel", preferredLang);
         const params = new URLSearchParams({
             query: `
                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -139,8 +191,8 @@ export class OntologiesService extends OntologyBaseService {
                   GRAPH <${ontologyIri}> {
                     ?s rdfs:subClassOf ?o .
                     FILTER(isIRI(?s) && isIRI(?o))
-                    OPTIONAL { ?s rdfs:label ?sLabel }
-                    OPTIONAL { ?o rdfs:label ?oLabel }
+                    ${sLabelPattern}
+                    ${oLabelPattern}
                   }
                 }`,
             format: "application/sparql-results+json",
@@ -160,8 +212,8 @@ export class OntologiesService extends OntologyBaseService {
         bindings.forEach((row) => {
             const s = row.s.value;
             const o = row.o.value;
-            const sLbl = row.sLabel?.value || s.split(/[#/]/).pop() || s;
-            const oLbl = row.oLabel?.value || o.split(/[#/]/).pop() || o;
+            const sLbl = row.sLabel?.value?.trim() || this.iriLocalName(s);
+            const oLbl = row.oLabel?.value?.trim() || this.iriLocalName(o);
             nodesMap.set(s, { id: s, label: sLbl, title: s });
             nodesMap.set(o, { id: o, label: oLbl, title: o });
             edges.push({ from: s, to: o });
@@ -173,11 +225,16 @@ export class OntologiesService extends OntologyBaseService {
     async getClassProperties(
         classIri: string,
         _userIri: string,
-        ontologyIri: string
+        ontologyIri: string,
+        lang?: string,
+        acceptLanguage?: string
     ): Promise<{
         dataProps: { iri: string; label: string }[];
         objectProps: { iri: string; label: string; range?: { iri: string; label: string } }[];
     }> {
+        const preferredLang = this.resolveLang(lang, acceptLanguage);
+        const propLabelPattern = this.buildLabelSelection("?p", "pLabel", preferredLang);
+        const rangeLabelPattern = this.buildLabelSelection("?range", "rangeLabel", preferredLang);
         const data = await this.runSelect(`
             PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -187,14 +244,19 @@ export class OntologiesService extends OntologyBaseService {
                 {
                   ?p rdf:type owl:DatatypeProperty .
                   BIND("data" AS ?kind)
-                } UNION {
+                }
+                UNION
+                {
                   ?p rdf:type owl:ObjectProperty .
                   BIND("object" AS ?kind)
-                  OPTIONAL { ?p rdfs:range ?range . OPTIONAL { ?range rdfs:label ?rangeLabel } }
+                  OPTIONAL {
+                    ?p rdfs:range ?range .
+                    ${rangeLabelPattern}
+                  }
                 }
                 ?p rdfs:domain ?d .
                 <${classIri}> rdfs:subClassOf* ?d .
-                OPTIONAL { ?p rdfs:label ?pLabel }
+                ${propLabelPattern}
               }
             }
         `);
@@ -207,20 +269,22 @@ export class OntologiesService extends OntologyBaseService {
         }[] = [];
 
         data.results.bindings.forEach((row: any) => {
+            const predicateIri = row.p.value;
             const base = {
-                iri: row.p.value,
-                label: row.pLabel?.value || row.p.value.split(/[#/]/).pop(),
+                iri: predicateIri,
+                label: row.pLabel?.value?.trim() || this.iriLocalName(predicateIri),
             };
             if (row.kind.value === "data") {
                 dataProps.push(base);
             } else {
+                const rangeIri = row.range?.value;
                 objectProps.push({
                     ...base,
-                    range: row.range
+                    range: rangeIri
                         ? {
-                            iri: row.range.value,
-                            label: row.rangeLabel?.value || row.range.value.split(/[#/]/).pop(),
-                        }
+                              iri: rangeIri,
+                              label: row.rangeLabel?.value?.trim() || this.iriLocalName(rangeIri),
+                          }
                         : undefined,
                 });
             }
@@ -229,11 +293,49 @@ export class OntologiesService extends OntologyBaseService {
         return { dataProps, objectProps };
     }
 
-    async getFullSnapshot(userIri: string, ontologyIri: string): Promise<FullSnapshot> {
+    private iriLocalName(iri: string): string {
+        const parts = iri.split(/[#/]/);
+        return parts[parts.length - 1] || iri;
+    }
+
+    private normalizeLabels(
+        labels?: Array<{ value?: string; lang?: string }>,
+        fallback?: string
+    ): Array<{ value: string; lang?: string }> {
+        const normalized = new Map<string, string>();
+        if (labels) {
+            for (const entry of labels) {
+                if (!entry?.value) continue;
+                const value = entry.value.trim();
+                if (!value) continue;
+                const lang = this.sanitizeLang(entry.lang);
+                const key = lang ?? "";
+                if (!normalized.has(key)) {
+                    normalized.set(key, value);
+                }
+            }
+        }
+        const fallbackValue = fallback?.trim();
+        if (normalized.size === 0 && fallbackValue) {
+            normalized.set("", fallbackValue);
+        }
+        return Array.from(normalized.entries()).map(([lang, value]) => ({
+            value,
+            lang: lang || undefined,
+        }));
+    }
+
+    async getFullSnapshot(
+        userIri: string,
+        ontologyIri: string,
+        lang?: string,
+        acceptLanguage?: string
+    ): Promise<FullSnapshot> {
+        const preferredLang = this.resolveLang(lang, acceptLanguage);
         const [graph, individuals, persons] = await Promise.all([
-            this.getGraph(ontologyIri),
-            this.individualsService.getIndividualsForOntology(userIri, ontologyIri),
-            this.individualsService.getAllPersons(),
+            this.getGraph(ontologyIri, preferredLang),
+            this.individualsService.getIndividualsForOntology(userIri, ontologyIri, preferredLang),
+            this.individualsService.getAllPersons(preferredLang),
         ]);
         return { graph, individuals, persons };
     }

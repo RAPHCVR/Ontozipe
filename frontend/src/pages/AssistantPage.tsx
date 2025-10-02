@@ -8,6 +8,10 @@ import { useAuth } from "../auth/AuthContext";
 import { formatLabel } from "../utils/formatLabel";
 import { PaperAirplaneIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
 import { useOntologies } from "../hooks/apiQueries";
+import { SUPPORTED_LANGUAGES } from "../language/LanguageContext";
+import type { SupportedLanguage } from "../language/LanguageContext";
+import { messages as localeMessages } from "../language/messages";
+import { useTranslation } from "../language/useTranslation";
 
 type ChatMsg = { role: "user" | "assistant"; content: string, agentSteps?: AgentStep[] };
 type Ontology = { iri: string; label?: string };
@@ -36,10 +40,11 @@ export default function AssistantPage() {
     const [activeIri, setActiveIri] = useState<string>("");
     const [systemPrompt, setSystemPrompt] = useState<string>("");
     const [systemPromptLoading, setSystemPromptLoading] = useState<boolean>(false);
+    const { t, language } = useTranslation();
     const [messages, setMessages] = useState<ChatMsg[]>([
         {
             role: "assistant",
-            content: "Bonjour, je suis l’assistant OntoZIPE. Posez-moi une question sur votre ontologie.",
+            content: t("assistant.initialMessage"),
         },
     ]);
     const [input, setInput] = useState("");
@@ -63,6 +68,20 @@ export default function AssistantPage() {
             .finally(() => { if (!cancelled) setSystemPromptLoading(false); });
         return () => { cancelled = true; };
     }, [api, activeIri, sessionId]);
+
+    useEffect(() => {
+        setMessages((prev) => {
+            if (prev.length === 0) return prev;
+            const [first, ...rest] = prev;
+            if (first.role !== "assistant") return prev;
+            const knownInitials = SUPPORTED_LANGUAGES.map(
+                (lang: SupportedLanguage) => localeMessages[lang]["assistant.initialMessage"]
+            );
+            if (!knownInitials.includes(first.content)) return prev;
+            const updated = [{ ...first, content: t("assistant.initialMessage") }, ...rest];
+            return updated;
+        });
+    }, [language, t]);
 
     const handleSend = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -158,7 +177,7 @@ export default function AssistantPage() {
                 console.error("SSE connection error:", err);
                 setMessages((prev) => {
                     const lastMsg = prev[prev.length - 1];
-                    const errorMsg = { ...lastMsg, content: "Une erreur de connexion est survenue." };
+                    const errorMsg = { ...lastMsg, content: t("assistant.errors.connection") };
                     return [...prev.slice(0, -1), errorMsg];
                 });
                 setSending(false);
@@ -173,7 +192,7 @@ export default function AssistantPage() {
     if (ontologiesQuery.isError) {
         return (
             <div className="flex items-center justify-center h-screen text-red-500">
-                Erreur lors du chargement des ontologies disponibles.
+                {t("assistant.errors.loadOntologies")}
             </div>
         );
     }
@@ -181,9 +200,9 @@ export default function AssistantPage() {
     return (
         <div className="container mx-auto max-w-5xl w-full flex flex-col gap-4">
             <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-2 mt-4">
-                <h1 className="text-2xl font-semibold">Assistant OntoZIPE</h1>
+                <h1 className="text-2xl font-semibold">{t("assistant.title")}</h1>
                 <div className="flex items-center gap-2">
-                    <label className="text-sm">Ontologie:</label>
+                    <label className="text-sm">{t("assistant.ontologyLabel")}</label>
                     <select
                         disabled={ontologiesQuery.isLoading}
                         className="input min-w-[20rem]"
@@ -202,22 +221,22 @@ export default function AssistantPage() {
             {/* Affichage lecture seule de la prompt système */}
             <div className="card p-3 mb-3">
                 <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-semibold">Prompt système</h2>
+                    <h2 className="text-sm font-semibold">{t("assistant.systemPrompt.title")}</h2>
                     <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">lecture seule</span>
+                        <span className="text-xs text-gray-500">{t("assistant.systemPrompt.readOnly")}</span>
                         <button
                             type="button"
                             className="btn-secondary text-xs px-2 py-1"
                             onClick={() => navigator.clipboard?.writeText(systemPrompt)}
                             disabled={!systemPrompt}
-                            aria-label="Copier la prompt système"
+                            aria-label={t("assistant.systemPrompt.copyAria")}
                         >
-                            Copier
+                            {t("common.copy")}
                         </button>
                     </div>
                 </div>
                 <pre className="whitespace-pre-wrap break-words text-xs bg-gray-50 dark:bg-slate-800 p-2 rounded max-h-48 overflow-auto">
-                    {systemPromptLoading ? 'Chargement…' : (systemPrompt || 'Aucune prompt pour le moment.')}
+                    {systemPromptLoading ? t("common.loading") : (systemPrompt || t("assistant.systemPrompt.empty"))}
                 </pre>
             </div>
 
@@ -234,26 +253,27 @@ export default function AssistantPage() {
                             <div className="mb-2 w-full max-w-[80%]">
                                 <details className="rounded-lg bg-gray-100 dark:bg-slate-800 p-2">
                                     <summary className="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-400">
-                                        Raisonnement de l'agent...
+                                        {t("assistant.agentReasoning.summary")}
                                     </summary>
                                     <div className="mt-2 space-y-2">
                                         {m.agentSteps.map((step, stepIdx) => (
                                             <div key={stepIdx} className="text-xs p-2 rounded bg-white dark:bg-slate-700">
-                                                <p className="font-bold text-indigo-500 flex items-center gap-1">
-                                                    <Cog6ToothIcon className="h-4 w-4" /> Appel de l'outil: {step.name}
+                                               <p className="font-bold text-indigo-500 flex items-center gap-1">
+                                                    <Cog6ToothIcon className="h-4 w-4" />
+                                                    {t("assistant.agentReasoning.toolCall", { name: step.name })}
                                                 </p>
                                                 <pre className="whitespace-pre-wrap break-words bg-gray-50 dark:bg-slate-800 p-1 rounded mt-1 text-gray-700 dark:text-gray-300">
                                                     <code>{formatObservation(step.args)}</code>
                                                 </pre>
                                                 {step.result ? (
                                                     <div className="mt-1 border-t border-gray-200 dark:border-slate-600 pt-1">
-                                                        <p className="font-semibold">Résultat :</p>
+                                                        <p className="font-semibold">{t("assistant.agentReasoning.result")}</p>
                                                         <pre className="whitespace-pre-wrap break-words text-gray-600 dark:text-gray-400">
                                                             <code>{formatObservation(step.result)}</code>
                                                         </pre>
                                                     </div>
                                                 ) : (
-                                                    <div className="mt-1 text-gray-500 animate-pulse">Observation en cours...</div>
+                                                    <div className="mt-1 text-gray-500 animate-pulse">{t("assistant.agentReasoning.inProgress")}</div>
                                                 )}
                                             </div>
                                         ))}
@@ -280,7 +300,7 @@ export default function AssistantPage() {
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Posez votre question (Maj+Entrée pour nouvelle ligne)…"
+                        placeholder={t("assistant.input.placeholder")}
                         rows={2}
                         className="flex-1 text-sm border rounded-md px-3 py-2 dark:bg-slate-800 dark:border-slate-600 resize-none"
                         onKeyDown={(e) => {
@@ -294,13 +314,13 @@ export default function AssistantPage() {
                     type="submit"
                     disabled={sending || !input.trim()}
                     className="btn-primary disabled:opacity-50 h-[42px] w-[42px] flex-shrink-0 !p-0 flex items-center justify-center rounded-md"
-                    aria-label="Envoyer"
+                    aria-label={t("assistant.input.ariaSend")}
                 >
                     {sending ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white" /> : <PaperAirplaneIcon className="h-5 w-5" />}
                 </button>
             </form>
             <p className="text-xs text-gray-500">
-                L'assistant peut utiliser des outils pour interroger l'ontologie sélectionnée.
+                {t("assistant.footer.hint")}
             </p>
         </div>
     );

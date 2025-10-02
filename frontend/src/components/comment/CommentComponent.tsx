@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { CommentNode, Snapshot } from "../../types";
 import { formatLabel } from "../../utils/formatLabel";
+import { useTranslation } from "../../language/useTranslation";
 
 dayjs.extend(relativeTime);
 
@@ -30,6 +31,7 @@ const CommentBlock: React.FC<{
 }) => {
 	const replies = allComments.filter((c) => c.replyTo === comment.id);
 	const [showReplies, setShowReplies] = useState(false);
+	const { t } = useTranslation();
 
 	const isAuthor = currentUserIri === comment.createdBy;
 	const [editing, setEditing] = useState(false);
@@ -44,7 +46,7 @@ const CommentBlock: React.FC<{
 			?.value ||
 		authorNode?.label ||
 		comment.createdBy.split(/[#/]/).pop() ||
-		"Utilisateur";
+		t("common.user");
 
 	return (
 		<div
@@ -73,7 +75,7 @@ const CommentBlock: React.FC<{
 										onEdit(comment, draft.trim());
 									}
 								}}
-								title="Envoyer"
+								title={t("common.send")}
 								className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded">
 								📤
 							</button>
@@ -82,7 +84,7 @@ const CommentBlock: React.FC<{
 									setEditing(false);
 									setDraft(comment.body);
 								}}
-								title="Annuler"
+								title={t("common.cancel")}
 								className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-xs rounded">
 								❌
 							</button>
@@ -92,17 +94,17 @@ const CommentBlock: React.FC<{
 					<p className="whitespace-pre-wrap">{comment.body}</p>
 				)}
 				<div className="flex items-center gap-3 text-xs text-sky-600">
-					<button onClick={() => setReplying((v) => !v)} title="Répondre">
-						Repondre
+					<button onClick={() => setReplying((v) => !v)} title={t("comment.replyAction")}>
+						{t("comment.reply")}
 					</button>
 					{isAuthor && !editing && (
 						<>
-							<button onClick={() => setEditing(true)} title="Modifier">
+							<button onClick={() => setEditing(true)} title={t("common.edit")}>
 								📝
 							</button>
 							<button
 								onClick={() => onDelete(comment)}
-								title="Supprimer"
+								title={t("common.delete")}
 								className="text-red-500">
 								🗑️
 							</button>
@@ -116,7 +118,7 @@ const CommentBlock: React.FC<{
 							onChange={(e) => setReplyDraft(e.target.value)}
 							rows={3}
 							className="w-full text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none"
-							placeholder="Votre réponse…"
+							placeholder={t("comment.replyPlaceholder")}
 						/>
 						<div className="flex gap-2 justify-end mt-1">
 							<button
@@ -128,7 +130,7 @@ const CommentBlock: React.FC<{
 										setReplying(false);
 									}
 								}}
-								title="Envoyer"
+								title={t("common.send")}
 								className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs rounded">
 								📤
 							</button>
@@ -137,7 +139,7 @@ const CommentBlock: React.FC<{
 									setReplying(false);
 									setReplyDraft("");
 								}}
-								title="Annuler"
+								title={t("common.cancel")}
 								className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-xs rounded">
 								❌
 							</button>
@@ -153,19 +155,23 @@ const CommentBlock: React.FC<{
 						<button
 							onClick={() => setShowReplies(true)}
 							className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-							title="Afficher les réponses">
+							title={t("comment.showReplies")}
+						>
 							↳
 							<span>
-								{replies.length} réponse{replies.length > 1 && "s"} à ce message
+								{replies.length === 1
+									? t("comment.replyCount.one")
+									: t("comment.replyCount.other", { count: replies.length })}
 							</span>
 						</button>
 					) : (
 						<button
 							onClick={() => setShowReplies(false)}
 							className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-							title="Fermer les réponses">
+							title={t("comment.hideReplies")}
+						>
 							↩︎
-							<span>Refermer les réponses</span>
+							<span>{t("comment.hideReplies")}</span>
 						</button>
 					)}
 				</div>

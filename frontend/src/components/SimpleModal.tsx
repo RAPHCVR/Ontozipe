@@ -1,4 +1,5 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "../language/useTranslation";
 
 export default function SimpleModal({
 	title,
@@ -36,26 +37,25 @@ export default function SimpleModal({
 		timeouts.current.push(timeout);
 	}, [closing, onClose]);
 
+	const { t } = useTranslation();
+
 	return (
 		<div
 			className={`modal-backdrop${closing ? " is-leaving" : ""}`}
 			role="presentation"
-			onClick={scheduleClose}
-		>
+			onClick={scheduleClose}>
 			<div
 				className="modal"
 				role="dialog"
 				aria-modal="true"
-				onClick={(event) => event.stopPropagation()}
-			>
+				onClick={(event) => event.stopPropagation()}>
 				<header className="modal__header">
 					<h3 className="modal__title">{title}</h3>
 					<button
 						type="button"
 						className="modal__close"
 						onClick={scheduleClose}
-						aria-label="Fermer la fenêtre"
-					>
+						aria-label="Fermer la fenêtre">
 						<i className="fas fa-times" aria-hidden="true" />
 					</button>
 				</header>
@@ -66,8 +66,7 @@ export default function SimpleModal({
 					<button
 						type="button"
 						className="button button--ghost"
-						onClick={scheduleClose}
-					>
+						onClick={scheduleClose}>
 						{cancelLabel ?? "Annuler"}
 					</button>
 					<button
@@ -86,8 +85,7 @@ export default function SimpleModal({
 								console.error(error);
 							}
 						}}
-						disabled={disableSubmit}
-					>
+						disabled={disableSubmit}>
 						{submitLabel ?? "Valider"}
 					</button>
 				</footer>

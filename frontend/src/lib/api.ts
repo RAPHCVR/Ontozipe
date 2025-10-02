@@ -1,4 +1,5 @@
 import { useAuth } from "../auth/AuthContext";
+import { useLanguage } from "../language/LanguageContext";
 import { useCallback } from "react";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, "");
@@ -9,11 +10,13 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:400
  */
 export const useApi = () => {
     const { token, logout } = useAuth();
+    const { language } = useLanguage();
 
     return useCallback(
         async (input: string, init: RequestInit = {}) => {
             const headers = new Headers(init.headers);
             if (token) headers.set("Authorization", `Bearer ${token}`);
+            if (language) headers.set("Accept-Language", language);
 
             // Détermine si l'URL est absolue ou relative, et construit l'URL finale.
             const isAbsolute = input.startsWith("http://") || input.startsWith("https://");
@@ -36,6 +39,6 @@ export const useApi = () => {
 
             return res;
         },
-        [token, logout]
+        [token, logout, language]
     );
 };

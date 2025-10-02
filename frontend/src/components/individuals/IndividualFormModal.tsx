@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useApi } from "../../lib/api";
 import { IndividualNode, Snapshot } from "../../types";
 import { formatLabel } from "../../utils/formatLabel";
+import { useTranslation } from "../../language/useTranslation";
 // ---------------------------------------------------------------------------
 // IndividualFormModal – création / édition d'un individu
 // ---------------------------------------------------------------------------
@@ -34,6 +35,7 @@ const IndividualFormModal: React.FC<{
 }) => {
 	const isEdit = Boolean(initial.id);
 	const api = useApi();
+    const { t } = useTranslation();
 
 	const [label, setLabel] = useState(initial.label || "");
 	const [classId, setClassId] = useState(initial?.classId || activeClassId);
@@ -129,7 +131,10 @@ const IndividualFormModal: React.FC<{
 
 	// --- Submit ---
     const handleSave = () => {
-        if (!label.trim()) return alert("Le label est requis");
+        if (!label.trim()) {
+            alert(t("individual.form.errors.labelRequired"));
+            return;
+        }
         onSubmit({
             mode: isEdit ? "update" : "create",
             iri: isEdit ? String(initial.id) : undefined,
@@ -142,7 +147,7 @@ const IndividualFormModal: React.FC<{
     };
     const handleDelete = () => {
         if (!initial.id) return;
-        if (!confirm("Supprimer définitivement cet individu ?")) return;
+        if (!confirm(t("individual.form.confirmDelete"))) return;
         onSubmit({
             mode: "delete",
             iri: String(initial.id),
@@ -157,12 +162,12 @@ const IndividualFormModal: React.FC<{
 		<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
 			<div className="bg-white dark:bg-slate-800 rounded-lg w-4/5 max-w-5xl p-6 shadow-lg space-y-4 overflow-y-auto max-h-[90vh]">
 				<h3 className="text-lg font-semibold mb-2">
-					{isEdit ? "Modifier Individu" : "Nouvel Individu"}
+					{isEdit ? t("individual.form.titleEdit") : t("individual.form.titleCreate")}
 				</h3>
 				{/* ---- Infos de base ---- */}
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
-						<label className="block text-sm font-medium mb-1">Label</label>
+						<label className="block text-sm font-medium mb-1">{t("common.label")}</label>
 						<input
 							className="input w-full"
 							value={label}
@@ -170,7 +175,7 @@ const IndividualFormModal: React.FC<{
 						/>
 					</div>
 					<div>
-						<label className="block text-sm font-medium mb-1">Classe</label>
+						<label className="block text-sm font-medium mb-1">{t("individual.form.class")}</label>
 						{formatLabel(classId.split(/[#/]/).pop() || "")}
 					</div>
 				</div>
@@ -179,7 +184,7 @@ const IndividualFormModal: React.FC<{
 				<section>
 					<div className="flex items-center justify-between mb-1">
 						<h4 className="text-sm font-semibold text-indigo-500">
-							Propriétés littérales
+							{t("individual.form.literalProperties")}
 						</h4>
 					</div>
 					{dataRows.map((row, i) => (
@@ -195,7 +200,7 @@ const IndividualFormModal: React.FC<{
 							</div>
 							<input
 								className="input flex-1"
-								placeholder="Valeur"
+								placeholder={t("individual.form.valuePlaceholder")}
 								value={row.value}
 								onChange={(e) => {
 									const val = e.target.value;
@@ -223,12 +228,12 @@ const IndividualFormModal: React.FC<{
 				<section>
 					<div className="flex items-center justify-between mb-1">
 						<h4 className="text-sm font-semibold text-emerald-600">
-							Relations
+							{t("individual.form.relationsTitle")}
 						</h4>
 						<button
 							onClick={() => addRow(setObjProps, false)}
 							className="btn-primary text-xs">
-							+ Ajouter
+							{t("individual.form.addRelation")}
 						</button>
 					</div>
 					{objProps.map((row, i) => (
@@ -248,7 +253,7 @@ const IndividualFormModal: React.FC<{
 								onChange={(e) =>
 									updateRow(i, "predicate", e.target.value, setObjProps)
 								}>
-								<option value="">-- Prédicat --</option>
+								<option value="">{t("individual.form.predicatePlaceholder")}</option>
 								{available.objectProps.map((p) => (
 									<option key={p.iri} value={p.iri}>
 										{formatLabel(p.label)}
@@ -261,7 +266,7 @@ const IndividualFormModal: React.FC<{
 								onChange={(e) =>
 									updateRow(i, "value", e.target.value, setObjProps)
 								}>
-								<option value="">-- Sélectionner Individu --</option>
+								<option value="">{t("individual.form.selectIndividual")}</option>
 								{(() => {
 									const rangeIri = available.objectProps.find(
 										(p) => p.iri === row.predicate
@@ -290,10 +295,10 @@ const IndividualFormModal: React.FC<{
 				{/* ---- ACL / Visibility ---- */}
 				<section>
 					<h4 className="text-sm font-semibold text-purple-600 mb-1">
-						Visibilité – Groupes autorisés
+						{t("individual.form.visibilityTitle")}
 					</h4>
 					{groups.length === 0 ? (
-						<p className="text-xs text-gray-500">Aucun groupe disponible</p>
+						<p className="text-xs text-gray-500">{t("individual.form.noGroups")}</p>
 					) : (
 						<div className="flex flex-wrap gap-2">
 							{groups.map((g) => {
@@ -325,18 +330,18 @@ const IndividualFormModal: React.FC<{
 				<div className="flex justify-between items-center pt-4">
 					{isEdit && (
 						<button onClick={handleDelete} className="btn-danger">
-							Supprimer
+							{t("common.delete")}
 						</button>
 					)}
 					<div className="flex gap-4 ml-auto">
 						<button onClick={onClose} className="btn-secondary">
-							Annuler
+							{t("common.cancel")}
 						</button>
 						<button
 							disabled={!label.trim() || !classId || !ontologyIri}
 							onClick={handleSave}
 							className="btn-primary disabled:opacity-50 disabled:pointer-events-none">
-							{isEdit ? "Enregistrer" : "Créer"}
+							{isEdit ? t("common.save") : t("common.create")}
 						</button>
 					</div>
 				</div>

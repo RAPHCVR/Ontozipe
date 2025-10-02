@@ -3,6 +3,7 @@ import { IndividualNode, CommentNode, Snapshot } from "../../types";
 import { formatLabel } from "../../utils/formatLabel";
 import IndividualCard from "./IndividualCard";
 import { useAuth } from "../../auth/AuthContext";
+import { useTranslation } from "../../language/useTranslation";
 
 // ---------------------------------------------------------------------------
 // Individuals side‑panel
@@ -30,6 +31,7 @@ const IndividualsPanel: React.FC<{
 	// Auth & user groups
 	// ------------------------------------------------------------
 	const { user } = useAuth();
+    const { t } = useTranslation();
 	const currentUserIri: string | undefined = user?.sub;
 
 	const userNode =
@@ -101,7 +103,7 @@ const IndividualsPanel: React.FC<{
 		return (
 			<aside className="shrink-0 pr-2" style={{ width }}>
 				<div className="card h-full flex items-center justify-center text-gray-500">
-					Sélectionnez une classe
+					{t("individual.panel.selectClass")}
 				</div>
 			</aside>
 		);
@@ -120,7 +122,7 @@ const IndividualsPanel: React.FC<{
 						value={groupFilter}
 						onChange={(e) => setGroupFilter(e.target.value)}
 						className="border w-full rounded px-2 py-1 text-sm dark:bg-slate-800 dark:border-slate-600">
-						<option value="all">Tous les groupes</option>
+						<option value="all">{t("individual.panel.allGroups")}</option>
 						{userGroups.map((g) => (
 							<option key={g.iri} value={g.iri}>
 								{formatLabel(g.label || g.iri.split(/[#/]/).pop() || g.iri)}
@@ -132,7 +134,7 @@ const IndividualsPanel: React.FC<{
 						type="text"
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
-						placeholder="Rechercher..."
+						placeholder={t("individual.panel.searchPlaceholder")}
 						className="flex-1 w-full border rounded px-2 py-1 text-sm dark:bg-slate-800 dark:border-slate-600"
 					/>
 				</div>
@@ -141,7 +143,7 @@ const IndividualsPanel: React.FC<{
 						{classLabel} ({searchedIndividuals.length})
 					</h2>
 					<button
-						title="Nouvel individu"
+						title={t("individual.panel.createTooltip")}
 						onClick={() => onCreate(classId)}
 						className="text-indigo-600 hover:text-indigo-800 text-xl leading-none px-2">
 						+

@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from "react";
 import { IndividualNode, Snapshot } from "types";
 import IndividualCard from "./IndividualCard";
+import { useTranslation } from "../../language/useTranslation";
 
 const Modal: React.FC<{
     individual: IndividualNode;
@@ -11,6 +12,7 @@ const Modal: React.FC<{
     onClose: () => void;
     zIndex: number;
 }> = ({ individual, snapshot, onShow, onClose, zIndex }) => {
+    const { t } = useTranslation();
     const onKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.key === "Escape") onClose();
     }, [onClose]);
@@ -59,7 +61,7 @@ const Modal: React.FC<{
                                 onClose();
                             }}
                         >
-                            Quitter
+                            {t("common.close")}
                         </button>
                     </div>
                 </div>
