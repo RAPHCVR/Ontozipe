@@ -253,7 +253,7 @@ export class ResultRepresentation {
                         if (relationship.predicate_uri === 'http://www.semanticweb.org/custom/belongsToClass' && relationship.direction === 'incoming') {
                             predicateLabel = 'a pour instance';
                         }
-                        const new_line = `    - soi ${direction} ${predicateLabel}: ${extractAfterLastSlash(relationship.target_uri)}`;
+                        const new_line = `    - self ${direction} ${predicateLabel}: ${extractAfterLastSlash(relationship.target_uri)}`;
                         lines.push(new_line);
                     }
                 }
