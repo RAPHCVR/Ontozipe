@@ -30,6 +30,16 @@ const definitions = {
 	"common.cancel": { fr: "Annuler", en: "Cancel", es: "Cancelar" },
 	"common.confirm": { fr: "Valider", en: "Confirm", es: "Confirmar" },
 	"common.logout": { fr: "Déconnexion", en: "Log out", es: "Cerrar sesión" },
+	"common.pagination.previous": {
+		fr: "Précédent",
+		en: "Previous",
+		es: "Anterior",
+	},
+	"common.pagination.next": {
+		fr: "Suivant",
+		en: "Next",
+		es: "Siguiente",
+	},
 	"language.option.fr": { fr: "Français", en: "French", es: "Francés" },
 	"language.option.en": { fr: "Anglais", en: "English", es: "Inglés" },
 	"language.option.es": { fr: "Espagnol", en: "Spanish", es: "Español" },
@@ -371,6 +381,26 @@ const definitions = {
 		en: "Unable to delete the group.",
 		es: "No se pudo eliminar el grupo.",
 	},
+	"groups.search.placeholder": {
+		fr: "Rechercher un groupe…",
+		en: "Search a group…",
+		es: "Buscar un grupo…",
+	},
+	"groups.summary": {
+		fr: "{{count}} groupe(s)",
+		en: "{{count}} group(s)",
+		es: "{{count}} grupo(s)",
+	},
+	"groups.pagination.label": {
+		fr: "Page {{page}} sur {{totalPages}}",
+		en: "Page {{page}} of {{totalPages}}",
+		es: "Página {{page}} de {{totalPages}}",
+	},
+	"groups.list.emptySearch": {
+		fr: "Aucun groupe ne correspond à votre recherche.",
+		en: "No groups match your search.",
+		es: "Ningún grupo coincide con tu búsqueda.",
+	},
 	"groups.confirm.delete": {
 		fr: "Supprimer ce groupe ? Cette action est irréversible.",
 		en: "Delete this group? This action cannot be undone.",
@@ -475,6 +505,26 @@ const definitions = {
 		fr: "Suppression de l’organisation impossible.",
 		en: "Unable to delete the organization.",
 		es: "No se pudo eliminar la organización.",
+	},
+	"organizations.search.placeholder": {
+		fr: "Rechercher une organisation…",
+		en: "Search an organization…",
+		es: "Buscar una organización…",
+	},
+	"organizations.summary": {
+		fr: "{{count}} organisation(s)",
+		en: "{{count}} organization(s)",
+		es: "{{count}} organización(es)",
+	},
+	"organizations.pagination.label": {
+		fr: "Page {{page}} sur {{totalPages}}",
+		en: "Page {{page}} of {{totalPages}}",
+		es: "Página {{page}} de {{totalPages}}",
+	},
+	"organizations.list.emptySearch": {
+		fr: "Aucune organisation ne correspond à votre recherche.",
+		en: "No organizations match your search.",
+		es: "Ninguna organización coincide con tu búsqueda.",
 	},
 	"organizations.confirm.delete": {
 		fr: "Supprimer cette organisation ? Les membres associés en seront impactés.",

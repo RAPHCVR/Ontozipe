@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import SimpleModal from "../components/SimpleModal";
@@ -20,6 +20,7 @@ import {
 	personsToMemberOptions,
 	type PersonDetails,
 } from "../utils/personOptions";
+import { useSearchPagination } from "../hooks/useSearchPagination";
 
 type Organisation = {
 	iri: string;
@@ -109,6 +110,26 @@ export default function OrganisationsPage() {
 	const [modalState, setModalState] = useState<OrganisationModalState | null>(
 		null
 	);
+
+	const filterOrganization = useCallback(
+		(organization: Organisation, term: string) => {
+			const label = formatLabel(organization.label ?? organization.iri).toLowerCase();
+			const ownerDetails = getPersonDisplay(personIndex, organization.owner);
+			const ownerLabel = ownerDetails?.name?.toLowerCase() ?? "";
+			return label.includes(term) || ownerLabel.includes(term);
+		},
+		[personIndex]
+	);
+
+	const {
+		searchTerm,
+		setSearchTerm,
+		page,
+		setPage,
+		totalPages,
+		filteredItems: filteredOrganizations,
+		paginatedItems: paginatedOrganizations,
+	} = useSearchPagination(organizations, { filter: filterOrganization });
 
 	const refreshOrganizations = () => {
 		queryClient.invalidateQueries({
@@ -215,6 +236,11 @@ export default function OrganisationsPage() {
 	const isLoading =
 		organizationsQuery.isLoading || organizationsQuery.isFetching;
 	const hasOrganizations = organizations.length > 0;
+	const hasFilteredOrganizations = filteredOrganizations.length > 0;
+	const paginationLabel = useMemo(
+		() => t("organizations.pagination.label", { page, totalPages }),
+		[t, page, totalPages]
+	);
 
 	return (
 		<div className="page">
@@ -226,10 +252,18 @@ export default function OrganisationsPage() {
 							{t("organizations.header.subtitle")}
 						</p>
 					</div>
-					<div className="page-header__actions">
+					<div className="page-header__actions" style={{ gap: "1rem" }}>
+						<input
+							type="search"
+							value={searchTerm}
+							onChange={(event) => setSearchTerm(event.target.value)}
+							placeholder={t("organizations.search.placeholder")}
+							className="form-input"
+							style={{ minWidth: "220px" }}
+						/>
 						<span className="entity-chip">
 							<i className="fas fa-building" aria-hidden="true" />
-							{t("organizations.header.count", { count: organizations.length })}
+							{t("organizations.summary", { count: filteredOrganizations.length })}
 						</span>
 						{isSuperAdmin && (
 							<button
@@ -259,9 +293,13 @@ export default function OrganisationsPage() {
 					</div>
 				)}
 
-				{!isLoading && hasOrganizations && (
+				{!isLoading && hasOrganizations && !hasFilteredOrganizations && (
+					<div className="note-box">{t("organizations.list.emptySearch")}</div>
+				)}
+
+				{!isLoading && hasOrganizations && hasFilteredOrganizations && (
 					<ul className="entity-grid">
-						{organizations.map((organization) => {
+						{paginatedOrganizations.map((organization) => {
 							const ownerDisplay = getPersonDisplay(
 								personIndex,
 								organization.owner
@@ -353,6 +391,26 @@ export default function OrganisationsPage() {
 					onReload={refreshOrganizations}
 					onClose={() => setModalState(null)}
 				/>
+			)}
+
+			{hasFilteredOrganizations && totalPages > 1 && (
+				<div className="pagination-bar">
+					<button
+						className="btn-secondary"
+						onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+						disabled={page === 1}>
+						{t("common.pagination.previous")}
+					</button>
+					<span className="page-section__description" style={{ fontSize: "0.9rem" }}>
+						{paginationLabel}
+					</span>
+					<button
+						className="btn-secondary"
+						onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+						disabled={page >= totalPages}>
+						{t("common.pagination.next")}
+					</button>
+				</div>
 			)}
 		</div>
 	);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import SimpleModal from "../components/SimpleModal";
@@ -20,6 +20,7 @@ import {
 	getPersonDisplay,
 	type PersonDetails,
 } from "../utils/personOptions";
+import { useSearchPagination } from "../hooks/useSearchPagination";
 
 type Group = {
 	iri: string;
@@ -400,8 +401,30 @@ export default function GroupsPage() {
 		() => buildPersonIndex(personsQuery.data ?? []),
 		[personsQuery.data]
 	);
-
 	const [modalState, setModalState] = useState<GroupModalState | null>(null);
+
+	const filterGroup = useCallback(
+		(group: Group, term: string) => {
+			const label = formatLabel(group.label ?? group.iri).toLowerCase();
+			const organizationLabel = group.organizationIri
+				? (organizationLabelMap.get(group.organizationIri) ??
+						formatLabel(group.organizationIri)
+				  ).toLowerCase()
+				: "";
+			return label.includes(term) || organizationLabel.includes(term);
+		},
+		[organizationLabelMap]
+	);
+
+	const {
+		searchTerm,
+		setSearchTerm,
+		page,
+		setPage,
+		totalPages,
+		filteredItems: filteredGroups,
+		paginatedItems: paginatedGroups,
+	} = useSearchPagination(groups, { filter: filterGroup });
 
 	const createGroupMutation = useMutation<
 		string | undefined,
@@ -499,19 +522,32 @@ export default function GroupsPage() {
 
 	const isLoading = groupsQuery.isLoading || groupsQuery.isFetching;
 	const hasGroups = groups.length > 0;
+	const hasFilteredGroups = filteredGroups.length > 0;
+	const paginationLabel = useMemo(
+		() => t("groups.pagination.label", { page, totalPages }),
+		[t, page, totalPages]
+	);
 
 	return (
 		<div className="page">
 			<div className="app-container page__inner">
 				<header className="page-header">
-					<div>
-						<h1 className="page-title">{t("groups.header.title")}</h1>
-						<p className="page-subtitle">{t("groups.header.subtitle")}</p>
+					<div className="page-header__content">
+						<h1 className="page-header__title">{t("groups.header.title")}</h1>
+						<p className="page-header__subtitle">{t("groups.header.subtitle")}</p>
 					</div>
-					<div className="page-header__actions">
+					<div className="page-header__actions" style={{ gap: "1rem" }}>
+						<input
+							type="search"
+							value={searchTerm}
+							onChange={(event) => setSearchTerm(event.target.value)}
+							placeholder={t("groups.search.placeholder")}
+							className="form-input"
+							style={{ minWidth: "220px" }}
+						/>
 						<span className="entity-chip">
 							<i className="fas fa-layer-group" aria-hidden="true" />
-							{t("groups.header.count", { count: groups.length })}
+							{t("groups.summary", { count: filteredGroups.length })}
 						</span>
 						{currentUserIri && (
 							<button
@@ -539,9 +575,13 @@ export default function GroupsPage() {
 					</div>
 				)}
 
-				{!isLoading && hasGroups && (
+				{!isLoading && hasGroups && !hasFilteredGroups && (
+					<div className="note-box">{t("groups.list.emptySearch")}</div>
+				)}
+
+				{!isLoading && hasGroups && hasFilteredGroups && (
 					<ul className="entity-grid">
-						{groups.map((group: Group) => {
+						{paginatedGroups.map((group: Group) => {
 							const organizationLabel = group.organizationIri
 								? organizationLabelMap.get(group.organizationIri) ??
 								  formatLabel(group.organizationIri)
@@ -638,6 +678,26 @@ export default function GroupsPage() {
 					}}
 					onClose={() => setModalState(null)}
 				/>
+			)}
+
+			{hasFilteredGroups && totalPages > 1 && (
+				<div className="pagination-bar">
+					<button
+						className="btn-secondary"
+						onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+						disabled={page === 1}>
+						{t("common.pagination.previous")}
+					</button>
+					<span className="page-section__description" style={{ fontSize: "0.9rem" }}>
+						{paginationLabel}
+					</span>
+					<button
+						className="btn-secondary"
+						onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+						disabled={page >= totalPages}>
+						{t("common.pagination.next")}
+					</button>
+				</div>
 			)}
 		</div>
 	);
