@@ -1,11 +1,12 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { useProfile } from "../hooks/apiQueries";
 import { useApi } from "../lib/api";
+import { useTranslation } from "../language/useTranslation";
+import type { TranslationKey } from "../language/messages";
 
-const hasRequiredSpecialChar = (value: string) =>
-	/[&'\-_\?\./;/:!]/.test(value);
+const hasRequiredSpecialChar = (value: string) => /[&'\-_?./;/:!]/.test(value);
 const hasDigit = (value: string) => /\d/.test(value);
 
 const statusClass = (type: "success" | "error") =>
@@ -13,18 +14,24 @@ const statusClass = (type: "success" | "error") =>
 		? "bg-green-50 text-green-700 border border-green-200"
 		: "bg-red-50 text-red-700 border border-red-200";
 
+type StatusMessage = {
+	type: "success" | "error";
+	key?: TranslationKey;
+	values?: Record<string, string | number>;
+	fallback?: string;
+	useFallback?: boolean;
+};
+
 export default function ProfilePage() {
 	const { user, token } = useAuth();
 	const profileQuery = useProfile();
 	const api = useApi();
 	const queryClient = useQueryClient();
+	const { t } = useTranslation();
 
 	const [name, setName] = useState("");
 	const [avatar, setAvatar] = useState("");
-	const [infoStatus, setInfoStatus] = useState<{
-		type: "success" | "error";
-		message: string;
-	} | null>(null);
+	const [infoStatus, setInfoStatus] = useState<StatusMessage | null>(null);
 	const [infoLoading, setInfoLoading] = useState(false);
 
 	useEffect(() => {
@@ -40,16 +47,44 @@ export default function ProfilePage() {
 		return () => window.clearTimeout(timeout);
 	}, [infoStatus]);
 
+	const toStatusMessage = useCallback(
+		(
+			type: "success" | "error",
+			key: TranslationKey,
+			fallback?: string,
+			values?: Record<string, string | number>
+		): StatusMessage => {
+			const defaultValue = t(key, values);
+			const cleanedFallback = fallback?.trim();
+			return {
+				type,
+				key,
+				values,
+				fallback: cleanedFallback,
+				useFallback: Boolean(cleanedFallback && cleanedFallback !== defaultValue),
+			};
+		},
+		[t]
+	);
+
+	const resolveStatusMessage = useCallback(
+		(status: StatusMessage | null) => {
+			if (!status) return null;
+			if (status.useFallback && status.fallback) return status.fallback;
+			if (status.key) return t(status.key, status.values);
+			if (status.fallback) return status.fallback;
+			return null;
+		},
+		[t]
+	);
+
 	const handleInfoSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setInfoStatus(null);
 
 		const trimmedName = name.trim();
 		if (!trimmedName) {
-			setInfoStatus({
-				type: "error",
-				message: "Le nom ne peut pas être vide.",
-			});
+			setInfoStatus(toStatusMessage("error", "profile.error.infoEmptyName"));
 			return;
 		}
 
@@ -66,11 +101,10 @@ export default function ProfilePage() {
 				}),
 			});
 			await queryClient.invalidateQueries({ queryKey: ["auth", "profile"] });
-			setInfoStatus({ type: "success", message: "Informations mises à jour." });
+			setInfoStatus(toStatusMessage("success", "profile.success.info"));
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Mise à jour impossible.";
-			setInfoStatus({ type: "error", message });
+			const fallback = error instanceof Error ? error.message : undefined;
+			setInfoStatus(toStatusMessage("error", "profile.error.infoUpdate", fallback));
 		} finally {
 			setInfoLoading(false);
 		}
@@ -78,10 +112,7 @@ export default function ProfilePage() {
 
 	const [oldPassword, setOldPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
-	const [pwdStatus, setPwdStatus] = useState<{
-		type: "success" | "error";
-		message: string;
-	} | null>(null);
+	const [pwdStatus, setPwdStatus] = useState<StatusMessage | null>(null);
 	const [pwdLoading, setPwdLoading] = useState(false);
 
 	useEffect(() => {
@@ -92,10 +123,7 @@ export default function ProfilePage() {
 
 	const apiBaseUrl = useMemo(
 		() =>
-			(import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(
-				/\/$/,
-				""
-			),
+			(import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, ""),
 		[]
 	);
 
@@ -104,72 +132,54 @@ export default function ProfilePage() {
 		setPwdStatus(null);
 
 		if (newPassword.length < 8) {
-			setPwdStatus({
-				type: "error",
-				message:
-					"Le nouveau mot de passe doit comporter au moins 8 caractères.",
-			});
+			setPwdStatus(toStatusMessage("error", "profile.error.password.minLength"));
 			return;
 		}
 
 		if (!hasRequiredSpecialChar(newPassword)) {
-			setPwdStatus({
-				type: "error",
-				message:
-					"Ajoutez au moins un caractère spécial parmi (&, ', -, _, ?, ., ;, /, :, !).",
-			});
+			setPwdStatus(toStatusMessage("error", "profile.error.password.special"));
 			return;
 		}
 
 		if (!hasDigit(newPassword)) {
-			setPwdStatus({
-				type: "error",
-				message: "Ajoutez au moins un chiffre dans votre mot de passe.",
-			});
+			setPwdStatus(toStatusMessage("error", "profile.error.password.digit"));
 			return;
 		}
 
 		if (!token) {
-			setPwdStatus({
-				type: "error",
-				message: "Session expirée. Veuillez vous reconnecter.",
-			});
+			setPwdStatus(toStatusMessage("error", "profile.error.password.session"));
 			return;
 		}
 
 		setPwdLoading(true);
 		try {
-			const response = await fetch(`${apiBaseUrl}/auth/change-password`, {
+			const response = await fetch(apiBaseUrl + "/auth/change-password", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					Authorization: `Bearer ${token}`,
+					Authorization: "Bearer " + token,
 				},
 				body: JSON.stringify({ oldPassword, newPassword }),
 			});
 
 			if (response.status === 401) {
-				setPwdStatus({
-					type: "error",
-					message: "Ancien mot de passe incorrect.",
-				});
+				setPwdStatus(toStatusMessage("error", "profile.error.password.old"));
 				return;
 			}
 
 			if (!response.ok) {
 				const body = await response
 					.json()
-					.catch(() => ({ message: "Changement impossible." }));
-				throw new Error(body.message || "Changement impossible.");
+					.catch(() => ({ message: t("profile.error.password.generic") }));
+				throw new Error(body.message || t("profile.error.password.generic"));
 			}
 
-			setPwdStatus({ type: "success", message: "Mot de passe mis à jour." });
+			setPwdStatus(toStatusMessage("success", "profile.success.password"));
 			setOldPassword("");
 			setNewPassword("");
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Changement impossible.";
-			setPwdStatus({ type: "error", message });
+			const fallback = error instanceof Error ? error.message : undefined;
+			setPwdStatus(toStatusMessage("error", "profile.error.password.generic", fallback));
 		} finally {
 			setPwdLoading(false);
 		}
@@ -179,7 +189,7 @@ export default function ProfilePage() {
 		return (
 			<div className="flex items-center justify-center h-full">
 				<div className="rounded-xl bg-white/70 dark:bg-slate-800/60 px-6 py-4 shadow">
-					Chargement du profil…
+					{t("profile.loading")}
 				</div>
 			</div>
 		);
@@ -189,7 +199,7 @@ export default function ProfilePage() {
 		return (
 			<div className="flex items-center justify-center h-full">
 				<div className="rounded-xl bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-200 px-6 py-4 shadow">
-					Impossible de charger le profil.
+					{t("profile.error.load")}
 				</div>
 			</div>
 		);
@@ -211,21 +221,23 @@ export default function ProfilePage() {
 		"cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 text-slate-500 " +
 		"dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400";
 
+	const infoMessage = resolveStatusMessage(infoStatus);
+	const pwdMessage = resolveStatusMessage(pwdStatus);
+
 	return (
 		<div className="container mx-auto max-w-5xl space-y-8 px-4 py-12">
 			<header className="rounded-3xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-[1px] shadow-xl">
 				<div className="flex flex-col gap-4 rounded-3xl bg-white/95 p-6 text-slate-800 dark:bg-slate-900/90 dark:text-slate-100 md:flex-row md:items-center md:justify-between">
 					<div>
-						<h1 className="text-2xl font-semibold">Votre profil</h1>
+						<h1 className="text-2xl font-semibold">{t("profile.title")}</h1>
 						<p className="text-sm text-slate-500 dark:text-slate-300">
-							Gérez vos informations personnelles et sécurisez votre compte en
-							quelques clics.
+							{t("profile.subtitle")}
 						</p>
 					</div>
 					<div className="flex items-center gap-3 rounded-2xl bg-indigo-50 px-4 py-2 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-200">
-						<span className="text-xs uppercase tracking-wide">Utilisateur</span>
+						<span className="text-xs uppercase tracking-wide">{t("profile.badge.label")}</span>
 						<span className="text-sm font-medium">
-							{user?.email ?? "Utilisateur anonyme"}
+							{user?.email ?? t("profile.badge.anonymous")}
 						</span>
 					</div>
 				</div>
@@ -236,10 +248,10 @@ export default function ProfilePage() {
 				<div className="space-y-6">
 					<div className="space-y-2">
 						<h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-							Informations générales
+							{t("profile.sections.info.title")}
 						</h2>
 						<p className="text-sm text-slate-500 dark:text-slate-300">
-							Mettez à jour votre nom et le lien d'avatar partagé avec l'équipe.
+							{t("profile.sections.info.description")}
 						</p>
 					</div>
 
@@ -247,23 +259,23 @@ export default function ProfilePage() {
 						<div className="grid gap-4 md:grid-cols-2">
 							<div className="space-y-1">
 								<label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-									Nom
+									{t("profile.fields.name.label")}
 								</label>
 								<input
 									className={inputClass}
 									value={name}
 									onChange={(event) => setName(event.target.value)}
-									placeholder="Votre nom"
+									placeholder={t("profile.fields.name.placeholder")}
 									autoComplete="name"
 								/>
 							</div>
 
 							<div className="space-y-1">
 								<label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-									Email
+									{t("profile.fields.email.label")}
 								</label>
 								<input
-									className={`${inputClass} ${disabledInputClass}`}
+									className={inputClass + " " + disabledInputClass}
 									value={user?.email ?? ""}
 									disabled
 								/>
@@ -272,23 +284,20 @@ export default function ProfilePage() {
 
 						<div className="space-y-1">
 							<label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-								Avatar (URL)
+								{t("profile.fields.avatar.label")}
 							</label>
 							<input
 								className={inputClass}
 								value={avatar}
 								onChange={(event) => setAvatar(event.target.value)}
-								placeholder="https://exemple.com/avatar.png"
+								placeholder={t("profile.fields.avatar.placeholder")}
 								autoComplete="url"
 							/>
 						</div>
 
-						{infoStatus && (
-							<div
-								className={`rounded-xl px-4 py-3 text-sm ${statusClass(
-									infoStatus.type
-								)}`}>
-								{infoStatus.message}
+						{infoStatus && infoMessage && (
+							<div className={"rounded-xl px-4 py-3 text-sm " + statusClass(infoStatus.type)}>
+								{infoMessage}
 							</div>
 						)}
 
@@ -297,7 +306,7 @@ export default function ProfilePage() {
 								type="submit"
 								className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-300"
 								disabled={infoLoading}>
-								{infoLoading ? "Enregistrement..." : "Enregistrer"}
+								{infoLoading ? t("profile.actions.saving") : t("profile.actions.save")}
 							</button>
 						</div>
 					</form>
@@ -309,10 +318,10 @@ export default function ProfilePage() {
 				<div className="space-y-6">
 					<div className="space-y-2">
 						<h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-							Sécurité du compte
+							{t("profile.sections.security.title")}
 						</h2>
 						<p className="text-sm text-slate-500 dark:text-slate-300">
-							Choisissez un mot de passe fort pour protéger vos données.
+							{t("profile.sections.security.description")}
 						</p>
 					</div>
 
@@ -320,7 +329,7 @@ export default function ProfilePage() {
 						<div className="grid gap-4 md:grid-cols-2">
 							<div className="space-y-1">
 								<label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-									Ancien mot de passe
+									{t("profile.fields.oldPassword.label")}
 								</label>
 								<input
 									type="password"
@@ -333,7 +342,7 @@ export default function ProfilePage() {
 
 							<div className="space-y-1">
 								<label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-									Nouveau mot de passe
+									{t("profile.fields.newPassword.label")}
 								</label>
 								<input
 									type="password"
@@ -347,21 +356,18 @@ export default function ProfilePage() {
 
 						<div className="rounded-2xl border border-indigo-100/80 bg-white/70 px-4 py-3 text-sm text-slate-600 shadow-inner dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
 							<p className="font-medium text-slate-700 dark:text-slate-200">
-								Votre mot de passe doit contenir au moins&nbsp;:
+								{t("profile.password.hintTitle")}
 							</p>
 							<ul className="mt-2 space-y-1 text-sm list-disc pl-5">
-								<li>8 caractères minimum</li>
-								<li>1 caractère spécial (&, ', -, _, ?, ., ;, /, :, !)</li>
-								<li>1 chiffre minimum</li>
+								<li>{t("profile.password.rule.minLength")}</li>
+								<li>{t("profile.password.rule.special")}</li>
+								<li>{t("profile.password.rule.digit")}</li>
 							</ul>
 						</div>
 
-						{pwdStatus && (
-							<div
-								className={`rounded-xl px-4 py-3 text-sm ${statusClass(
-									pwdStatus.type
-								)}`}>
-								{pwdStatus.message}
+						{pwdStatus && pwdMessage && (
+							<div className={"rounded-xl px-4 py-3 text-sm " + statusClass(pwdStatus.type)}>
+								{pwdMessage}
 							</div>
 						)}
 
@@ -370,7 +376,7 @@ export default function ProfilePage() {
 								type="submit"
 								className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-600/30 transition hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-300"
 								disabled={pwdLoading}>
-								{pwdLoading ? "Mise à jour..." : "Changer le mot de passe"}
+								{pwdLoading ? t("profile.actions.updatingPassword") : t("profile.actions.changePassword")}
 							</button>
 						</div>
 					</form>
