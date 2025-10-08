@@ -7,11 +7,11 @@ import "dayjs/locale/en";
 import "dayjs/locale/es";
 dayjs.extend(relativeTime);
 import {
-    BrowserRouter,
-    Routes,
-    Route,
-    Navigate,
-    useLocation,
+	BrowserRouter,
+	Routes,
+	Route,
+	Navigate,
+	useLocation,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { LanguageProvider } from "./language/LanguageContext";
@@ -23,80 +23,116 @@ import GroupsPage from "./pages/GroupsPage";
 import OrganisationsPage from "./pages/OrganisationsPage";
 import OntologyPage from "./pages/OntologyPage";
 import AssistantPage from "./pages/AssistantPage";
+import ProfilePage from "./pages/ProfilePage";
+import AdminUsersPage from "./pages/AdminUsersPage";
+import { useProfile } from "./hooks/apiQueries";
 
 // ---------------------------------------------------------------------------
 // --- RequireAuth component ---
 const RequireAuth: React.FC<{ children: JSX.Element }> = ({ children }) => {
-    const { token } = useAuth();
-    const loc = useLocation();
-    if (!token) return <Navigate to="/login" state={{ from: loc }} replace />;
-    return children;
+	const { token } = useAuth();
+	const loc = useLocation();
+	if (!token) return <Navigate to="/login" state={{ from: loc }} replace />;
+	return children;
+};
+
+const RequireSuperAdmin: React.FC<{ children: JSX.Element }> = ({
+	children,
+}) => {
+	const profileQuery = useProfile();
+
+	const roles = profileQuery.data?.roles ?? [];
+	const isSuperAdmin = roles.some((role) => role.endsWith("SuperAdminRole"));
+	if (!isSuperAdmin) return <Navigate to="/" replace />;
+	return children;
 };
 
 export default function App() {
-    return (
-        <LanguageProvider>
-            <AuthProvider>
-                <BrowserRouter>
-                    <Routes>
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/register" element={<RegisterPage />} />
+	return (
+		<LanguageProvider>
+			<AuthProvider>
+				<BrowserRouter>
+					<Routes>
+						<Route path="/login" element={<LoginPage />} />
+						<Route path="/register" element={<RegisterPage />} />
 
-                    <Route
-                        path="/assistant"
-                        element={
-                            <RequireAuth>
-                                <Layout>
-                                    <AssistantPage />
-                                </Layout>
-                            </RequireAuth>
-                        }
-                    />
+						<Route
+							path="/assistant"
+							element={
+								<RequireAuth>
+									<Layout>
+										<AssistantPage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
 
-                    <Route
-                        path="/groups"
-                        element={
-                            <RequireAuth>
-                                <Layout>
-                                    <GroupsPage />
-                                </Layout>
-                            </RequireAuth>
-                        }
-                    />
-                    <Route
-                        path="/organisations"
-                        element={
-                            <RequireAuth>
-                                <Layout>
-                                    <OrganisationsPage />
-                                </Layout>
-                            </RequireAuth>
-                        }
-                    />
-                    <Route
-                        path="/"
-                        element={
-                            <RequireAuth>
-                                <Layout>
-                                    <HomePage />
-                                </Layout>
-                            </RequireAuth>
-                        }
-                    />
-                    <Route
-                        path="/ontology"
-                        element={
-                            <RequireAuth>
-                                <Layout>
-                                    <OntologyPage />
-                                </Layout>
-                            </RequireAuth>
-                        }
-                    />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                </BrowserRouter>
-            </AuthProvider>
-        </LanguageProvider>
-    );
+						<Route
+							path="/groups"
+							element={
+								<RequireAuth>
+									<Layout>
+										<GroupsPage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
+						<Route
+							path="/organisations"
+							element={
+								<RequireAuth>
+									<Layout>
+										<OrganisationsPage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
+						<Route
+							path="/"
+							element={
+								<RequireAuth>
+									<Layout>
+										<HomePage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
+						<Route
+							path="/ontology"
+							element={
+								<RequireAuth>
+									<Layout>
+										<OntologyPage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
+						<Route
+							path="/profile"
+							element={
+								<RequireAuth>
+									<Layout>
+										<ProfilePage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
+						<Route
+							path="/admin/users"
+							element={
+								<RequireAuth>
+									<RequireSuperAdmin>
+										<Layout>
+											<AdminUsersPage />
+										</Layout>
+									</RequireSuperAdmin>
+								</RequireAuth>
+							}
+						/>
+						<Route path="*" element={<Navigate to="/" replace />} />
+					</Routes>
+				</BrowserRouter>
+			</AuthProvider>
+		</LanguageProvider>
+	);
 }

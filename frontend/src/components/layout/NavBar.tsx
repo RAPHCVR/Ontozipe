@@ -13,6 +13,7 @@ import {
 	useLanguage,
 } from "../../language/LanguageContext";
 import type { SupportedLanguage } from "../../language/LanguageContext";
+import { useProfile } from "../../hooks/apiQueries";
 
 type ThemeMode = "light" | "dark";
 
@@ -22,6 +23,10 @@ export default function Navbar() {
 	const navigate = useNavigate();
 	const [open, setOpen] = useState(false);
 	const { language, setLanguage } = useLanguage();
+	const profileQuery = useProfile();
+
+	const roles = profileQuery.data?.roles ?? [];
+	const isSuperAdmin = roles.some((role) => role.endsWith("SuperAdminRole"));
 	const [theme, setTheme] = useState<ThemeMode>(() => {
 		if (typeof window === "undefined") return "light";
 
@@ -151,6 +156,17 @@ export default function Navbar() {
 							{t("navbar.organisations")}
 						</Link>
 					</li>
+					{isSuperAdmin && (
+						<li className="navbar__item">
+							<Link
+								to="/admin/users"
+								className="navbar__link"
+								onClick={closeMenu}>
+								Users
+							</Link>
+						</li>
+					)}
+
 					<li className="navbar__item">
 						<Link to="/profile" className="navbar__link" onClick={closeMenu}>
 							{t("navbar.profile")}
