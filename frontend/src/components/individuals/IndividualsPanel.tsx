@@ -121,7 +121,7 @@ const IndividualsPanel: React.FC<{
 					<select
 						value={groupFilter}
 						onChange={(e) => setGroupFilter(e.target.value)}
-						className="ontology-select">
+						className="select-control">
 						<option value="all">{t("individual.panel.allGroups")}</option>
 						{userGroups.map((g) => (
 							<option key={g.iri} value={g.iri}>

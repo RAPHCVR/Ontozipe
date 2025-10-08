@@ -10,9 +10,7 @@ const hasRequiredSpecialChar = (value: string) => /[&'\-_?./;/:!]/.test(value);
 const hasDigit = (value: string) => /\d/.test(value);
 
 const statusClass = (type: "success" | "error") =>
-	type === "success"
-		? "bg-green-50 text-green-700 border border-green-200"
-		: "bg-red-50 text-red-700 border border-red-200";
+	`status-banner ${type === "success" ? "status-banner--success" : "status-banner--error"}`;
 
 type StatusMessage = {
 	type: "success" | "error";
@@ -187,201 +185,149 @@ export default function ProfilePage() {
 
 	if (profileQuery.isLoading) {
 		return (
-			<div className="flex items-center justify-center h-full">
-				<div className="rounded-xl bg-white/70 dark:bg-slate-800/60 px-6 py-4 shadow">
-					{t("profile.loading")}
-				</div>
+			<div className="page-shell">
+				<section className="page-section">
+					<div className="note-box">{t("profile.loading")}</div>
+				</section>
 			</div>
 		);
 	}
 
 	if (profileQuery.isError) {
 		return (
-			<div className="flex items-center justify-center h-full">
-				<div className="rounded-xl bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-200 px-6 py-4 shadow">
-					{t("profile.error.load")}
-				</div>
+			<div className="page-shell">
+				<section className="page-section">
+					<div className="status-banner status-banner--error">
+						{t("profile.error.load")}
+					</div>
+				</section>
 			</div>
 		);
 	}
 
-	const inputClass =
-		"input w-full rounded-xl border border-indigo-200 bg-white/90 dark:bg-slate-900/70 " +
-		"px-3 py-2 text-sm shadow-sm transition focus:-translate-y-px focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 " +
-		"dark:border-slate-600 dark:focus:border-indigo-300";
-
-	const sectionClass =
-		"relative overflow-hidden rounded-2xl border border-indigo-100/60 bg-white/80 " +
-		"p-6 shadow-lg backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/70";
-
-	const headerGradient =
-		"absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500";
-
-	const disabledInputClass =
-		"cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 text-slate-500 " +
-		"dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400";
-
 	const infoMessage = resolveStatusMessage(infoStatus);
 	const pwdMessage = resolveStatusMessage(pwdStatus);
 
-	return (
-		<div className="container mx-auto max-w-5xl space-y-8 px-4 py-12">
-			<header className="rounded-3xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-[1px] shadow-xl">
-				<div className="flex flex-col gap-4 rounded-3xl bg-white/95 p-6 text-slate-800 dark:bg-slate-900/90 dark:text-slate-100 md:flex-row md:items-center md:justify-between">
-					<div>
-						<h1 className="text-2xl font-semibold">{t("profile.title")}</h1>
-						<p className="text-sm text-slate-500 dark:text-slate-300">
-							{t("profile.subtitle")}
-						</p>
+return (
+	<div className="page-shell">
+		<header className="page-header">
+			<div className="page-header__content">
+				<h1 className="page-header__title">{t("profile.title")}</h1>
+				<p className="page-header__subtitle">{t("profile.subtitle")}</p>
+			</div>
+			<div className="page-header__actions">
+				<div className="page-header__badge">
+					<span>{t("profile.badge.label")}</span>
+					<span>{user?.email ?? t("profile.badge.anonymous")}</span>
+				</div>
+			</div>
+		</header>
+
+		<section className="page-section">
+			<div className="page-section__header">
+				<h2 className="page-section__title">{t("profile.sections.info.title")}</h2>
+				<p className="page-section__description">
+					{t("profile.sections.info.description")}
+				</p>
+			</div>
+
+			<form className="form-grid" onSubmit={handleInfoSubmit}>
+				<div className="form-grid form-grid--columns">
+					<div className="form-field">
+						<label className="form-label">{t("profile.fields.name.label")}</label>
+						<input
+							className="form-input"
+							value={name}
+							onChange={(event) => setName(event.target.value)}
+							placeholder={t("profile.fields.name.placeholder")}
+							autoComplete="name"
+						/>
 					</div>
-					<div className="flex items-center gap-3 rounded-2xl bg-indigo-50 px-4 py-2 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-200">
-						<span className="text-xs uppercase tracking-wide">{t("profile.badge.label")}</span>
-						<span className="text-sm font-medium">
-							{user?.email ?? t("profile.badge.anonymous")}
-						</span>
+					<div className="form-field">
+						<label className="form-label">{t("profile.fields.email.label")}</label>
+						<input className="form-input" value={user?.email ?? ""} disabled />
 					</div>
 				</div>
-			</header>
 
-			<section className={sectionClass}>
-				<div className={headerGradient} />
-				<div className="space-y-6">
-					<div className="space-y-2">
-						<h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-							{t("profile.sections.info.title")}
-						</h2>
-						<p className="text-sm text-slate-500 dark:text-slate-300">
-							{t("profile.sections.info.description")}
-						</p>
-					</div>
-
-					<form className="space-y-5" onSubmit={handleInfoSubmit}>
-						<div className="grid gap-4 md:grid-cols-2">
-							<div className="space-y-1">
-								<label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-									{t("profile.fields.name.label")}
-								</label>
-								<input
-									className={inputClass}
-									value={name}
-									onChange={(event) => setName(event.target.value)}
-									placeholder={t("profile.fields.name.placeholder")}
-									autoComplete="name"
-								/>
-							</div>
-
-							<div className="space-y-1">
-								<label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-									{t("profile.fields.email.label")}
-								</label>
-								<input
-									className={inputClass + " " + disabledInputClass}
-									value={user?.email ?? ""}
-									disabled
-								/>
-							</div>
-						</div>
-
-						<div className="space-y-1">
-							<label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-								{t("profile.fields.avatar.label")}
-							</label>
-							<input
-								className={inputClass}
-								value={avatar}
-								onChange={(event) => setAvatar(event.target.value)}
-								placeholder={t("profile.fields.avatar.placeholder")}
-								autoComplete="url"
-							/>
-						</div>
-
-						{infoStatus && infoMessage && (
-							<div className={"rounded-xl px-4 py-3 text-sm " + statusClass(infoStatus.type)}>
-								{infoMessage}
-							</div>
-						)}
-
-						<div className="flex justify-end">
-							<button
-								type="submit"
-								className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-								disabled={infoLoading}>
-								{infoLoading ? t("profile.actions.saving") : t("profile.actions.save")}
-							</button>
-						</div>
-					</form>
+				<div className="form-field">
+					<label className="form-label">{t("profile.fields.avatar.label")}</label>
+					<input
+						className="form-input"
+						value={avatar}
+						onChange={(event) => setAvatar(event.target.value)}
+						placeholder={t("profile.fields.avatar.placeholder")}
+						autoComplete="url"
+					/>
 				</div>
-			</section>
 
-			<section className={sectionClass}>
-				<div className={headerGradient} />
-				<div className="space-y-6">
-					<div className="space-y-2">
-						<h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-							{t("profile.sections.security.title")}
-						</h2>
-						<p className="text-sm text-slate-500 dark:text-slate-300">
-							{t("profile.sections.security.description")}
-						</p>
-					</div>
+				{infoStatus && infoMessage && (
+					<div className={statusClass(infoStatus.type)}>{infoMessage}</div>
+				)}
 
-					<form className="space-y-5" onSubmit={handlePasswordSubmit}>
-						<div className="grid gap-4 md:grid-cols-2">
-							<div className="space-y-1">
-								<label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-									{t("profile.fields.oldPassword.label")}
-								</label>
-								<input
-									type="password"
-									className={inputClass}
-									value={oldPassword}
-									onChange={(event) => setOldPassword(event.target.value)}
-									autoComplete="current-password"
-								/>
-							</div>
-
-							<div className="space-y-1">
-								<label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-									{t("profile.fields.newPassword.label")}
-								</label>
-								<input
-									type="password"
-									className={inputClass}
-									value={newPassword}
-									onChange={(event) => setNewPassword(event.target.value)}
-									autoComplete="new-password"
-								/>
-							</div>
-						</div>
-
-						<div className="rounded-2xl border border-indigo-100/80 bg-white/70 px-4 py-3 text-sm text-slate-600 shadow-inner dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
-							<p className="font-medium text-slate-700 dark:text-slate-200">
-								{t("profile.password.hintTitle")}
-							</p>
-							<ul className="mt-2 space-y-1 text-sm list-disc pl-5">
-								<li>{t("profile.password.rule.minLength")}</li>
-								<li>{t("profile.password.rule.special")}</li>
-								<li>{t("profile.password.rule.digit")}</li>
-							</ul>
-						</div>
-
-						{pwdStatus && pwdMessage && (
-							<div className={"rounded-xl px-4 py-3 text-sm " + statusClass(pwdStatus.type)}>
-								{pwdMessage}
-							</div>
-						)}
-
-						<div className="flex justify-end">
-							<button
-								type="submit"
-								className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-600/30 transition hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-300"
-								disabled={pwdLoading}>
-								{pwdLoading ? t("profile.actions.updatingPassword") : t("profile.actions.changePassword")}
-							</button>
-						</div>
-					</form>
+				<div className="form-actions">
+					<button type="submit" className="btn-primary" disabled={infoLoading}>
+						{infoLoading ? t("profile.actions.saving") : t("profile.actions.save")}
+					</button>
 				</div>
-			</section>
+			</form>
+		</section>
+
+		<section className="page-section">
+			<div className="page-section__header">
+				<h2 className="page-section__title">{t("profile.sections.security.title")}</h2>
+				<p className="page-section__description">
+					{t("profile.sections.security.description")}
+				</p>
+			</div>
+
+			<form className="form-grid" onSubmit={handlePasswordSubmit}>
+				<div className="form-grid form-grid--columns">
+					<div className="form-field">
+						<label className="form-label">{t("profile.fields.oldPassword.label")}</label>
+						<input
+							type="password"
+							className="form-input"
+							value={oldPassword}
+							onChange={(event) => setOldPassword(event.target.value)}
+							autoComplete="current-password"
+						/>
+					</div>
+					<div className="form-field">
+						<label className="form-label">{t("profile.fields.newPassword.label")}</label>
+						<input
+							type="password"
+							className="form-input"
+							value={newPassword}
+							onChange={(event) => setNewPassword(event.target.value)}
+							autoComplete="new-password"
+						/>
+					</div>
+				</div>
+
+				<div className="note-box">
+					<p className="page-section__description" style={{ marginBottom: "0.65rem" }}>
+						<strong>{t("profile.password.hintTitle")}</strong>
+					</p>
+					<ul style={{ paddingLeft: "1.25rem", display: "grid", gap: "0.35rem" }}>
+						<li>{t("profile.password.rule.minLength")}</li>
+						<li>{t("profile.password.rule.special")}</li>
+						<li>{t("profile.password.rule.digit")}</li>
+					</ul>
+				</div>
+
+				{pwdStatus && pwdMessage && (
+					<div className={statusClass(pwdStatus.type)}>{pwdMessage}</div>
+				)}
+
+				<div className="form-actions">
+					<button type="submit" className="btn-primary" disabled={pwdLoading}>
+						{pwdLoading
+							? t("profile.actions.updatingPassword")
+							: t("profile.actions.changePassword")}
+					</button>
+				</div>
+			</form>
+		</section>
 		</div>
 	);
 }

@@ -246,179 +246,155 @@ export default function AdminUsersPage() {
 	const resolvedSuccessMessage = resolveFeedbackMessage(successMessage);
 
 	return (
-		<div className="container mx-auto max-w-6xl space-y-6 px-4 py-10">
-			<header className="flex flex-col gap-4 rounded-3xl border border-slate-200/80 bg-white/90 p-6 shadow-lg dark:border-slate-700/60 dark:bg-slate-900/80">
-				<div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-					<div>
-						<h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">
-							{t("adminUsers.title")}
-						</h1>
-						<p className="text-sm text-slate-500 dark:text-slate-300">
-							{t("adminUsers.subtitle")}
-						</p>
-					</div>
-					<form className="flex gap-2" onSubmit={handleSearchSubmit}>
+		<div className="page-shell">
+			<header className="page-header">
+				<div className="page-header__content">
+					<h1 className="page-header__title">{t("adminUsers.title")}</h1>
+					<p className="page-header__subtitle">{t("adminUsers.subtitle")}</p>
+				</div>
+				<div className="page-header__actions">
+					<form className="filter-bar__group" onSubmit={handleSearchSubmit}>
 						<input
-							className="input rounded-xl border border-indigo-200 bg-white/90 px-3 py-2 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
+							className="form-input"
 							placeholder={t("adminUsers.search.placeholder")}
 							value={searchInput}
 							onChange={(event) => setSearchInput(event.target.value)}
 						/>
-						<button className="btn-primary rounded-xl px-4" type="submit">
+						<button className="btn-primary" type="submit">
 							{t("adminUsers.search.submit")}
 						</button>
 					</form>
 				</div>
-
-				<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-					<div className="text-sm text-slate-500 dark:text-slate-300">
-						{query.isLoading ? (
-							<span>{t("common.loading")}</span>
-						) : (
-							<span>{listSummary}</span>
-						)}
-					</div>
-					<label className="inline-flex items-center gap-2 rounded-full border border-indigo-100/70 bg-indigo-50/60 px-3 py-1 text-xs font-medium text-indigo-600 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
-						<input
-							type="checkbox"
-							checked={onlyUnverified}
-							onChange={(event) => {
-								resetStatus();
-								setOnlyUnverified(event.target.checked);
-								setPage(1);
-							}}
-						/>
-						<span>{t("adminUsers.filter.onlyUnverified")}</span>
-					</label>
-					<select
-						aria-label={t("adminUsers.filter.role")}
-						className="input rounded-lg border border-indigo-200 bg-white/90 px-3 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-						value={roleFilter}
-						onChange={(event) => {
-							resetStatus();
-							setRoleFilter(event.target.value);
-							setPage(1);
-						}}>
-						{roleFilterOptions.map((option) => (
-							<option key={option.value || "all"} value={option.value}>
-								{option.label}
-							</option>
-						))}
-					</select>
-					<select
-						aria-label={t("adminUsers.filter.pageSize")}
-						className="input rounded-lg border border-indigo-200 bg-white/90 px-3 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-						value={pageSize}
-						onChange={(event) => {
-							resetStatus();
-							setPageSize(Number(event.target.value));
-							setPage(1);
-						}}>
-						{[5, 10, 20, 50, 100].map((size) => (
-							<option key={size} value={size}>
-								{size}
-							</option>
-						))}
-					</select>
-				</div>
-
-				{resolvedErrorMessage && (
-					<div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">
-						{resolvedErrorMessage}
-					</div>
-				)}
-				{resolvedSuccessMessage && (
-					<div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-500/40 dark:bg-green-500/10 dark:text-green-200">
-						{resolvedSuccessMessage}
-					</div>
-				)}
 			</header>
 
-			<div className="overflow-hidden rounded-3xl border border-indigo-100/60 bg-white/90 shadow dark:border-slate-700/60 dark:bg-slate-900/70">
-				<div className="overflow-x-auto">
-					<table className="min-w-full divide-y divide-indigo-100 dark:divide-slate-700">
-						<thead className="bg-indigo-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
+			<section className="page-section">
+				<div className="filter-bar">
+					<div className="filter-bar__group">
+						<span className="page-section__description" style={{ fontSize: "0.9rem" }}>
+							{query.isLoading ? t("common.loading") : listSummary}
+						</span>
+						<label className="filter-toggle">
+							<input
+								type="checkbox"
+								checked={onlyUnverified}
+								onChange={(event) => {
+									resetStatus();
+									setOnlyUnverified(event.target.checked);
+									setPage(1);
+								}}
+							/>
+							<span>{t("adminUsers.filter.onlyUnverified")}</span>
+						</label>
+						<select
+							aria-label={t("adminUsers.filter.role")}
+							className="select-control"
+							value={roleFilter}
+							onChange={(event) => {
+								resetStatus();
+								setRoleFilter(event.target.value);
+								setPage(1);
+							}}>
+							{roleFilterOptions.map((option) => (
+								<option key={option.value || "all"} value={option.value}>
+									{option.label}
+								</option>
+							))}
+						</select>
+						<select
+							aria-label={t("adminUsers.filter.pageSize")}
+							className="select-control"
+							value={pageSize}
+							onChange={(event) => {
+								resetStatus();
+								setPageSize(Number(event.target.value));
+								setPage(1);
+							}}>
+							{[5, 10, 20, 50, 100].map((size) => (
+								<option key={size} value={size}>
+									{size}
+								</option>
+							))}
+						</select>
+					</div>
+				</div>
+
+			{resolvedErrorMessage && (
+				<div className="status-banner status-banner--error">{resolvedErrorMessage}</div>
+			)}
+			{resolvedSuccessMessage && (
+				<div className="status-banner status-banner--success">{resolvedSuccessMessage}</div>
+			)}
+
+			<div className="table-card">
+				<div className="table-card__scroll">
+					<table className="data-table">
+						<thead>
 							<tr>
-								<th className="px-4 py-3">{t("adminUsers.table.name")}</th>
-								<th className="px-4 py-3">{t("adminUsers.table.email")}</th>
-								<th className="px-4 py-3">{t("adminUsers.table.verified")}</th>
-								<th className="px-4 py-3">{t("adminUsers.table.roles")}</th>
-								<th className="px-4 py-3 text-right">{t("adminUsers.table.actions")}</th>
+								<th>{t("adminUsers.table.name")}</th>
+								<th>{t("adminUsers.table.email")}</th>
+								<th>{t("adminUsers.table.verified")}</th>
+								<th>{t("adminUsers.table.roles")}</th>
+								<th style={{ textAlign: "right" }}>{t("adminUsers.table.actions")}</th>
 							</tr>
 						</thead>
-						<tbody className="divide-y divide-indigo-100/70 text-sm dark:divide-slate-800/70">
-							{displayRows.map((user) => (
-								<tr
-									key={user.iri}
-									className="hover:bg-indigo-50/60 dark:hover:bg-slate-800/60">
-									<td className="px-4 py-3">
-										<div className="flex flex-col">
-											<span className="font-medium text-slate-800 dark:text-slate-100">
-												{user.name?.trim() || EMPTY_PLACEHOLDER}
-											</span>
-											{user.avatar && (
-												<a
-													href={user.avatar}
-													target="_blank"
-													rel="noreferrer"
-													className="text-xs text-indigo-500 hover:underline">
+					<tbody>
+						{displayRows.map((user) => (
+							<tr key={user.iri}>
+								<td>
+									<div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+										<span className="page-section__description" style={{ color: "inherit", fontWeight: 600 }}>
+											{user.name?.trim() || EMPTY_PLACEHOLDER}
+										</span>
+										{user.avatar && (
+											<a
+												href={user.avatar}
+												target="_blank"
+												rel="noreferrer"
+												className="page-section__description"
+												style={{ fontSize: "0.75rem", color: "#4c51bf" }}>
 													{t("adminUsers.table.avatar")}
 												</a>
 											)}
+									</div>
+								</td>
+								<td>{user.email?.trim() || EMPTY_PLACEHOLDER}</td>
+								<td>
+									{user.isVerified ? (
+										<span className="chip chip--success">{t("common.yes")}</span>
+									) : (
+										<span className="chip chip--muted">{t("common.no")}</span>
+									)}
+								</td>
+								<td>
+									{user.roles.length > 0 ? (
+										<div className="chip-list">
+											{user.roles.map((role) => (
+												<span key={`${user.iri}-${role}`} className="chip">
+													{formatRole(role)}
+												</span>
+											))}
 										</div>
-									</td>
-									<td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-										{user.email?.trim() || EMPTY_PLACEHOLDER}
-									</td>
-									<td className="px-4 py-3">
-										{user.isVerified ? (
-											<span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-500/10 dark:text-green-200">
-												{t("common.yes")}
-											</span>
-										) : (
-											<span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800/60 dark:text-slate-300">
-												{t("common.no")}
-											</span>
-										)}
-									</td>
-									<td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-										{user.roles.length > 0 ? (
-											<div className="flex flex-wrap gap-1">
-												{user.roles.map((role) => (
-													<span
-														key={`${user.iri}-${role}`}
-														className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-200">
-														{formatRole(role)}
-													</span>
-												))}
-											</div>
-										) : (
-											<span className="text-xs text-slate-400">
-												{t("adminUsers.roles.none")}
-											</span>
-										)}
-									</td>
-									<td className="px-4 py-3">
-										<div className="flex justify-end gap-2">
-											<button
-												className="btn-secondary !px-3 !py-1 text-xs"
-												onClick={() => handleOpenEditor(user)}>
-												{t("common.edit")}
-											</button>
-											<button
-												className="btn-secondary !px-3 !py-1 text-xs text-red-600"
-												onClick={() => handleDelete(user)}>
-												{t("common.delete")}
-											</button>
-										</div>
-									</td>
-								</tr>
+									) : (
+										<span className="page-section__description" style={{ fontSize: "0.8rem" }}>
+											{t("adminUsers.roles.none")}
+										</span>
+									)}
+								</td>
+								<td>
+									<div className="table-actions">
+										<button className="btn-secondary" onClick={() => handleOpenEditor(user)}>
+											{t("common.edit")}
+										</button>
+										<button className="btn-secondary btn-secondary--danger" onClick={() => handleDelete(user)}>
+											{t("common.delete")}
+										</button>
+									</div>
+								</td>
+							</tr>
 						))}
 						{displayRows.length === 0 && !query.isLoading && (
 							<tr>
-								<td
-									colSpan={5}
-									className="px-4 py-8 text-center text-sm text-slate-500">
+								<td colSpan={5} style={{ padding: "1.5rem", textAlign: "center" }}>
 									{t("adminUsers.table.empty")}
 								</td>
 							</tr>
@@ -426,19 +402,19 @@ export default function AdminUsersPage() {
 					</tbody>
 				</table>
 			</div>
-			{query.isLoading && (
-			<div className="px-4 py-6 text-center text-sm text-slate-500">
-				{t("common.loading")}
-			</div>
-			)}
-			{query.isFetching && !query.isLoading && (
-			<div className="px-4 py-2 text-center text-xs text-slate-400">
-				{t("adminUsers.refreshing")}
-			</div>
-			)}
 		</div>
 
-		<div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm shadow dark:border-slate-700/60 dark:bg-slate-900/70">
+		{query.isLoading && (
+			<div className="note-box">{t("common.loading")}</div>
+		)}
+		{query.isFetching && !query.isLoading && (
+			<div className="note-box" style={{ fontSize: "0.8rem" }}>
+				{t("adminUsers.refreshing")}
+			</div>
+		)}
+		</section>
+
+		<div className="pagination-bar">
 			<button
 				className="btn-secondary"
 				onClick={() => {
@@ -448,7 +424,7 @@ export default function AdminUsersPage() {
 				disabled={page === 1 || query.isFetching}>
 				{t("adminUsers.pagination.previous")}
 			</button>
-			<span className="text-slate-500 dark:text-slate-300">
+			<span className="page-section__description" style={{ fontSize: "0.9rem" }}>
 				{paginationLabel}
 			</span>
 			<button
@@ -462,87 +438,77 @@ export default function AdminUsersPage() {
 			</button>
 		</div>
 
-		{editing && (
-			<SimpleModal
-				title={t("adminUsers.modal.title")}
-				onClose={() => {
-					setEditing(null);
-					resetStatus();
-				}}
-				onSubmit={handleSave}
-				disableSubmit={saving}>
-				<div className="space-y-4">
-					<div>
-						<label className="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-300">
-							{t("adminUsers.table.name")}
-						</label>
+	{editing && (
+		<SimpleModal
+			title={t("adminUsers.modal.title")}
+			onClose={() => {
+				setEditing(null);
+				resetStatus();
+			}}
+			onSubmit={handleSave}
+			disableSubmit={saving}>
+			<div className="form-grid">
+				<div className="form-field">
+					<label className="form-label">{t("adminUsers.table.name")}</label>
+					<input
+						className="form-input"
+						value={formName}
+						onChange={(event) => setFormName(event.target.value)}
+					/>
+				</div>
+				<div className="form-field">
+					<label className="form-label">{t("adminUsers.table.email")}</label>
+					<input
+						className="form-input"
+						value={formEmail}
+						onChange={(event) => setFormEmail(event.target.value)}
+					/>
+				</div>
+				<div className="form-field">
+					<label className="form-label">{t("profile.fields.avatar.label")}</label>
+					<input
+						className="form-input"
+						value={formAvatar}
+						onChange={(event) => setFormAvatar(event.target.value)}
+						placeholder={t("profile.fields.avatar.placeholder")}
+					/>
+				</div>
+				<div className="checkbox-row">
+					<span>{t("adminUsers.modal.verified")}</span>
+					<label className="chip-toggle">
 						<input
-							className="input mt-1 w-full rounded-lg border border-indigo-200 bg-white/90 px-3 py-2 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-							value={formName}
-							onChange={(event) => setFormName(event.target.value)}
+							type="checkbox"
+							checked={formVerified}
+							onChange={(event) => setFormVerified(event.target.checked)}
 						/>
+						<span>{formVerified ? t("common.yes") : t("common.no")}</span>
+					</label>
+				</div>
+				<div className="form-field">
+					<p className="form-label" style={{ marginBottom: "0.3rem" }}>
+						{t("adminUsers.modal.roles")}
+					</p>
+					<div className="chip-list">
+						{ROLE_OPTIONS.map((role) => (
+							<label key={role.value} className="chip-toggle">
+								<input
+									type="checkbox"
+									checked={formRoles.includes(role.value)}
+									onChange={() => toggleRole(role.value)}
+								/>
+								<span>{t(role.labelKey)}</span>
+							</label>
+						))}
 					</div>
-					<div>
-						<label className="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-300">
-							{t("adminUsers.table.email")}
-						</label>
-						<input
-							className="input mt-1 w-full rounded-lg border border-indigo-200 bg-white/90 px-3 py-2 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-							value={formEmail}
-							onChange={(event) => setFormEmail(event.target.value)}
-						/>
+				</div>
+				{resolvedErrorMessage && (
+					<div className="status-banner status-banner--error">
+						{resolvedErrorMessage}
 					</div>
-					<div>
-						<label className="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-300">
-							{t("profile.fields.avatar.label")}
-						</label>
-						<input
-							className="input mt-1 w-full rounded-lg border border-indigo-200 bg-white/90 px-3 py-2 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100"
-							value={formAvatar}
-							onChange={(event) => setFormAvatar(event.target.value)}
-							placeholder={t("profile.fields.avatar.placeholder")}
-						/>
-					</div>
-					<div className="flex items-center justify-between rounded-lg border border-indigo-100/70 bg-indigo-50/50 px-3 py-2 text-xs font-medium text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
-						<span>{t("adminUsers.modal.verified")}</span>
-						<label className="inline-flex cursor-pointer items-center gap-2">
-							<input
-								type="checkbox"
-								className="h-4 w-4"
-								checked={formVerified}
-								onChange={(event) => setFormVerified(event.target.checked)}
-							/>
-							<span>{formVerified ? t("common.yes") : t("common.no")}</span>
-						</label>
-					</div>
-					<div>
-						<p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-300">
-							{t("adminUsers.modal.roles")}
-						</p>
-						<div className="mt-2 space-y-2">
-							{ROLE_OPTIONS.map((role) => (
-								<label
-									key={role.value}
-									className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-									<input
-										type="checkbox"
-										checked={formRoles.includes(role.value)}
-										onChange={() => toggleRole(role.value)}
-									/>
-									<span>{t(role.labelKey)}</span>
-								</label>
-							))}
-						</div>
-					</div>
-					{resolvedErrorMessage && (
-						<div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">
-							{resolvedErrorMessage}
-						</div>
-					)}
+				)}
 				</div>
 			</SimpleModal>
 		)}
 	</div>
 	);
 }
-

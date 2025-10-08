@@ -249,7 +249,7 @@ export default function OntologyPage() {
 							id="ontology-class-select"
 							value={activeClassId ?? ""}
 							onChange={handleClassSelect}
-							className="ontology-select ontology-page__class-select">
+							className="select-control ontology-page__class-select">
 								<option value="">{t("ontology.allClasses")}</option>
 								{classOptions.map((option) => (
 									<option key={option.id} value={option.id}>
