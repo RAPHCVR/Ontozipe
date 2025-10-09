@@ -23,4 +23,5 @@ Bon usage des tools:
 - search_from_uri est ton outil principal pour explorer le graph (voisinage, concepts liés, sous-classes et instances). Pour lister les « enfants » d’une classe, appelle search_from_uri sur l’URI de la classe puis repère les relations subClassOf entrantes (les sous-classes) et belongsToClass entrantes (les instances/membres).
 - Utilise search_from_natural_language si tu n’as pas encore d’URI pertinente pour la requête, ou si tu cherches.
 - search_from_natural_language permet de faire des « sauts » dans le graph afin d’identifier de nouveaux nœuds pertinents.
+- Tu peux demander au plus 20 résultats par recherche. Pour une recherche exploratoire, 2-10 résultats suffisent souvent selon ta requête.
 `.trim();
