@@ -40,6 +40,16 @@ const definitions = {
 		en: "Next",
 		es: "Siguiente",
 	},
+	"common.password.show": {
+		fr: "Afficher le mot de passe",
+		en: "Show password",
+		es: "Mostrar la contraseña",
+	},
+	"common.password.hide": {
+		fr: "Masquer le mot de passe",
+		en: "Hide password",
+		es: "Ocultar la contraseña",
+	},
 	"language.option.fr": { fr: "Français", en: "French", es: "Francés" },
 	"language.option.en": { fr: "Anglais", en: "English", es: "Inglés" },
 	"language.option.es": { fr: "Espagnol", en: "Spanish", es: "Español" },
@@ -70,6 +80,11 @@ const definitions = {
 	},
 	"auth.email": { fr: "Email", en: "Email", es: "Correo electrónico" },
 	"auth.password": { fr: "Mot de passe", en: "Password", es: "Contraseña" },
+	"auth.confirmPassword": {
+		fr: "Confirmez le mot de passe",
+		en: "Confirm password",
+		es: "Confirma la contraseña",
+	},
 	"auth.login.submit": {
 		fr: "Se connecter",
 		en: "Sign in",
@@ -109,6 +124,11 @@ const definitions = {
 		fr: "Impossible de créer le compte. L'email est peut-être déjà utilisé.",
 		en: "Unable to create the account. The email may already be in use.",
 		es: "No se pudo crear la cuenta. Es posible que el correo ya esté en uso.",
+	},
+	"auth.register.error.passwordMismatch": {
+		fr: "Les mots de passe ne correspondent pas.",
+		en: "Passwords do not match.",
+		es: "Las contraseñas no coinciden.",
 	},
 	"auth.name": { fr: "Nom", en: "Name", es: "Nombre" },
 	"common.user": { fr: "Utilisateur", en: "User", es: "Usuario" },
@@ -1066,6 +1086,11 @@ const definitions = {
 	"profile.sections.security.description": { fr: "Choisissez un mot de passe fort pour protéger vos données.", en: "Choose a strong password to protect your data.", es: "Elige una contraseña segura para proteger tus datos." },
 	"profile.fields.oldPassword.label": { fr: "Ancien mot de passe", en: "Current password", es: "Contraseña actual" },
 	"profile.fields.newPassword.label": { fr: "Nouveau mot de passe", en: "New password", es: "Nueva contraseña" },
+	"profile.fields.confirmPassword.label": {
+		fr: "Confirmez le nouveau mot de passe",
+		en: "Confirm new password",
+		es: "Confirma la nueva contraseña",
+	},
 	"profile.password.hintTitle": { fr: "Votre mot de passe doit contenir au moins :", en: "Your password must include at least:", es: "Tu contraseña debe incluir al menos:" },
 	"profile.password.rule.minLength": { fr: "8 caractères minimum", en: "Minimum 8 characters", es: "Mínimo 8 caracteres" },
 	"profile.password.rule.special": { fr: "1 caractère spécial (&, ', -, _, ?, ., ;, /, :, !)", en: "1 special character (&, ', -, _, ?, ., ;, /, :, !)", es: "1 carácter especial (&, ', -, _, ?, ., ;, /, :, !)" },
@@ -1078,6 +1103,11 @@ const definitions = {
 	"profile.error.password.session": { fr: "Session expirée. Veuillez vous reconnecter.", en: "Session expired. Please sign in again.", es: "Sesión expirada. Vuelve a iniciar sesión." },
 	"profile.error.password.old": { fr: "Ancien mot de passe incorrect.", en: "Incorrect current password.", es: "La contraseña actual es incorrecta." },
 	"profile.error.password.generic": { fr: "Changement impossible.", en: "Unable to change password.", es: "No se pudo cambiar la contraseña." },
+	"profile.error.password.mismatch": {
+		fr: "Les nouveaux mots de passe ne correspondent pas.",
+		en: "The new passwords do not match.",
+		es: "Las nuevas contraseñas no coinciden.",
+	},
 	"profile.success.password": { fr: "Mot de passe mis à jour.", en: "Password updated.", es: "Contraseña actualizada." },
 
 } as const satisfies MessageDefinitions;

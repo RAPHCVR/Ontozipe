@@ -5,12 +5,15 @@ import { useProfile } from "../hooks/apiQueries";
 import { useApi } from "../lib/api";
 import { useTranslation } from "../language/useTranslation";
 import type { TranslationKey } from "../language/messages";
+import PasswordField from "../components/form/PasswordField";
 
 const hasRequiredSpecialChar = (value: string) => /[&'\-_?./;/:!]/.test(value);
 const hasDigit = (value: string) => /\d/.test(value);
 
 const statusClass = (type: "success" | "error") =>
-	`status-banner ${type === "success" ? "status-banner--success" : "status-banner--error"}`;
+	`status-banner ${
+		type === "success" ? "status-banner--success" : "status-banner--error"
+	}`;
 
 type StatusMessage = {
 	type: "success" | "error";
@@ -59,7 +62,9 @@ export default function ProfilePage() {
 				key,
 				values,
 				fallback: cleanedFallback,
-				useFallback: Boolean(cleanedFallback && cleanedFallback !== defaultValue),
+				useFallback: Boolean(
+					cleanedFallback && cleanedFallback !== defaultValue
+				),
 			};
 		},
 		[t]
@@ -102,7 +107,9 @@ export default function ProfilePage() {
 			setInfoStatus(toStatusMessage("success", "profile.success.info"));
 		} catch (error) {
 			const fallback = error instanceof Error ? error.message : undefined;
-			setInfoStatus(toStatusMessage("error", "profile.error.infoUpdate", fallback));
+			setInfoStatus(
+				toStatusMessage("error", "profile.error.infoUpdate", fallback)
+			);
 		} finally {
 			setInfoLoading(false);
 		}
@@ -110,6 +117,7 @@ export default function ProfilePage() {
 
 	const [oldPassword, setOldPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
 	const [pwdStatus, setPwdStatus] = useState<StatusMessage | null>(null);
 	const [pwdLoading, setPwdLoading] = useState(false);
 
@@ -121,7 +129,10 @@ export default function ProfilePage() {
 
 	const apiBaseUrl = useMemo(
 		() =>
-			(import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, ""),
+			(import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(
+				/\/$/,
+				""
+			),
 		[]
 	);
 
@@ -130,7 +141,9 @@ export default function ProfilePage() {
 		setPwdStatus(null);
 
 		if (newPassword.length < 8) {
-			setPwdStatus(toStatusMessage("error", "profile.error.password.minLength"));
+			setPwdStatus(
+				toStatusMessage("error", "profile.error.password.minLength")
+			);
 			return;
 		}
 
@@ -141,6 +154,11 @@ export default function ProfilePage() {
 
 		if (!hasDigit(newPassword)) {
 			setPwdStatus(toStatusMessage("error", "profile.error.password.digit"));
+			return;
+		}
+
+		if (newPassword !== confirmPassword) {
+			setPwdStatus(toStatusMessage("error", "profile.error.password.mismatch"));
 			return;
 		}
 
@@ -175,9 +193,12 @@ export default function ProfilePage() {
 			setPwdStatus(toStatusMessage("success", "profile.success.password"));
 			setOldPassword("");
 			setNewPassword("");
+			setConfirmPassword("");
 		} catch (error) {
 			const fallback = error instanceof Error ? error.message : undefined;
-			setPwdStatus(toStatusMessage("error", "profile.error.password.generic", fallback));
+			setPwdStatus(
+				toStatusMessage("error", "profile.error.password.generic", fallback)
+			);
 		} finally {
 			setPwdLoading(false);
 		}
@@ -208,126 +229,161 @@ export default function ProfilePage() {
 	const infoMessage = resolveStatusMessage(infoStatus);
 	const pwdMessage = resolveStatusMessage(pwdStatus);
 
-return (
-	<div className="page-shell">
-		<header className="page-header">
-			<div className="page-header__content">
-				<h1 className="page-header__title">{t("profile.title")}</h1>
-				<p className="page-header__subtitle">{t("profile.subtitle")}</p>
-			</div>
-			<div className="page-header__actions">
-				<div className="page-header__badge">
-					<span>{t("profile.badge.label")}</span>
-					<span>{user?.email ?? t("profile.badge.anonymous")}</span>
+	return (
+		<div className="page-shell">
+			<header className="page-header">
+				<div className="page-header__content">
+					<h1 className="page-header__title">{t("profile.title")}</h1>
+					<p className="page-header__subtitle">{t("profile.subtitle")}</p>
 				</div>
-			</div>
-		</header>
+				<div className="page-header__actions">
+					<div className="page-header__badge">
+						<span>{t("profile.badge.label")}</span>
+						<span>{user?.email ?? t("profile.badge.anonymous")}</span>
+					</div>
+				</div>
+			</header>
 
-		<section className="page-section">
-			<div className="page-section__header">
-				<h2 className="page-section__title">{t("profile.sections.info.title")}</h2>
-				<p className="page-section__description">
-					{t("profile.sections.info.description")}
-				</p>
-			</div>
+			<section className="page-section">
+				<div className="page-section__header">
+					<h2 className="page-section__title">
+						{t("profile.sections.info.title")}
+					</h2>
+					<p className="page-section__description">
+						{t("profile.sections.info.description")}
+					</p>
+				</div>
 
-			<form className="form-grid" onSubmit={handleInfoSubmit}>
-				<div className="form-grid form-grid--columns">
+				<form className="form-grid" onSubmit={handleInfoSubmit}>
+					<div className="form-grid form-grid--columns">
+						<div className="form-field">
+							<label className="form-label">
+								{t("profile.fields.name.label")}
+							</label>
+							<input
+								className="form-input"
+								value={name}
+								onChange={(event) => setName(event.target.value)}
+								placeholder={t("profile.fields.name.placeholder")}
+								autoComplete="name"
+							/>
+						</div>
+						<div className="form-field">
+							<label className="form-label">
+								{t("profile.fields.email.label")}
+							</label>
+							<input
+								className="form-input"
+								value={user?.email ?? ""}
+								disabled
+							/>
+						</div>
+					</div>
+
 					<div className="form-field">
-						<label className="form-label">{t("profile.fields.name.label")}</label>
+						<label className="form-label">
+							{t("profile.fields.avatar.label")}
+						</label>
 						<input
 							className="form-input"
-							value={name}
-							onChange={(event) => setName(event.target.value)}
-							placeholder={t("profile.fields.name.placeholder")}
-							autoComplete="name"
+							value={avatar}
+							onChange={(event) => setAvatar(event.target.value)}
+							placeholder={t("profile.fields.avatar.placeholder")}
+							autoComplete="url"
 						/>
 					</div>
-					<div className="form-field">
-						<label className="form-label">{t("profile.fields.email.label")}</label>
-						<input className="form-input" value={user?.email ?? ""} disabled />
+
+					{infoStatus && infoMessage && (
+						<div className={statusClass(infoStatus.type)}>{infoMessage}</div>
+					)}
+
+					<div className="form-actions">
+						<button
+							type="submit"
+							className="btn-primary"
+							disabled={infoLoading}>
+							{infoLoading
+								? t("profile.actions.saving")
+								: t("profile.actions.save")}
+						</button>
 					</div>
+				</form>
+			</section>
+
+			<section className="page-section">
+				<div className="page-section__header">
+					<h2 className="page-section__title">
+						{t("profile.sections.security.title")}
+					</h2>
+					<p className="page-section__description">
+						{t("profile.sections.security.description")}
+					</p>
 				</div>
 
-				<div className="form-field">
-					<label className="form-label">{t("profile.fields.avatar.label")}</label>
-					<input
-						className="form-input"
-						value={avatar}
-						onChange={(event) => setAvatar(event.target.value)}
-						placeholder={t("profile.fields.avatar.placeholder")}
-						autoComplete="url"
-					/>
-				</div>
-
-				{infoStatus && infoMessage && (
-					<div className={statusClass(infoStatus.type)}>{infoMessage}</div>
-				)}
-
-				<div className="form-actions">
-					<button type="submit" className="btn-primary" disabled={infoLoading}>
-						{infoLoading ? t("profile.actions.saving") : t("profile.actions.save")}
-					</button>
-				</div>
-			</form>
-		</section>
-
-		<section className="page-section">
-			<div className="page-section__header">
-				<h2 className="page-section__title">{t("profile.sections.security.title")}</h2>
-				<p className="page-section__description">
-					{t("profile.sections.security.description")}
-				</p>
-			</div>
-
-			<form className="form-grid" onSubmit={handlePasswordSubmit}>
-				<div className="form-grid form-grid--columns">
-					<div className="form-field">
-						<label className="form-label">{t("profile.fields.oldPassword.label")}</label>
-						<input
-							type="password"
-							className="form-input"
+				<form className="form-grid" onSubmit={handlePasswordSubmit}>
+					<div className="form-grid form-grid--columns">
+						<PasswordField
+							id="profile-old-password"
+							label={t("profile.fields.oldPassword.label")}
 							value={oldPassword}
 							onChange={(event) => setOldPassword(event.target.value)}
 							autoComplete="current-password"
+							disabled={pwdLoading}
 						/>
 					</div>
-					<div className="form-field">
-						<label className="form-label">{t("profile.fields.newPassword.label")}</label>
-						<input
-							type="password"
-							className="form-input"
+					<hr />
+					<div className="form-grid form-grid--columns">
+						<PasswordField
+							id="profile-new-password"
+							label={t("profile.fields.newPassword.label")}
 							value={newPassword}
 							onChange={(event) => setNewPassword(event.target.value)}
 							autoComplete="new-password"
+							required
+							disabled={pwdLoading}
+						/>
+						<PasswordField
+							id="profile-confirm-password"
+							label={t("profile.fields.confirmPassword.label")}
+							value={confirmPassword}
+							onChange={(event) => setConfirmPassword(event.target.value)}
+							autoComplete="new-password"
+							required
+							disabled={pwdLoading}
 						/>
 					</div>
-				</div>
 
-				<div className="note-box">
-					<p className="page-section__description" style={{ marginBottom: "0.65rem" }}>
-						<strong>{t("profile.password.hintTitle")}</strong>
-					</p>
-					<ul style={{ paddingLeft: "1.25rem", display: "grid", gap: "0.35rem" }}>
-						<li>{t("profile.password.rule.minLength")}</li>
-						<li>{t("profile.password.rule.special")}</li>
-						<li>{t("profile.password.rule.digit")}</li>
-					</ul>
-				</div>
+					<div className="note-box">
+						<p
+							className="page-section__description"
+							style={{ marginBottom: "0.65rem" }}>
+							<strong>{t("profile.password.hintTitle")}</strong>
+						</p>
+						<ul
+							style={{
+								paddingLeft: "1.25rem",
+								display: "grid",
+								gap: "0.35rem",
+							}}>
+							<li>{t("profile.password.rule.minLength")}</li>
+							<li>{t("profile.password.rule.special")}</li>
+							<li>{t("profile.password.rule.digit")}</li>
+						</ul>
+					</div>
 
-				{pwdStatus && pwdMessage && (
-					<div className={statusClass(pwdStatus.type)}>{pwdMessage}</div>
-				)}
+					{pwdStatus && pwdMessage && (
+						<div className={statusClass(pwdStatus.type)}>{pwdMessage}</div>
+					)}
 
-				<div className="form-actions">
-					<button type="submit" className="btn-primary" disabled={pwdLoading}>
-						{pwdLoading
-							? t("profile.actions.updatingPassword")
-							: t("profile.actions.changePassword")}
-					</button>
-				</div>
-			</form>
-		</section>
+					<div className="form-actions">
+						<button type="submit" className="btn-primary" disabled={pwdLoading}>
+							{pwdLoading
+								? t("profile.actions.updatingPassword")
+								: t("profile.actions.changePassword")}
+						</button>
+					</div>
+				</form>
+			</section>
 		</div>
 	);
 }

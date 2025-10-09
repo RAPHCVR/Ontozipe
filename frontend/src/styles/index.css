@@ -135,6 +135,12 @@ button {
 	font-family: inherit;
 }
 
+hr {
+	border: none;
+	height: 1px;
+	border-radius: 10px;
+	background: rgb(194, 194, 194);
+}
 .app-shell {
 	min-height: 100vh;
 	display: flex;
@@ -1504,6 +1510,76 @@ textarea::placeholder {
 	cursor: pointer;
 }
 
+.auth-page {
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2.5rem 1.5rem;
+	background: var(--surface-app);
+}
+
+.dark .auth-page {
+	background: var(--color-bg);
+}
+
+.auth-card {
+	width: min(420px, 100%);
+	background: var(--surface-card);
+	border-radius: 1.35rem;
+	padding: 2.5rem;
+	box-shadow: 0 25px 70px -40px rgba(15, 23, 42, 0.45);
+	display: flex;
+	flex-direction: column;
+	gap: 1.75rem;
+}
+
+.dark .auth-card {
+	background: color-mix(
+		in srgb,
+		var(--surface-card) 90%,
+		rgba(15, 23, 42, 0.85)
+	);
+	box-shadow: 0 32px 80px -46px rgba(15, 23, 42, 0.85);
+}
+
+.auth-card__header {
+	text-align: center;
+	display: grid;
+	gap: 0.5rem;
+}
+
+.auth-card__title {
+	font-size: 1.6rem;
+	font-weight: 700;
+}
+
+.auth-card__subtitle {
+	font-size: 0.95rem;
+	color: color-mix(in srgb, var(--color-muted) 80%, var(--color-text));
+}
+
+.dark .auth-card__subtitle {
+	color: color-mix(in srgb, var(--color-muted) 70%, var(--color-text));
+}
+
+.auth-card__footer {
+	font-size: 0.85rem;
+	text-align: center;
+	color: color-mix(in srgb, var(--color-muted) 75%, var(--color-text));
+}
+
+.auth-card__footer a {
+	color: var(--button-primary-bg);
+	font-weight: 600;
+	text-decoration: none;
+	transition: color var(--transition-base);
+}
+
+.auth-card__footer a:hover {
+	color: var(--button-primary-hover);
+}
+
 .page-shell {
 	max-width: 1100px;
 	margin: 0 auto;
@@ -1561,8 +1637,13 @@ textarea::placeholder {
 	gap: 0.75rem;
 	border-radius: 999px;
 	padding: 0.55rem 1.1rem;
-	background: linear-gradient(120deg, rgba(59, 130, 246, 0.15), rgba(79, 70, 229, 0.15));
-	border: 1px solid color-mix(in srgb, var(--button-primary-bg) 25%, transparent);
+	background: linear-gradient(
+		120deg,
+		rgba(59, 130, 246, 0.15),
+		rgba(79, 70, 229, 0.15)
+	);
+	border: 1px solid
+		color-mix(in srgb, var(--button-primary-bg) 25%, transparent);
 	font-size: 0.85rem;
 	font-weight: 600;
 	color: rgba(17, 24, 39, 0.75);
@@ -1622,12 +1703,14 @@ textarea::placeholder {
 	border: 1px solid rgba(79, 70, 229, 0.35);
 	background: rgba(255, 255, 255, 0.92);
 	box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
-	transition: border-color var(--transition-base), box-shadow var(--transition-base);
+	transition: border-color var(--transition-base),
+		box-shadow var(--transition-base);
 }
 
 .select-control:focus {
 	border-color: color-mix(in srgb, var(--button-primary-bg) 60%, transparent);
-	box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary-bg) 30%, transparent);
+	box-shadow: 0 0 0 3px
+		color-mix(in srgb, var(--button-primary-bg) 30%, transparent);
 	outline: none;
 }
 
@@ -1727,7 +1810,8 @@ textarea::placeholder {
 }
 
 .data-table tbody tr {
-	border-bottom: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+	border-bottom: 1px solid
+		color-mix(in srgb, var(--border-color) 70%, transparent);
 }
 
 .data-table tbody tr:last-child {
@@ -1798,6 +1882,68 @@ textarea::placeholder {
 
 .chip-toggle input {
 	accent-color: var(--button-primary-bg);
+}
+
+.dark .chip-toggle {
+	background: color-mix(in srgb, var(--surface-card) 72%, var(--color-bg-dark));
+	border-color: color-mix(in srgb, var(--button-primary-bg) 25%, transparent);
+	color: color-mix(in srgb, var(--color-text) 94%, var(--color-muted));
+}
+
+.dark .chip-toggle input {
+	accent-color: var(--button-primary-bg);
+}
+
+.password-input {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.password-input .form-input {
+	width: 100%;
+	padding-right: 2.75rem;
+}
+
+.password-input__toggle {
+	position: absolute;
+	top: 50%;
+	right: 0.85rem;
+	transform: translateY(-50%);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: none;
+	color: color-mix(in srgb, var(--color-muted) 70%, var(--color-text));
+	cursor: pointer;
+	padding: 0.25rem;
+	transition: color var(--transition-base);
+}
+
+.password-input__toggle:hover {
+	color: var(--button-primary-bg);
+}
+
+.password-input__toggle:focus-visible {
+	outline: none;
+	color: var(--button-primary-bg);
+	box-shadow: 0 0 0 3px var(--focus-ring);
+	border-radius: 0.6rem;
+}
+
+.password-input__toggle:disabled {
+	cursor: not-allowed;
+	color: color-mix(in srgb, var(--color-muted) 60%, var(--surface-card));
+}
+
+.dark .password-input__toggle {
+	color: color-mix(in srgb, var(--color-text) 80%, var(--color-muted));
+}
+
+.dark .password-input__toggle:hover,
+.dark .password-input__toggle:focus-visible {
+	color: var(--button-primary-bg);
 }
 
 .checkbox-row {

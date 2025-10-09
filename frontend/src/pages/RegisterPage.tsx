@@ -1,84 +1,154 @@
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useApi } from "../lib/api";
 import { useTranslation } from "../language/useTranslation";
+import PasswordField from "../components/form/PasswordField";
 
 export default function RegisterPage() {
-    const { token, login } = useAuth();
-    const api = useApi();
-    const { t } = useTranslation();
-    const [form, setForm] = useState({ name: "", email: "", password: "" });
-    const [err, setErr] = useState("");
+	const { token, login } = useAuth();
+	const api = useApi();
+	const { t } = useTranslation();
+	const [form, setForm] = useState({
+		name: "",
+		email: "",
+		password: "",
+		confirmPassword: "",
+	});
+	const [error, setError] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
-    if (token) return <Navigate to="/" replace />;
+	if (token) return <Navigate to="/" replace />;
 
-    const submit = async () => {
-        setErr("");
+	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		setError("");
 
-        if (!form.name.trim() || !form.email.trim() || !form.password) {
-            setErr(t("auth.register.error.required"));
-            return;
-        }
+		const name = form.name.trim();
+		const email = form.email.trim();
 
-        try {
-            const res = await api("auth/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(form),
-            });
-            const data = await res.json();
-            // Le backend retourne directement le token après inscription, on peut donc se connecter
-            login(data.token);
-        } catch (error) {
-            // Affiche l'erreur spécifique du backend (ex: "mot de passe trop court")
-            if (error instanceof Error) {
-                setErr(error.message);
-            } else {
-                setErr(t("auth.register.error.generic"));
-            }
-            console.error(error);
-        }
-    };
+		if (!name || !email || !form.password || !form.confirmPassword) {
+			setError(t("auth.register.error.required"));
+			return;
+		}
 
-    return (
-        <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-slate-900">
-            <div className="card w-80 p-6 space-y-4">
-                <h1 className="text-lg font-semibold text-center">{t("auth.register.title")}</h1>
-                {err && <p className="text-red-500 text-sm text-center">{err}</p>}
+		if (form.password !== form.confirmPassword) {
+			setError(t("auth.register.error.passwordMismatch"));
+			return;
+		}
 
-                <input
-                    className="input w-full"
-                    type="text"
-                    placeholder={t("auth.name")}
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-                <input
-                    className="input w-full"
-                    type="email"
-                    placeholder={t("auth.email")}
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-                <input
-                    className="input w-full"
-                    type="password"
-                    placeholder={t("auth.password")}
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                />
+		setIsSubmitting(true);
+		try {
+			const response = await api("auth/register", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ name, email, password: form.password }),
+			});
+			const data = await response.json();
+			login(data.token);
+		} catch (caughtError) {
+			if (caughtError instanceof Error) {
+				setError(caughtError.message || t("auth.register.error.generic"));
+			} else {
+				setError(t("auth.register.error.generic"));
+			}
+			console.error(caughtError);
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
 
-                <button className="btn-primary w-full justify-center" onClick={submit}>
-                    {t("auth.register.submit")}
-                </button>
-                <div className="text-center text-xs">
-                    {t("auth.register.haveAccount")} {" "}
-                    <Link to="/login" className="text-indigo-600 hover:underline">
-                        {t("auth.login.submit")}
-                    </Link>
-                </div>
-            </div>
-        </div>
-    );
+	return (
+		<div className="auth-page">
+			<div className="auth-card">
+				<div className="auth-card__header">
+					<h1 className="auth-card__title">{t("auth.register.title")}</h1>
+					<p className="auth-card__subtitle">
+						{t("auth.register.haveAccount")}
+					</p>
+				</div>
+
+				{error && (
+					<div className="status-banner status-banner--error" role="alert">
+						{error}
+					</div>
+				)}
+
+				<form className="form-grid" onSubmit={handleSubmit} noValidate>
+					<div className="form-field">
+						<label className="form-label" htmlFor="register-name">
+							{t("auth.name")}
+						</label>
+						<input
+							id="register-name"
+							className="form-input"
+							type="text"
+							value={form.name}
+							onChange={(event) =>
+								setForm((prev) => ({ ...prev, name: event.target.value }))
+							}
+							autoComplete="name"
+							required
+							disabled={isSubmitting}
+						/>
+					</div>
+					<div className="form-field">
+						<label className="form-label" htmlFor="register-email">
+							{t("auth.email")}
+						</label>
+						<input
+							id="register-email"
+							className="form-input"
+							type="email"
+							value={form.email}
+							onChange={(event) =>
+								setForm((prev) => ({ ...prev, email: event.target.value }))
+							}
+							autoComplete="email"
+							required
+							disabled={isSubmitting}
+						/>
+					</div>
+					<PasswordField
+						id="register-password"
+						label={t("auth.password")}
+						value={form.password}
+						onChange={(event) =>
+							setForm((prev) => ({ ...prev, password: event.target.value }))
+						}
+						autoComplete="new-password"
+						required
+						disabled={isSubmitting}
+					/>
+					<PasswordField
+						id="register-confirm-password"
+						label={t("auth.confirmPassword")}
+						value={form.confirmPassword}
+						onChange={(event) =>
+							setForm((prev) => ({
+								...prev,
+								confirmPassword: event.target.value,
+							}))
+						}
+						autoComplete="new-password"
+						required
+						disabled={isSubmitting}
+					/>
+
+					<button
+						className="btn-primary"
+						type="submit"
+						disabled={isSubmitting}
+						style={{ width: "100%" }}>
+						{isSubmitting ? t("common.loading") : t("auth.register.submit")}
+					</button>
+				</form>
+
+				<div className="auth-card__footer">
+					{t("auth.register.haveAccount")}{" "}
+					<Link to="/login">{t("auth.login.submit")}</Link>
+				</div>
+			</div>
+		</div>
+	);
 }
