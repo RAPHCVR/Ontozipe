@@ -2,18 +2,24 @@ import { Body, Controller, Req, UseGuards, Post, Res, Get, Query } from "@nestjs
 import { Request, Response } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { LlmService } from "./llm.service";
-import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
+import {
+  AIMessage,
+  AIMessageChunk,
+  BaseMessage,
+  HumanMessage,
+  SystemMessage,
+} from "@langchain/core/messages";
 import { SYSTEM_PROMPT_FR } from "./prompt";
 import { AskDto, HistoryItemDto } from "./llm.dto";
 import { getText } from "./llm.utils";
 import { convertToOpenAITool } from "@langchain/core/utils/function_calling";
+import type { Runnable } from "@langchain/core/runnables";
 
 // =======================
 //   CONSTANT PARAMETERS
 // =======================
 const HISTORY_SUMMARY_TRIGGER = 14;
 const HISTORY_SUMMARY_TAKE_LAST = 10;
-const MAX_DONE_RERUNS = 3;
 const MAX_STEPS = 3;
 
 type AuthRequest = Request & { user: { sub: string; email?: string } };
@@ -38,8 +44,9 @@ export class LlmController {
     });
   }
 
+  // Utilise le "decision model" uniquement pour le résumé d'historique
   private async compressHistoryIfNeeded(
-    llm: any,
+    summarizer: any,
     history?: HistoryItemDto[],
     sseKey?: string
   ): Promise<BaseMessage[]> {
@@ -49,8 +56,8 @@ export class LlmController {
     const keepCount = Math.max(0, history.length - HISTORY_SUMMARY_TAKE_LAST);
     const prefix = history.slice(0, keepCount);
     const tail = history.slice(keepCount);
-
     const tailMessages = this.toLangchainHistory(tail);
+
     const summaryPrompt = [
       new SystemMessage(
         "Tu es un assistant de résumé. Résume en français les 10 derniers messages (utilisateur et assistant) " +
@@ -58,9 +65,9 @@ export class LlmController {
       ),
       ...tailMessages,
     ];
-    const summaryMsg = await llm.invoke(summaryPrompt);
-    const summary = getText(summaryMsg) ?? "";
 
+    const summaryMsg = await summarizer.invoke(summaryPrompt);
+    const summary = getText(summaryMsg) ?? "";
     if (sseKey) {
       this.llmService.sseBroadcast(sseKey, {
         type: "history_summary",
@@ -74,56 +81,12 @@ export class LlmController {
     ];
   }
 
-  private async checkIfDoneWithDecisionModel(
-    decisionLlm: any,
-    lastUserQuestion: string,
-    sinceLastUser: BaseMessage[]
-  ): Promise<{ done: boolean; why?: string; next?: string }> {
-    const system = new SystemMessage(
-      [
-        "Tu es un modèle de décision. Analyse si l'agent a terminé la tâche.",
-        "Réponds UNIQUEMENT en JSON valide de la forme:",
-        '{ "done": true|false, "why": "raison courte", "next": "étape suivante si done=false" }',
-        "Critères:",
-        "- done=true si une réponse finale utile a été fournie ou si aucun appel d'outil supplémentaire n'est nécessaire.",
-        "- done=false si UNE seule étape supplémentaire (appel d'outil ou synthèse) est encore nécessaire.",
-      ].join("\n")
-    );
-    const human = new HumanMessage(
-      [
-        "Dernier message utilisateur:",
-        lastUserQuestion,
-        "",
-        "Historique (depuis ce message, assistant + messages système incluant résultats d'outils):",
-        ...sinceLastUser.map((m) => {
-          const content = (m as any)?.content ?? "";
-          const kind = m._getType();
-          if (kind === "ai") return `ASSISTANT: ${typeof content === "string" ? content : getText(m) ?? ""}`;
-          if (kind === "system") return `SYSTEM: ${typeof content === "string" ? content : JSON.stringify(content)}`;
-          return `MSG: ${typeof content === "string" ? content : JSON.stringify(content)}`;
-        }),
-        "",
-        "Es-tu terminé ? Donne ta réponse JSON:",
-      ].join("\n")
-    );
-
-    try {
-      const result = await decisionLlm.invoke([system, human]);
-      const txt = (getText(result) ?? "").trim();
-      const parsed = JSON.parse(txt);
-      const done = typeof parsed.done === "boolean" ? parsed.done : false;
-      return {
-        done,
-        why: typeof parsed.why === "string" ? parsed.why : undefined,
-        next: typeof parsed.next === "string" ? parsed.next : undefined,
-      };
-    } catch {
-      return { done: true };
-    }
-  }
-
-  private extractToolCalls(ai: AIMessage): ToolCall[] {
-    const raw = (ai as any)?.tool_calls ?? (ai as any)?.additional_kwargs?.tool_calls ?? [];
+  // Lit tool_calls sur AIMessage ou AIMessageChunk
+  private extractToolCalls(ai: AIMessage | AIMessageChunk): ToolCall[] {
+    const raw =
+      (ai as any)?.tool_calls ??
+      (ai as any)?.additional_kwargs?.tool_calls ??
+      [];
     if (!Array.isArray(raw)) return [];
     return raw.map((c: any, idx: number) => {
       const name = c?.name ?? c?.function?.name ?? "unknown_tool";
@@ -133,11 +96,47 @@ export class LlmController {
       try {
         args = typeof argsRaw === "string" ? JSON.parse(argsRaw) : (argsRaw ?? {});
       } catch {
-        // If JSON is malformed, pass as-is so the tool/zod complains; we surface the error
         args = { $raw: argsRaw };
       }
       return { id, name, args };
     });
+  }
+
+  // Extrait du texte d'un chunk
+  private getChunkText(chunk: AIMessageChunk): string {
+    const c = (chunk as any)?.content;
+    if (!c) return "";
+    if (typeof c === "string") return c;
+    if (Array.isArray(c)) {
+      return c
+        .map((p: any) => {
+          if (typeof p === "string") return p;
+          if (typeof p?.text === "string") return p.text;
+          return "";
+        })
+        .join("");
+    }
+    return "";
+  }
+
+  // Stream d'une étape (tokens "chunk"), retourne le chunk final concaténé + texte agrégé
+  private async streamOneAssistantTurn(
+    llmWithTools: Runnable,
+    messages: BaseMessage[],
+    sseKey: string
+  ): Promise<{ finalChunk: AIMessageChunk | null; finalText: string }> {
+    let finalChunk: AIMessageChunk | null = null;
+    let streamedText = "";
+    const stream = await (llmWithTools as any).stream(messages);
+    for await (const chunk of stream as AsyncIterable<AIMessageChunk>) {
+      const token = this.getChunkText(chunk);
+      if (token) {
+        streamedText += token;
+        this.llmService.sseBroadcast(sseKey, { type: "chunk", data: token });
+      }
+      finalChunk = finalChunk ? (finalChunk as any).concat(chunk) : chunk;
+    }
+    return { finalChunk, finalText: streamedText };
   }
 
   @Post("ask")
@@ -159,25 +158,26 @@ export class LlmController {
       return;
     }
 
-    const collectedObservations: string[] = [];
-
     try {
       const { llm, llmWithTools, tools } = this.llmService.prepareAgentExecutor({
         userIri: req.user.sub,
         ontologyIri: dto.ontologyIri,
         sessionId: dto.sessionId,
       });
-      const decisionLlm = this.llmService.buildDecisionModel();
+      // Modèle "decision" réutilisé uniquement comme résumeur
+      const summarizer = this.llmService.buildDecisionModel();
 
-      // Broadcast tool schemas for visibility
+      // Tools schema
       this.llmService.sseBroadcast(key, {
         type: "tools_schema",
         data: tools.map((t) => convertToOpenAITool(t)),
       });
 
-      // Build system prompt with persistent results
+      // Build system prompt
       const buildSystemPrompt = () => {
-        let prompt = `${SYSTEM_PROMPT_FR}${dto.ontologyIri ? ` \nContexte: l'ontologie active est <${dto.ontologyIri}>` : ""}`;
+        let prompt = `${SYSTEM_PROMPT_FR}${
+          dto.ontologyIri ? `\nContexte: l'ontologie active est <${dto.ontologyIri}>` : ""
+        }`;
         const persistentResults = this.llmService.getPersistentResultsFor(
           req.user.sub,
           dto.ontologyIri,
@@ -189,141 +189,115 @@ export class LlmController {
         return prompt;
       };
 
-      // Announce system prompt
       const systemPrompt = buildSystemPrompt();
       this.llmService.sseBroadcast(key, { type: "system_prompt", data: systemPrompt });
 
-      // Summarize long histories
-      const summarizedHistory = await this.compressHistoryIfNeeded(llm, dto.history, key);
+      // Résumé d'historique (si nécessaire) via le "summarizer"
+      const summarizedHistory = await this.compressHistoryIfNeeded(summarizer, dto.history, key);
 
-      // Initial messages
+      // Messages initiaux
       const messages: BaseMessage[] = [
         new SystemMessage(systemPrompt),
         ...summarizedHistory,
         new HumanMessage(dto.question),
       ];
-      const lastHumanIndex = messages.length - 1;
-
-      let reruns = 0;
-      let previousStepExecutedTools = false;
 
       for (let step = 0; step < MAX_STEPS; step++) {
-        // One assistant step (no token streaming; broadcast single chunk)
-        const ai = (await llmWithTools.invoke(messages)) as AIMessage;
-        const finalText = (getText(ai) ?? "").trim();
-        if (finalText) {
-          this.llmService.sseBroadcast(key, { type: "chunk", data: finalText });
-        }
-        const aiNoTools = new AIMessage({ content: (ai as any).content });
-        messages.push(aiNoTools);  // We add a copy without tool_calls for history
-
-        // Handle tool calls (if any)
-        const toolCalls = this.extractToolCalls(ai);
-        if (toolCalls.length > 0) {
-          const toolSysMessages: SystemMessage[] = [];
-          for (const tc of toolCalls) {
-            this.llmService.sseBroadcast(key, {
-              type: "tool_call",
-              data: { id: tc.id, name: tc.name, args: tc.args },
-            });
-
-            const tool = tools.find((t) => t.name === tc.name);
-            if (!tool) {
-              const msg = `Erreur: l'outil '${tc.name}' est introuvable.`;
-              this.llmService.sseBroadcast(key, {
-                type: "tool_result",
-                data: { id: tc.id, name: tc.name, observation: msg },
-              });
-              toolSysMessages.push(
-                new SystemMessage(`Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${msg}`)
-              );
-              continue;
-            }
-
-            try {
-              const observation = await tool.invoke(tc.args);
-              const observationStr =
-                typeof observation === "string" ? observation : JSON.stringify(observation);
-
-              collectedObservations.push(observationStr);
-
-              this.llmService.sseBroadcast(key, {
-                type: "tool_result",
-                data: { id: tc.id, name: tc.name, observation: observationStr },
-              });
-
-              // Use the tool output string as the SystemMessage content for the tool result
-              toolSysMessages.push(
-                new SystemMessage(`Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${observationStr}`)
-              );
-            } catch (e) {
-              const errMsg =
-                e instanceof Error
-                  ? `Erreur lors de l'exécution de l'outil: ${e.message}`
-                  : "Erreur inconnue lors de l'exécution de l'outil.";
-              this.llmService.sseBroadcast(key, {
-                type: "tool_result",
-                data: { id: tc.id, name: tc.name, observation: errMsg },
-              });
-              toolSysMessages.push(
-                new SystemMessage(`Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${errMsg}`)
-              );
-            }
-          }
-
-          messages.push(...toolSysMessages);
-
-          // Update system prompt (memory might be enriched by tools)
-          const updatedPrompt = buildSystemPrompt();
-          messages[0] = new SystemMessage(updatedPrompt);
-          this.llmService.sseBroadcast(key, { type: "system_prompt", data: updatedPrompt });
-
-          // Nudge the assistant to produce a final synthesis, no tools
-          messages.push(
-            new SystemMessage(
-              "Sur la base des résultats des outils, formule la réponse finale en 4 à 7 lignes, " +
-                "ton naturel et pédagogique, sans ré-appeler d'outil. Si aucun résultat pertinent n'a été trouvé, dis-le."
-            )
-          );
-
-          previousStepExecutedTools = true;
-          continue;
+        // Ajouter un saut de ligne avant chaque nouveau tour (sauf le premier)
+        if (step > 0) {
+          this.llmService.sseBroadcast(key, {
+            type: "chunk",
+            data: "\n",
+          });
         }
 
-        // No tool calls this turn
-        if (!previousStepExecutedTools) {
-          // If the last turn did NOT execute tools, we stop and hand back to the user
-          break;
-        }
-
-        // The previous turn executed tools; ask Decision model if one more step is needed
-        const sinceLastUser = messages.slice(lastHumanIndex + 1);
-        const doneCheck = await this.checkIfDoneWithDecisionModel(decisionLlm, dto.question, sinceLastUser);
-
-        if (doneCheck.done || reruns >= MAX_DONE_RERUNS) {
-          break;
-        }
-
-        reruns += 1;
+        // Indiquer le début d'étape (pas de nouveau type d'événement)
         this.llmService.sseBroadcast(key, {
           type: "info",
-          data: `L'agent poursuit la recherche (itération ${reruns}/${MAX_DONE_RERUNS}) : ${
-            doneCheck.next ?? "étape supplémentaire"
-          }`,
+          data: `--- Étape ${step + 1}/${MAX_STEPS} ---`,
         });
 
-        // Ask the model to do ONE more step, justify briefly, and call a tool only if useful
-        messages.push(
-          new SystemMessage(
-            "Tu as indiqué ne pas avoir fini. Fais UNE étape supplémentaire maintenant. " +
-              "Explique brièvement (1–2 phrases) pourquoi tu la fais, puis appelle l’outil approprié si utile. " +
-              "Si tu as assez d'éléments, produis directement une synthèse finale concise. " +
-              "Rappel: 3 étapes max."
-          )
+        // 1) Stream de la réponse assistant
+        const { finalChunk, finalText } = await this.streamOneAssistantTurn(
+          llmWithTools,
+          messages,
+          key
         );
 
-        // Reset for the next step; we only loop again if that next step actually executes a tool
-        previousStepExecutedTools = false;
+        // Conserver la trace assistant (sans tool_calls) avec le texte streamé
+        messages.push(new AIMessage({ content: finalText }));
+
+        // 2) Tool calls éventuels
+        const toolCalls = finalChunk ? this.extractToolCalls(finalChunk) : [];
+
+        if (toolCalls.length === 0) {
+          // Pas d'outil appelé => fin
+          break;
+        }
+
+        // Exécuter chaque tool et pousser leurs résultats sous forme de SystemMessage
+        const toolSysMessages: SystemMessage[] = [];
+        for (const tc of toolCalls) {
+          this.llmService.sseBroadcast(key, {
+            type: "tool_call",
+            data: { id: tc.id, name: tc.name, args: tc.args },
+          });
+
+          const tool = tools.find((t) => t.name === tc.name);
+          if (!tool) {
+            const msg = `Erreur: l'outil '${tc.name}' est introuvable.`;
+            this.llmService.sseBroadcast(key, {
+              type: "tool_result",
+              data: { id: tc.id, name: tc.name, observation: msg },
+            });
+            toolSysMessages.push(
+              new SystemMessage(`Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${msg}`)
+            );
+            continue;
+          }
+
+          try {
+            const observation = await tool.invoke(tc.args);
+            const observationStr =
+              typeof observation === "string" ? observation : JSON.stringify(observation);
+
+            this.llmService.sseBroadcast(key, {
+              type: "tool_result",
+              data: { id: tc.id, name: tc.name, observation: observationStr },
+            });
+
+            toolSysMessages.push(
+              new SystemMessage(
+                `Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${observationStr}`
+              )
+            );
+          } catch (e) {
+            const errMsg =
+              e instanceof Error
+                ? `Erreur lors de l'exécution de l'outil: ${e.message}`
+                : "Erreur inconnue lors de l'exécution de l'outil.";
+
+            this.llmService.sseBroadcast(key, {
+              type: "tool_result",
+              data: { id: tc.id, name: tc.name, observation: errMsg },
+            });
+
+            toolSysMessages.push(
+              new SystemMessage(`Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${errMsg}`)
+            );
+          }
+        }
+
+        messages.push(...toolSysMessages);
+
+        // 3) Mise à jour du system prompt (mémoire enrichie par les outils)
+        const updatedPrompt = buildSystemPrompt();
+        messages[0] = new SystemMessage(updatedPrompt);
+        this.llmService.sseBroadcast(key, { type: "system_prompt", data: updatedPrompt });
+
+        // 4) On relance automatiquement une nouvelle étape.
+        //    La boucle continue tant qu'il y a eu au moins un tool exécuté dans l'étape courante
+        //    (sinon, on aurait break juste au-dessus).
       }
     } catch (err) {
       console.error("[LLM Controller] Critical error during agent execution:", err);
@@ -340,7 +314,7 @@ export class LlmController {
     @Query("ontologyIri") ontologyIri?: string,
     @Query("sessionId") sessionId?: string
   ) {
-    let prompt = `${SYSTEM_PROMPT_FR}${ontologyIri ? ` \nContexte: l'ontologie active est <${ontologyIri}>` : ""}`;
+    let prompt = `${SYSTEM_PROMPT_FR}${ontologyIri ? `\nContexte: l'ontologie active est <${ontologyIri}>` : ""}`;
     const persistentResults = this.llmService.getPersistentResultsFor(req.user.sub, ontologyIri, sessionId);
     if (persistentResults && persistentResults.trim()) {
       prompt += `\n\n--- RESULTATS DES RECHERCHES PRECEDENTES ---\n${persistentResults}`;

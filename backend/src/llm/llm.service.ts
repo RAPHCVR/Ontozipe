@@ -154,34 +154,74 @@ export class LlmService {
         );
 
         const searchFromNaturalLanguageTool = tool(
-            async ({ keywords, ontologyIri: onto }: { keywords: string[]; ontologyIri: string }) => {
-                if (!onto) return "Erreur : l'URI de l'ontologie est obligatoire pour la recherche par mots-clés.";
-                if (!keywords || keywords.length === 0) return "Erreur : au moins un mot-clé est requis pour la recherche.";
+            async ({
+                keywords,
+                ontologyIri: onto,
+                uris,
+                objectUris,
+                relationFilters,
+                maxResults,
+            }: {
+                keywords?: string[];
+                ontologyIri: string;
+                uris?: string[];
+                objectUris?: string[];
+                relationFilters?: Array<{ predicate: string; direction?: "incoming" | "outgoing" | "both"; present: boolean; objectUris?: string[] }>;
+                maxResults?: number;
+            }) => {
+                if (!onto) return "Erreur : l'URI de l'ontologie est obligatoire pour la recherche.";
                 try {
-                    const req = new NodeRequest({ keywords, max_results: 6 });
-                    const nodes = await req.fetch(this.http, this.FUSEKI_SPARQL, onto);
-                    this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
-                    const entityLabels = nodes
-                        .filter((n) => n.label)
-                        .map((n) => n.label)
-                        .join(", ");
-                    return entityLabels
-                        ? `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`
-                        : `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                const req = new NodeRequest({
+                    keywords: keywords ?? [],
+                    uris: uris ?? [],
+                    object_uris: objectUris ?? [],
+                    relation_filters: (relationFilters ?? []).map((rf) => ({
+                    predicate: rf.predicate,
+                    direction: rf.direction,
+                    present: rf.present,
+                    object_uris: rf.objectUris ?? [],
+                    })),
+                    max_results: maxResults ?? 6,
+                });
+
+                const nodes = await req.fetch(this.http, this.FUSEKI_SPARQL, onto);
+                this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
+
+                const entityLabels = nodes
+                    .filter((n) => n.label)
+                    .map((n) => n.label)
+                    .join(", ");
+                return entityLabels
+                    ? `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`
+                    : `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
                 } catch (error) {
-                    const msg = error instanceof Error ? error.message : "Erreur inconnue";
-                    return `Erreur lors de la recherche par mots-clés: ${msg}`;
+                const msg = error instanceof Error ? error.message : "Erreur inconnue";
+                return `Erreur lors de la recherche: ${msg}`;
                 }
             },
             {
                 name: "search_from_natural_language",
-                description: "Recherche des entités dans l'ontologie pour lesquels un des mots fournis apparaît dans les propriétés, valeurs, labels ou commentaires.",
+                description:
+                "Recherche d'entités dans l'ontologie. Insensible à la casse et aux espaces (ex: 'développé par' ~ 'développéPar'). " +
+                "Peut aussi filtrer par relations (présence/absence d'un prédicat, direction), inclure des URIs directes, " +
+                "ou retourner les sujets pointant vers un des objets fournis.",
                 schema: z.object({
-                    keywords: z.array(z.string()).describe("Liste de mots (partiels ou non) dans la langue de l'ontologie à rechercher"),
-                    ontologyIri: z.string().describe("URI de l'ontologie dans laquelle effectuer la recherche"),
+                keywords: z.array(z.string()).optional().describe("Mots-clés à chercher (partiels ou non)"),
+                ontologyIri: z.string().describe("URI de l'ontologie"),
+                uris: z.array(z.string()).optional().describe("URIs d'entités à inclure directement dans la recherche"),
+                objectUris: z.array(z.string()).optional().describe("Retourne les sujets ?node tels que ?node ?p ?o et ?o ∈ objectUris"),
+                relationFilters: z.array(
+                    z.object({
+                    predicate: z.string().describe("IRI du prédicat à tester"),
+                    direction: z.enum(["incoming", "outgoing", "both"]).optional().describe("Direction à tester (défaut: both)"),
+                    present: z.boolean().describe("true => doit exister, false => ne doit pas exister"),
+                    objectUris: z.array(z.string()).optional().describe("Pour direction=outgoing, cible(s) ?o spécifique(s)"),
+                    })
+                ).optional(),
+                maxResults: z.number().int().min(1).max(20).optional().describe("Nombre max de résultats (défaut: 6)"),
                 }),
             }
-        );
+            );
 
         const searchFromUriTool = tool(
             async ({ uris, ontologyIri: onto }: { uris: string[]; ontologyIri: string }) => {

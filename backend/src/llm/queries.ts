@@ -463,7 +463,7 @@ export async function buildNodesFromUris(
                 if (b.property.value === 'http://www.w3.org/2000/01/rdf-schema#subClassOf') {
                     predicateLabel = 'sous-classe de';
                 } else if (b.property.value === 'http://www.semanticweb.org/custom/belongsToClass') {
-                    predicateLabel = 'appartient à la classe';
+                    predicateLabel = 'appartient à';
                 }
                 const rel: IRelationship = {
                     target_uri: targetUri,
