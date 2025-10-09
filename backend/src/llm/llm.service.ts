@@ -161,6 +161,8 @@ export class LlmService {
                 objectUris,
                 relationFilters,
                 maxResults,
+                typeNames,
+                relationNameFilters,
             }: {
                 keywords?: string[];
                 ontologyIri: string;
@@ -168,6 +170,8 @@ export class LlmService {
                 objectUris?: string[];
                 relationFilters?: Array<{ predicate: string; direction?: "incoming" | "outgoing" | "both"; present: boolean; objectUris?: string[] }>;
                 maxResults?: number;
+                typeNames?: string[];
+                relationNameFilters?: Array<{ name: string; direction?: "incoming" | "outgoing" | "both"; present?: boolean }>;
             }) => {
                 if (!onto) return "Erreur : l'URI de l'ontologie est obligatoire pour la recherche.";
                 try {
@@ -181,12 +185,16 @@ export class LlmService {
                     present: rf.present,
                     object_uris: rf.objectUris ?? [],
                     })),
+                    type_name_patterns: typeNames ?? [],
+                    relation_name_filters: (relationNameFilters ?? []).map((r) => ({
+                        name: r.name,
+                        direction: r.direction,
+                        present: r.present ?? true,
+                    })),
                     max_results: maxResults ?? 6,
                 });
-
                 const nodes = await req.fetch(this.http, this.FUSEKI_SPARQL, onto);
                 this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
-
                 const entityLabels = nodes
                     .filter((n) => n.label)
                     .map((n) => n.label)
@@ -203,8 +211,14 @@ export class LlmService {
                 name: "search_from_natural_language",
                 description:
                 "Recherche d'entités dans l'ontologie. Insensible à la casse et aux espaces (ex: 'développé par' ~ 'développéPar'). " +
-                "Peut aussi filtrer par relations (présence/absence d'un prédicat, direction), inclure des URIs directes, " +
-                "ou retourner les sujets pointant vers un des objets fournis.",
+                "Paramètres possibles (tous optionnels sauf ontologyIri) :\n" +
+                "- keywords: texte libre sur URI/localName/label/comment/propriétés/valeurs (OR)\n" +
+                "- uris: inclure directement ces URIs\n" +
+                "- objectUris: retourne les sujets ?node tels que ?node ?p ?o et ?o ∈ objectUris\n" +
+                "- relationFilters: via IRI exact du prédicat (présence/absence, direction, cibles)\n" +
+                "- typeNames: restreint aux noeuds ayant les rdf:type correspondants (nom partiel, AND)\n" +
+                "- relationNameFilters: restreint selon le nom (partiel) du prédicat (AND, direction/presence configurables)\n" +
+                "Les correspondances par nom sont insensibles à la casse et aux espaces/traits/underscores (ex: 'ownedBy' ~ 'Owned By').",
                 schema: z.object({
                 keywords: z.array(z.string()).optional().describe("Mots-clés à chercher (partiels ou non)"),
                 ontologyIri: z.string().describe("URI de l'ontologie"),
@@ -218,10 +232,18 @@ export class LlmService {
                     objectUris: z.array(z.string()).optional().describe("Pour direction=outgoing, cible(s) ?o spécifique(s)"),
                     })
                 ).optional(),
+                typeNames: z.array(z.string()).optional().describe("Types (rdf:type) à exiger par nom (correspondance partielle insensible à la casse/espaces). Tous doivent être présents (AND)."),
+                relationNameFilters: z.array(
+                    z.object({
+                        name: z.string().describe("Nom (partiel accepté) du prédicat à tester, ex: 'ownedBy'"),
+                        direction: z.enum(["incoming", "outgoing", "both"]).optional().describe("Direction (défaut: both)"),
+                        present: z.boolean().optional().describe("true => doit exister (défaut), false => ne doit pas exister"),
+                    })
+                ).optional(),
                 maxResults: z.number().int().min(1).max(20).optional().describe("Nombre max de résultats (défaut: 6)"),
                 }),
             }
-            );
+        );
 
         const searchFromUriTool = tool(
             async ({ uris, ontologyIri: onto }: { uris: string[]; ontologyIri: string }) => {
