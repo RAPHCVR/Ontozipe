@@ -458,7 +458,7 @@ export class LlmService {
                 schema: z.object({
                     keywords: z.array(z.string()).optional().describe("Mots-clés à chercher (partiels ou non)"),
                     ontologyIri: z.string().describe("URI de l'ontologie"),
-                    uris: z.array(z.string()).optional().describe("URIs d'entités à inclure directement"),
+                    uris: z.array(z.string()).optional().describe("URIs COMPLETES des entités à inclure directement dans les résultats."),
                     objectUris: z.array(z.string()).optional().describe("Filtre sur les objets liés (?node ?p ?o)."),
                     relationFilters: z
                         .array(
@@ -489,7 +489,7 @@ export class LlmService {
                             })
                         )
                         .optional(),
-                    maxResults: z.number().int().min(1).max(20).optional().describe("Nombre max de résultats (défaut: 6)"),
+                    maxResults: z.number().int().min(1).max(20).optional().describe("Nombre max de résultats (min: 1, max: 20, recherche de survol: 5)"),
                 }),
             }
         );
@@ -548,9 +548,9 @@ export class LlmService {
             {
                 name: "search_from_uri",
                 description:
-                    "Explore le graph à partir d'URIs d'entités : récupère le voisinage (liens sortants/entrants), les sous-classes et les instances.",
+                    "Explore le graph à partir d'URIs complètes d'entités : récupère le voisinage (liens sortants/entrants), les sous-classes et les instances.",
                 schema: z.object({
-                    uris: z.array(z.string()).describe("Liste des URIs à explorer"),
+                    uris: z.array(z.string()).describe("Liste des URIs complètes à explorer"),
                     ontologyIri: z.string().describe("URI de l'ontologie"),
                 }),
             }
