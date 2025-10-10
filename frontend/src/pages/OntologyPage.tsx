@@ -1,5 +1,6 @@
 import React from "react";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useApi } from "../lib/api";
 import { useLanguage } from "../language/LanguageContext";
@@ -13,11 +14,44 @@ import { Snapshot, IndividualNode } from "types";
 import IndividualsPanel from "../components/individuals/IndividualsPanel";
 import OntologyGraph from "../components/OntologyGraph";
 
+const extractHandle = (value: string): string => {
+	const hashIdx = value.lastIndexOf("#");
+	if (hashIdx >= 0 && hashIdx < value.length - 1) {
+		return value.slice(hashIdx + 1);
+	}
+	const slashIdx = value.lastIndexOf("/");
+	if (slashIdx >= 0 && slashIdx < value.length - 1) {
+		return value.slice(slashIdx + 1);
+	}
+	return value;
+};
+
+const findMatchingNodeId = (identifier: string, nodes: Array<{ id: string; label?: string }>): string | null => {
+	const trimmed = identifier.trim();
+	if (!trimmed) return null;
+	const lower = trimmed.toLowerCase();
+
+	for (const node of nodes) {
+		const idStr = String(node.id);
+		if (idStr === trimmed) return idStr;
+		const handle = extractHandle(idStr);
+		if (handle === trimmed || handle.toLowerCase() === lower) return idStr;
+		if (node.label) {
+			const labelStr = String(node.label);
+			if (labelStr === trimmed || labelStr.toLowerCase() === lower) return idStr;
+		}
+	}
+	return null;
+};
+
 export default function OntologyPage() {
 	const { token } = useAuth();
 	const api = useApi();
 	const { language } = useLanguage();
 	const { t } = useTranslation();
+	const [searchParams, setSearchParams] = useSearchParams();
+	const ontologyIri = searchParams.get("iri") || "";
+	const focusParam = searchParams.get("focus");
 
 	const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -27,6 +61,9 @@ export default function OntologyPage() {
 		return localStorage.getItem("lastClassId") || null;
 	});
 	const activeClassId = hoveredClassId || clickedClassId;
+	const [focusedIndividualId, setFocusedIndividualId] = useState<string | null>(null);
+	const [graphFocusKey, setGraphFocusKey] = useState(0);
+	const pendingGraphFocusRef = useRef<string | null>(null);
 
     const [modalStack, setModalStack] = useState<IndividualNode[]>([]);
     const [graphReady, setGraphReady] = useState(false);
@@ -89,7 +126,22 @@ export default function OntologyPage() {
             setClickedClassId(null);
             localStorage.removeItem("lastClassId");
         }
+		setFocusedIndividualId(null);
     }, []);
+
+    const updateFocusParam = useCallback(
+        (nextFocus: string | null) => {
+            const params = new URLSearchParams();
+            if (ontologyIri) {
+                params.set("iri", ontologyIri);
+            }
+            if (nextFocus) {
+                params.set("focus", nextFocus);
+            }
+            setSearchParams(params, { replace: true });
+        },
+        [ontologyIri, setSearchParams]
+    );
 
     const startDrag = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -127,20 +179,18 @@ export default function OntologyPage() {
     const handleClassClick = useCallback(
         (id: string) => {
             setActiveClass(id);
+            updateFocusParam(extractHandle(id));
         },
-        [setActiveClass]
+        [setActiveClass, updateFocusParam]
     );
-
-	// Get ontology IRI from querystring
-	const params = new URLSearchParams(window.location.search);
-	const ontologyIri = params.get("iri") || "";
 
 	// Reset la classe sélectionnée quand on change d’ontologie
 	useEffect(() => {
-        localStorage.removeItem("lastClassId");
-        setActiveClass(null);
-        setHoveredClassId(null);
-    }, [ontologyIri]);
+		localStorage.removeItem("lastClassId");
+		setActiveClass(null);
+		setHoveredClassId(null);
+		setFocusedIndividualId(null);
+	}, [ontologyIri]);
 
     // Charger le snapshot
     useEffect(() => {
@@ -170,6 +220,65 @@ export default function OntologyPage() {
             });
     };
 
+    useEffect(() => {
+        if (!snapshot) return;
+
+        if (!focusParam) {
+            pendingGraphFocusRef.current = null;
+            setFocusedIndividualId(null);
+            return;
+        }
+
+        const nodes = snapshot.graph?.nodes ?? [];
+        const targetId = findMatchingNodeId(focusParam, nodes);
+        if (targetId) {
+            if (targetId !== clickedClassId) {
+                pendingGraphFocusRef.current = targetId;
+                setActiveClass(targetId);
+            } else {
+                pendingGraphFocusRef.current = null;
+                setGraphFocusKey((key) => key + 1);
+            }
+            setFocusedIndividualId(null);
+            return;
+        }
+
+        const individuals = snapshot.individuals ?? [];
+        const matchedIndividual = individuals.find((ind) => {
+            const handle = extractHandle(ind.id);
+            if (handle === focusParam) return true;
+            if (handle.toLowerCase() === focusParam.toLowerCase()) return true;
+            if (ind.label && ind.label === focusParam) return true;
+            if (ind.label && ind.label.toLowerCase() === focusParam.toLowerCase()) return true;
+            return false;
+        });
+        if (matchedIndividual) {
+            if (matchedIndividual.classId) {
+                if (matchedIndividual.classId !== clickedClassId) {
+                    pendingGraphFocusRef.current = matchedIndividual.classId;
+                    setActiveClass(matchedIndividual.classId);
+                } else {
+                    pendingGraphFocusRef.current = null;
+                    setGraphFocusKey((key) => key + 1);
+                }
+            }
+            setFocusedIndividualId(matchedIndividual.id);
+            return;
+        }
+
+        pendingGraphFocusRef.current = null;
+        setFocusedIndividualId(null);
+    }, [focusParam, snapshot, setActiveClass, clickedClassId]);
+
+    useEffect(() => {
+        const pending = pendingGraphFocusRef.current;
+        if (!pending) return;
+        if (pending === clickedClassId) {
+            pendingGraphFocusRef.current = null;
+            setGraphFocusKey((key) => key + 1);
+        }
+    }, [clickedClassId]);
+
     const classOptions = useMemo<{ id: string; label: string }[]>(() => {
         const nodes = snapshot?.graph?.nodes ?? [];
         return nodes.map((node: any) => ({
@@ -183,10 +292,16 @@ export default function OntologyPage() {
     const handleClassSelect = useCallback(
         (event: React.ChangeEvent<HTMLSelectElement>) => {
             const value = event.target.value;
-            if (!value) setActiveClass(null);
-            else setActiveClass(value);
+            if (!value) {
+                setActiveClass(null);
+                updateFocusParam(null);
+            } else {
+                setActiveClass(value);
+                updateFocusParam(extractHandle(value));
+            }
+			setFocusedIndividualId(null);
         },
-        [setActiveClass]
+        [setActiveClass, updateFocusParam]
     );
 
     if (loading || !snapshot) {
@@ -206,14 +321,15 @@ export default function OntologyPage() {
 		<>
 			<div className="ontology-page">
 				<div className="ontology-page__sidebar" style={{ width: sidebarWidth }}>
-					<IndividualsPanel
-						snapshot={snapshot}
-						classId={activeClassId}
-						onShow={openModal}
-						onCreate={(cid) => setFormInfo({ mode: "create", classId: cid })}
-						onEdit={(ind) => setFormInfo({ mode: "edit", initial: ind })}
-						width={sidebarWidth}
-						onDelete={(ind) => {
+						<IndividualsPanel
+							snapshot={snapshot}
+							classId={activeClassId}
+							focusedIndividualId={focusedIndividualId}
+							onShow={openModal}
+							onCreate={(cid) => setFormInfo({ mode: "create", classId: cid })}
+							onEdit={(ind) => setFormInfo({ mode: "edit", initial: ind })}
+							width={sidebarWidth}
+							onDelete={(ind) => {
 							api(
 								`/individuals/${encodeURIComponent(
 									ind.id
@@ -281,6 +397,9 @@ export default function OntologyPage() {
 							onClassHover={setHoveredClassId}
 							onClassClick={handleClassClick}
 							onReady={() => setGraphReady(true)}
+							selectedNodeId={clickedClassId}
+							highlightNodeId={activeClassId}
+							focusKey={graphFocusKey}
 						/>
 					</div>
 				</div>
@@ -373,3 +492,4 @@ export default function OntologyPage() {
 		</>
 	);
 }
+

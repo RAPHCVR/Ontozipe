@@ -1,6 +1,20 @@
 
 const defaultLifespan = 5;
 
+const isHttpUri = (value: string): boolean => /^https?:\/\//i.test(value);
+
+const makeHandle = (uri: string): string => {
+    const afterHash = extractAfterHash(uri);
+    if (afterHash && afterHash !== uri) return afterHash;
+    const afterSlash = extractAfterLastSlash(uri);
+    return afterSlash || uri;
+};
+
+const normalizeKey = (value: string): string => value.trim().toLowerCase();
+
+const buildGraphPath = (ontologyIri: string, handle: string): string =>
+    `/ontology?iri=${encodeURIComponent(ontologyIri)}&focus=${encodeURIComponent(handle)}`;
+
 /**
  * Représente les attributs (triplets qui contiennent une value type literal)
  */
@@ -110,9 +124,14 @@ export class ResultRepresentation {
      * Index les Node par rapport à leur URI.
      */
     public readonly nodes: Map<string, Node>;
+    private readonly handleToUri: Map<string, string>;
 
     constructor(nodes: Map<string, Node> = new Map()) {
         this.nodes = nodes;
+        this.handleToUri = new Map<string, string>();
+        for (const [uri, node] of nodes.entries()) {
+            this.registerHandles(uri, node);
+        }
     }
 
     /**
@@ -184,17 +203,54 @@ export class ResultRepresentation {
         return this.nodes.get(uri);
     }
 
+    private registerHandles(uri: string, node?: Node) {
+        const register = (key: string | undefined) => {
+            if (!key) return;
+            this.handleToUri.set(key, uri);
+            this.handleToUri.set(normalizeKey(key), uri);
+        };
+
+        register(uri);
+        register(makeHandle(uri));
+
+        if (node?.label) {
+            register(node.label);
+        }
+        if (node?.node_type) {
+            register(makeHandle(node.node_type));
+        }
+    }
+
+    /**
+     * Essaie de retrouver l'URI d'une entité à partir d'un identifiant partiel (handle,
+     * label, suffixe). Retourne undefined si aucune correspondance.
+     */
+    public findMatchingUri(identifier: string): string | undefined {
+        if (!identifier) return undefined;
+        const direct = this.handleToUri.get(identifier) ?? this.handleToUri.get(normalizeKey(identifier));
+        if (direct) return direct;
+
+        for (const uri of this.nodes.keys()) {
+            if (uri === identifier) return uri;
+            if (uri.toLowerCase() === identifier.toLowerCase()) return uri;
+            if (uri.endsWith(`#${identifier}`) || uri.endsWith(`/${identifier}`)) {
+                return uri;
+            }
+        }
+        return undefined;
+    }
+
     /**
      * Produit une représentation textuelle des données du graph adaptée pour un LLM.
      * Format pseudo-YAML avec URI complets et peu de redondances.
      */
-    public toString(): string {
+    public toString(options?: { ontologyIri?: string; frontendBaseUrl?: string }): string {
         const lines: string[] = [];
-        
+
         // Séparer les noeuds construits (built) et non construits
         const builtNodes: Node[] = [];
         const partialNodes: Node[] = [];
-        
+
         for (const node of this.nodes.values()) {
             if (node.built) {
                 builtNodes.push(node);
@@ -217,7 +273,8 @@ export class ResultRepresentation {
             lines.push("");
             
             for (const node of builtNodes) {
-                lines.push(`- Entity: "${extractAfterLastSlash(node.uri)}"`);
+                const handle = makeHandle(node.uri);
+                lines.push(`- Entité: ${handle}`);
 
                 if (node.label) {
                     lines.push(`  label: "${node.label}"`);
@@ -226,7 +283,15 @@ export class ResultRepresentation {
                 if (node.node_type) {
                     lines.push(`  type: ${extractAfterLastSlash(node.node_type)}`);
                 }
-                
+
+                if (options?.ontologyIri) {
+                    const graphPath = buildGraphPath(options.ontologyIri, handle);
+                    const link = options.frontendBaseUrl
+                        ? `${options.frontendBaseUrl.replace(/\/$/, "")}${graphPath}`
+                        : graphPath;
+                    lines.push(`  graph_link: ${link}`);
+                }
+
                 // Attributs (propriétés avec valeurs littérales)
                 if (node.attributes.length > 0) {
                     lines.push("  attributes:");
@@ -262,25 +327,19 @@ export class ResultRepresentation {
         }
 
         // Section des noeuds partiels (références découvertes mais non détaillées)
-        if (partialNodes.length > 0) {
-            lines.push("URI des Entités à Découvrir avec les tools:");
-            lines.push("");
-            
-            for (const node of partialNodes) {
-                let new_line = `"${node.uri}"`;
-                if (node.label) {
-                    new_line += ` (label: "${node.label}")`;
-                }
-                lines.push(new_line);
-            }
-            lines.push("");
-        }
+        const filteredPartials = partialNodes.filter((node) => {
+            const uri = node.uri;
+            if (!uri) return false;
+            if (!isHttpUri(uri)) return false;
+            const handle = makeHandle(uri);
+            return !/^b\d+$/i.test(handle);
+        });
 
         // Statistiques du graph
         lines.push("STATISTIQUES:");
         lines.push(`  total_entities: ${this.nodes.size}`);
         lines.push(`  detailed_entities: ${builtNodes.length}`);
-        lines.push(`  referenced_entities: ${partialNodes.length}`);
+        lines.push(`  referenced_entities: ${filteredPartials.length}`);
 
         return lines.join("\n");
     }

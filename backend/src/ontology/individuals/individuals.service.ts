@@ -420,7 +420,7 @@ export class IndividualsService extends OntologyBaseService {
         if (!preferredLang) {
             return candidateLang ? 2 : 3;
         }
-        if (!candidateLang) return 1;
+        if (!candidateLang) return 3;
         const normalizedCandidate = candidateLang.toLowerCase();
         const normalizedPreferred = preferredLang.toLowerCase();
         if (normalizedCandidate === normalizedPreferred) return 5;

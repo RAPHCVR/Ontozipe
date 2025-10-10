@@ -17,7 +17,8 @@ export class LlmService {
     constructor(private readonly http: HttpService) {}
 
     private readonly CORE = "http://example.org/core#";
-    private readonly FUSEKI_SPARQL = `${(process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(/\/$/,"")}/sparql`;
+    private readonly FUSEKI_SPARQL = `${(process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(/\/$/, "")}/sparql`;
+    private readonly FRONTEND_BASE_URL = (process.env.FRONTEND_BASE_URL || "http://localhost:5173").replace(/\/$/, "");
 
     private readonly sseRuns = new Map<string, Set<Response>>();
     private readonly representations = new Map<string, ResultRepresentation>();
@@ -25,6 +26,7 @@ export class LlmService {
     private makeContextKey(userIri: string, ontologyIri?: string, sessionId?: string): string {
         return `${userIri}::${ontologyIri ?? "default"}::${sessionId ?? "default"}`;
     }
+
     private getOrCreateRepresentation(userIri: string, ontologyIri?: string, sessionId?: string): ResultRepresentation {
         const key = this.makeContextKey(userIri, ontologyIri, sessionId);
         let rep = this.representations.get(key);
@@ -61,13 +63,13 @@ export class LlmService {
     }
 
     public buildDecisionModel(): ChatOpenAI {
-         const openAIApiKey = process.env.OPENAI_API_KEY;
-         if (!openAIApiKey) {
-             throw new Error("OPENAI_API_KEY is not set in environment variables");
-         }
-         const model = process.env.OPENAI_DECISION_MODEL || "gpt-4.1-mini";
-         return new ChatOpenAI({ openAIApiKey, modelName: model });
-     }
+        const openAIApiKey = process.env.OPENAI_API_KEY;
+        if (!openAIApiKey) {
+            throw new Error("OPENAI_API_KEY is not set in environment variables");
+        }
+        const model = process.env.OPENAI_DECISION_MODEL || "gpt-4.1-mini";
+        return new ChatOpenAI({ openAIApiKey, modelName: model });
+    }
 
     public registerSseSubscriber(key: string, res: Response): { isFirst: boolean } {
         const existing = this.sseRuns.get(key);
@@ -101,7 +103,13 @@ export class LlmService {
         const subs = this.sseRuns.get(key);
         if (!subs) return;
         this.sseBroadcast(key, { type: "done", data: null });
-        for (const r of Array.from(subs)) { try { r.end(); } catch {} }
+        for (const r of Array.from(subs)) {
+            try {
+                r.end();
+            } catch {
+                // ignore close errors
+            }
+        }
         this.sseRuns.delete(key);
     }
 
@@ -114,15 +122,200 @@ export class LlmService {
                 { GRAPH ?ng { ?g core:hasMember <${userIri}> } } UNION
                 { GRAPH ?ng { ?ms core:member <${userIri}> ; core:group ?g } }
             }`;
-        type SparqlBinding = {
-            g: { value: string };
-        };
+        type SparqlBinding = { g: { value: string } };
         const params = new URLSearchParams({ query: sparql, format: "application/sparql-results+json" });
         const res = await lastValueFrom(this.http.get(this.FUSEKI_SPARQL, { params }));
         return (res.data.results.bindings as SparqlBinding[]).map((b) => b.g.value);
     }
 
+    private async searchEntities(
+        term: string,
+        ontologyIri: string,
+        userIri: string,
+        limit = 10
+    ): Promise<{ id: string; label?: string }[]> {
+        if (!ontologyIri) throw new BadRequestException("ontologyIri manquant");
+        const groups = await this.getUserGroups(userIri);
+        const groupsList = groups.map((g) => `<${g}>`).join(", ");
+        const aclFilter =
+            groups.length > 0
+                ? `(!BOUND(?vg) || ?vg IN (${groupsList}) || EXISTS { ?s <${this.CORE}createdBy> <${userIri}> })`
+                : `(!BOUND(?vg) || EXISTS { ?s <${this.CORE}createdBy> <${userIri}> })`;
+
+        const sparql = `
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          PREFIX core: <${this.CORE}>
+          SELECT DISTINCT ?s ?lbl WHERE {
+            GRAPH <${ontologyIri}> {
+              ?s ?p ?o . FILTER(isIRI(?s))
+              OPTIONAL { ?s rdfs:label ?lbl }
+              OPTIONAL { ?s core:visibleTo ?vg }
+              FILTER(
+                CONTAINS(LCASE(STR(COALESCE(?lbl, ""))), LCASE("${escapeSparqlLiteral(term)}")) ||
+                EXISTS { ?s ?p2 ?lit .
+                    FILTER(isLiteral(?lit) && CONTAINS(LCASE(STR(?lit)), LCASE("${escapeSparqlLiteral(term)}")))
+                }
+              )
+              FILTER(${aclFilter})
+            }
+          }
+          ORDER BY LCASE(STR(?lbl))
+          LIMIT ${Math.max(1, Math.min(50, limit))}`;
+
+        const params = new URLSearchParams({ query: sparql, format: "application/sparql-results+json" });
+        const res = await lastValueFrom(this.http.get(this.FUSEKI_SPARQL, { params }));
+        type Row = { s: { value: string }; lbl?: { value: string } };
+        return (res.data.results.bindings as Row[]).map((r) => ({ id: r.s.value, label: r.lbl?.value }));
+    }
+
+    private async getEntityDetails(
+        uri: string,
+        ontologyIri: string
+    ): Promise<{ id: string; label?: string; types: string[]; properties: { predicate: string; value: string; isLiteral: boolean }[] } | null> {
+        if (!ontologyIri) throw new BadRequestException("ontologyIri manquant");
+        const sparql = `
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT ?lbl ?p ?v WHERE {
+                GRAPH <${ontologyIri}> {
+                    OPTIONAL { <${uri}> rdfs:label ?lbl }
+                    { <${uri}> rdf:type ?v . BIND(rdf:type AS ?p) }
+                    UNION
+                    { <${uri}> ?p ?v . FILTER(?p != rdfs:label) }
+                }
+            }`;
+        const params = new URLSearchParams({ query: sparql, format: "application/sparql-results+json" });
+        const res = await lastValueFrom(this.http.get(this.FUSEKI_SPARQL, { params }));
+        type Row = { lbl?: { value: string }; p: { value: string }; v: { value: string; type: string } };
+        const rows = res.data.results.bindings as Row[];
+
+        if (rows.length === 0) return null;
+
+        const label = rows.find((r) => r.lbl)?.lbl?.value;
+        const types = Array.from(new Set(rows.filter((r) => r.p.value.endsWith("type")).map((r) => r.v.value)));
+        const properties = rows
+            .filter((r) => !r.p.value.endsWith("type"))
+            .map((r) => ({ predicate: r.p.value, value: r.v.value, isLiteral: r.v.type !== "uri" }));
+        return { id: uri, label: label || uri.split(/[#/]/).pop(), types, properties };
+    }
+
+    private async uriExistsInGraph(ontologyIri: string, candidate: string): Promise<boolean> {
+        const sparql = `ASK { GRAPH <${ontologyIri}> { <${candidate}> ?p ?o } }`;
+        const params = new URLSearchParams({ query: sparql, format: "application/sparql-results+json" });
+        try {
+            const res = await lastValueFrom(this.http.get(this.FUSEKI_SPARQL, { params }));
+            return Boolean(res.data?.boolean);
+        } catch (error) {
+            console.warn("[LlmService] Failed to verify URI existence:", candidate, error);
+            return false;
+        }
+    }
+
+    private buildCandidateUris(identifier: string, ontologyIri?: string): string[] {
+        if (!ontologyIri) return [];
+        const trimmed = ontologyIri.replace(/[#/]+$/, "");
+        return [`${trimmed}#${identifier}`, `${trimmed}/${identifier}`];
+    }
+
+    private async normalizeEntityIdentifiers(
+        identifiers: string[],
+        context: { userIri: string; ontologyIri?: string; sessionId?: string }
+    ): Promise<string[]> {
+        if (!identifiers || identifiers.length === 0) return [];
+        const normalized: string[] = [];
+        const cache = new Map<string, string>();
+        const rep = this.getOrCreateRepresentation(context.userIri, context.ontologyIri, context.sessionId);
+
+        for (const raw of identifiers) {
+            const value = raw?.trim();
+            if (!value) continue;
+
+            if (/^https?:\/\//i.test(value)) {
+                normalized.push(value);
+                continue;
+            }
+
+            const cached = cache.get(value) ?? cache.get(value.toLowerCase());
+            if (cached) {
+                normalized.push(cached);
+                continue;
+            }
+
+            const fromRep = rep.findMatchingUri(value);
+            if (fromRep) {
+                cache.set(value, fromRep);
+                cache.set(value.toLowerCase(), fromRep);
+                normalized.push(fromRep);
+                continue;
+            }
+
+            let resolved: string | undefined;
+            if (context.ontologyIri) {
+                const candidates = this.buildCandidateUris(value, context.ontologyIri);
+                for (const candidate of candidates) {
+                    if (await this.uriExistsInGraph(context.ontologyIri, candidate)) {
+                        resolved = candidate;
+                        break;
+                    }
+                }
+            }
+
+            if (resolved) {
+                cache.set(value, resolved);
+                cache.set(value.toLowerCase(), resolved);
+                normalized.push(resolved);
+            } else {
+                console.warn("[LlmService] Unable to resolve identifier to URI:", value);
+            }
+        }
+        return normalized;
+    }
+
     private buildTools(userIri: string, ontologyIri?: string, sessionId?: string): StructuredTool[] {
+        const searchTool = tool(
+            async ({ query, ontologyIri: onto, limit }: { query: string; ontologyIri?: string; limit?: number }) => {
+                const ontoEff = onto || ontologyIri || "";
+                if (!ontoEff) {
+                    return "Erreur : l'URI de l'ontologie est manquant pour la recherche. Demandez à l'utilisateur de la préciser.";
+                }
+                const list = await this.searchEntities(query, ontoEff, userIri, limit ?? 10);
+                if (list.length === 0) {
+                    return `Aucune entité trouvée pour la recherche "${query}" dans l'ontologie <${ontoEff}>.`;
+                }
+                return JSON.stringify({ hits: list, ontologyIri: ontoEff });
+            },
+            {
+                name: "search_entities",
+                description: "Recherche des individus pertinents par mot-clé dans une ontologie donnée.",
+                schema: z.object({
+                    query: z.string().describe("Texte de recherche"),
+                    ontologyIri: z.string().optional().describe("URI du graph d'ontologie"),
+                    limit: z.number().int().min(1).max(50).optional(),
+                }),
+            }
+        );
+
+        const getTool = tool(
+            async ({ uri, ontologyIri: onto }: { uri: string; ontologyIri?: string }) => {
+                const ontoEff = onto || ontologyIri || "";
+                if (!ontoEff) {
+                    return "Erreur : l'URI de l'ontologie est manquant pour la récupération de détails. Demandez à l'utilisateur de la préciser.";
+                }
+                const data = await this.getEntityDetails(uri, ontoEff);
+                if (!data) {
+                    return `Aucun détail trouvé pour l'individu <${uri}> dans l'ontologie <${ontoEff}>. Il n'existe peut-être pas.`;
+                }
+                return JSON.stringify({ entity: data, ontologyIri: ontoEff });
+            },
+            {
+                name: "get_entity",
+                description: "Récupère le détail d'un individu (types et propriétés).",
+                schema: z.object({
+                    uri: z.string().describe("URI de l'individu à détailler"),
+                    ontologyIri: z.string().optional(),
+                }),
+            }
+        );
 
         const getMostConnectedNodesTool = tool(
             async ({ ontologyIri: onto }: { ontologyIri?: string }) => {
@@ -136,17 +329,18 @@ export class LlmService {
                         return `Aucun noeud trouvé dans l'ontologie <${ontoEff}>.`;
                     }
                     return JSON.stringify({
-                        nodes: nodes.map(n => ({ uri: n.uri, connectionCount: n.connectionCount })),
+                        nodes: nodes.map((n) => ({ uri: n.uri, connectionCount: n.connectionCount })),
                         totalFound: nodes.length,
-                        ontologyIri: ontoEff
+                        ontologyIri: ontoEff,
                     });
                 } catch (error) {
-                    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+                    const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
                     return `Erreur lors de la récupération des noeuds les plus connectés: ${errorMessage}`;
                 }
-            }, {
+            },
+            {
                 name: "get_most_connected_nodes",
-                description: "Récupère les 10 noeuds ayant le plus de connexions (prédicats entrants et sortants) dans une ontologie donnée.",
+                description: "Récupère les 10 noeuds ayant le plus de connexions dans une ontologie donnée.",
                 schema: z.object({
                     ontologyIri: z.string().optional().describe("URI du graph d'ontologie"),
                 }),
@@ -168,79 +362,134 @@ export class LlmService {
                 ontologyIri: string;
                 uris?: string[];
                 objectUris?: string[];
-                relationFilters?: Array<{ predicate: string; direction?: "incoming" | "outgoing" | "both"; present: boolean; objectUris?: string[] }>;
+                relationFilters?: Array<{
+                    predicate: string;
+                    direction?: "incoming" | "outgoing" | "both";
+                    present: boolean;
+                    objectUris?: string[];
+                }>;
                 maxResults?: number;
                 typeNames?: string[];
-                relationNameFilters?: Array<{ name: string; direction?: "incoming" | "outgoing" | "both"; present?: boolean }>;
+                relationNameFilters?: Array<{
+                    name: string;
+                    direction?: "incoming" | "outgoing" | "both";
+                    present?: boolean;
+                }>;
             }) => {
-                if (!onto) return "Erreur : l'URI de l'ontologie est obligatoire pour la recherche.";
+                if (!onto) {
+                    return "Erreur : l'URI de l'ontologie est obligatoire pour la recherche.";
+                }
+
+                const sanitizedMax = Math.min(Math.max(maxResults ?? 6, 1), 20);
+                const hasAdvancedFilters =
+                    Boolean(uris?.length) ||
+                    Boolean(objectUris?.length) ||
+                    Boolean(relationFilters?.length) ||
+                    Boolean(typeNames?.length) ||
+                    Boolean(relationNameFilters?.length);
+
                 try {
-                const req = new NodeRequest({
-                    keywords: keywords ?? [],
-                    uris: uris ?? [],
-                    object_uris: objectUris ?? [],
-                    relation_filters: (relationFilters ?? []).map((rf) => ({
-                    predicate: rf.predicate,
-                    direction: rf.direction,
-                    present: rf.present,
-                    object_uris: rf.objectUris ?? [],
-                    })),
-                    type_name_patterns: typeNames ?? [],
-                    relation_name_filters: (relationNameFilters ?? []).map((r) => ({
-                        name: r.name,
-                        direction: r.direction,
-                        present: r.present ?? true,
-                    })),
-                    max_results: maxResults ?? 6,
-                });
-                const nodes = await req.fetch(this.http, this.FUSEKI_SPARQL, onto);
-                this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
-                const entityLabels = nodes
-                    .filter((n) => n.label)
-                    .map((n) => n.label)
-                    .join(", ");
-                return entityLabels
-                    ? `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`
-                    : `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                    let nodes: Node[] = [];
+                    if (hasAdvancedFilters) {
+                        const request = new NodeRequest({
+                            keywords: keywords ?? [],
+                            uris: uris ?? [],
+                            object_uris: objectUris ?? [],
+                            relation_filters: (relationFilters ?? []).map((rf) => ({
+                                predicate: rf.predicate,
+                                direction: rf.direction,
+                                present: rf.present,
+                                object_uris: rf.objectUris ?? [],
+                            })),
+                            type_name_patterns: typeNames ?? [],
+                            relation_name_filters: (relationNameFilters ?? []).map((r) => ({
+                                name: r.name,
+                                direction: r.direction,
+                                present: r.present ?? true,
+                            })),
+                            max_results: sanitizedMax,
+                        });
+                        nodes = await request.fetch(this.http, this.FUSEKI_SPARQL, onto);
+                    } else {
+                        if (!keywords || keywords.length === 0) {
+                            return "Erreur : au moins un mot-clé est requis pour la recherche.";
+                        }
+                        const results = await searchNodesByKeywords(this.http, this.FUSEKI_SPARQL, onto, keywords);
+                        const firstHits = results.slice(0, sanitizedMax);
+                        const covered = new Set<string>();
+                        for (const hit of firstHits) {
+                            try {
+                                const node = await buildNodeFromUri(this.http, this.FUSEKI_SPARQL, onto, hit.uri);
+                                if (covered.has(node.uri)) continue;
+                                nodes.push(node);
+                                covered.add(node.uri);
+                                for (const relation of node.relationships) {
+                                    covered.add(relation.target_uri);
+                                }
+                                for (const attribute of node.attributes) {
+                                    covered.add(attribute.property_uri);
+                                }
+                            } catch (error) {
+                                console.warn(`Failed to build node for URI ${hit.uri}:`, error);
+                            }
+                        }
+                    }
+
+                    this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
+
+                    const entityLabels = nodes
+                        .filter((node) => node.label)
+                        .map((node) => node.label)
+                        .join(", ");
+
+                    if (entityLabels) {
+                        return `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                    }
+                    return `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
                 } catch (error) {
-                const msg = error instanceof Error ? error.message : "Erreur inconnue";
-                return `Erreur lors de la recherche: ${msg}`;
+                    const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
+                    return `Erreur lors de la recherche: ${errorMessage}`;
                 }
             },
             {
                 name: "search_from_natural_language",
                 description:
-                "Recherche d'entités dans l'ontologie. Insensible à la casse et aux espaces (ex: 'développé par' ~ 'développéPar'). " +
-                "Paramètres possibles (tous optionnels sauf ontologyIri) :\n" +
-                "- keywords: texte libre sur URI/localName/label/comment/propriétés/valeurs (OR)\n" +
-                "- uris: inclure directement ces URIs\n" +
-                "- objectUris: retourne les sujets ?node tels que ?node ?p ?o et ?o ∈ objectUris\n" +
-                "- relationFilters: via IRI exact du prédicat (présence/absence, direction, cibles)\n" +
-                "- typeNames: restreint aux noeuds ayant les rdf:type correspondants (nom partiel, AND)\n" +
-                "- relationNameFilters: restreint selon le nom (partiel) du prédicat (AND, direction/presence configurables)\n" +
-                "Les correspondances par nom sont insensibles à la casse et aux espaces/traits/underscores (ex: 'ownedBy' ~ 'Owned By').",
+                    "Recherche et filtrage d'entités dans l'ontologie à partir de mots-clés ou de critères avancés (types, relations, URIs).",
                 schema: z.object({
-                keywords: z.array(z.string()).optional().describe("Mots-clés à chercher (partiels ou non)"),
-                ontologyIri: z.string().describe("URI de l'ontologie"),
-                uris: z.array(z.string()).optional().describe("URIs d'entités à inclure directement dans la recherche"),
-                objectUris: z.array(z.string()).optional().describe("Retourne les sujets ?node tels que ?node ?p ?o et ?o ∈ objectUris"),
-                relationFilters: z.array(
-                    z.object({
-                    predicate: z.string().describe("IRI du prédicat à tester"),
-                    direction: z.enum(["incoming", "outgoing", "both"]).optional().describe("Direction à tester (défaut: both)"),
-                    present: z.boolean().describe("true => doit exister, false => ne doit pas exister"),
-                    objectUris: z.array(z.string()).optional().describe("Pour direction=outgoing, cible(s) ?o spécifique(s)"),
-                    })
-                ).optional(),
-                typeNames: z.array(z.string()).optional().describe("Types (rdf:type) à exiger par nom (correspondance partielle insensible à la casse/espaces). Tous doivent être présents (AND)."),
-                relationNameFilters: z.array(
-                    z.object({
-                        name: z.string().describe("Nom (partiel accepté) du prédicat à tester, ex: 'ownedBy'"),
-                        direction: z.enum(["incoming", "outgoing", "both"]).optional().describe("Direction (défaut: both)"),
-                        present: z.boolean().optional().describe("true => doit exister (défaut), false => ne doit pas exister"),
-                    })
-                ).optional(),
-                maxResults: z.number().int().min(1).max(20).optional().describe("Nombre max de résultats (défaut: 6)"),
+                    keywords: z.array(z.string()).optional().describe("Mots-clés à chercher (partiels ou non)"),
+                    ontologyIri: z.string().describe("URI de l'ontologie"),
+                    uris: z.array(z.string()).optional().describe("URIs d'entités à inclure directement"),
+                    objectUris: z.array(z.string()).optional().describe("Filtre sur les objets liés (?node ?p ?o)."),
+                    relationFilters: z
+                        .array(
+                            z.object({
+                                predicate: z.string().describe("IRI exact du prédicat à tester"),
+                                direction: z
+                                    .enum(["incoming", "outgoing", "both"])
+                                    .optional()
+                                    .describe("Direction à tester (défaut: both)"),
+                                present: z.boolean().describe("true => doit exister, false => ne doit pas exister"),
+                                objectUris: z.array(z.string()).optional().describe("Cibles spécifiques pour outgoing"),
+                            })
+                        )
+                        .optional(),
+                    typeNames: z
+                        .array(z.string())
+                        .optional()
+                        .describe("Types (rdf:type) exigés par nom partiel (insensible casse/espaces)."),
+                    relationNameFilters: z
+                        .array(
+                            z.object({
+                                name: z.string().describe("Nom (partiel) du prédicat, ex: 'ownedBy'"),
+                                direction: z
+                                    .enum(["incoming", "outgoing", "both"])
+                                    .optional()
+                                    .describe("Direction (défaut: both)"),
+                                present: z.boolean().optional().describe("true => doit exister (défaut), false sinon"),
+                            })
+                        )
+                        .optional(),
+                    maxResults: z.number().int().min(1).max(20).optional().describe("Nombre max de résultats (défaut: 6)"),
                 }),
             }
         );
@@ -254,41 +503,60 @@ export class LlmService {
                     return "Erreur : au moins un URI d'entité est requis pour créer le graph de debug.";
                 }
                 try {
-                    const uniqueUris = Array.from(new Set(uris.filter(Boolean)));
-                    console.log(`Debug Graph Tool: Processing ${uniqueUris.length} entity URIs from ontology <${onto}>`);
+                    const normalizedUris = await this.normalizeEntityIdentifiers(uris, {
+                        userIri,
+                        ontologyIri: onto || ontologyIri,
+                        sessionId,
+                    });
+                    const uniqueUris = Array.from(new Set((normalizedUris.length ? normalizedUris : uris).filter(Boolean)));
+                    if (uniqueUris.length === 0) {
+                        return "Erreur : aucune URI valide n'a été fournie.";
+                    }
 
-                    // One SPARQL round-trip for multiple URIs
-                    const nodes: Node[] = await buildNodesFromUris(this.http, this.FUSEKI_SPARQL, onto, uniqueUris);
+                    let nodes: Node[] = [];
+                    try {
+                        nodes = await buildNodesFromUris(this.http, this.FUSEKI_SPARQL, onto, uniqueUris);
+                    } catch (bulkError) {
+                        console.warn("buildNodesFromUris failed, falling back to per-URI fetch:", bulkError);
+                        for (const uri of uniqueUris) {
+                            try {
+                                const node = await buildNodeFromUri(this.http, this.FUSEKI_SPARQL, onto, uri);
+                                nodes.push(node);
+                            } catch (error) {
+                                console.warn(`Failed to build node for URI ${uri}:`, error);
+                            }
+                        }
+                    }
 
                     this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
 
                     const entityLabels = nodes
-                        .filter(node => node.label)
-                        .map(node => node.label)
-                        .join(', ');
+                        .filter((node) => node.label)
+                        .map((node) => node.label)
+                        .join(", ");
 
                     if (entityLabels) {
                         return `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
-                    } else {
-                        return `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
                     }
+                    return `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
                 } catch (error) {
-                    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-                    console.error('Error in debug graph tool:', error);
+                    const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
+                    console.error("Error in debug graph tool:", error);
                     return `Erreur lors de la création du graph de debug: ${errorMessage}`;
                 }
-            }, {
+            },
+            {
                 name: "search_from_uri",
-                description: "Explore le graph à partir d'URIs d'entités: récupère les informations détaillées et le voisinage (liens sortants/entrants), y compris les sous-classes (enfants via rdfs:subClassOf entrants) et les instances/membres (via belongsToClass entrants).",
+                description:
+                    "Explore le graph à partir d'URIs d'entités : récupère le voisinage (liens sortants/entrants), les sous-classes et les instances.",
                 schema: z.object({
-                    uris: z.array(z.string()).describe("Liste des URIs des éléments à partir desquels rechercher"),
-                    ontologyIri: z.string().describe("URI de l'ontologie dans laquelle effectuer la recherche"),
+                    uris: z.array(z.string()).describe("Liste des URIs à explorer"),
+                    ontologyIri: z.string().describe("URI de l'ontologie"),
                 }),
             }
         );
 
-        // Only returning the tools you enabled previously
-        return [searchFromNaturalLanguageTool, searchFromUriTool];
+        return [searchTool, getTool, getMostConnectedNodesTool, searchFromNaturalLanguageTool, searchFromUriTool];
     }
 
     public prepareAgentExecutor(params: { userIri: string; ontologyIri?: string; sessionId?: string }): {
@@ -309,10 +577,14 @@ export class LlmService {
     }
 
     public getPersistentResultsFor(userIri: string, ontologyIri?: string, sessionId?: string): string {
-        return this.getOrCreateRepresentation(userIri, ontologyIri, sessionId).toString();
+        return this.getOrCreateRepresentation(userIri, ontologyIri, sessionId).toString({
+            ontologyIri,
+            frontendBaseUrl: this.FRONTEND_BASE_URL,
+        });
     }
 
     public clearRepresentation(userIri: string, ontologyIri?: string, sessionId?: string) {
         this.representations.delete(this.makeContextKey(userIri, ontologyIri, sessionId));
     }
 }
+

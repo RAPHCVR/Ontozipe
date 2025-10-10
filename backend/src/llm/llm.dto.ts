@@ -32,3 +32,19 @@ export class AskDto {
     @IsString()
     sessionId?: string;
 }
+
+export class CreateChatSessionDto {
+    @IsOptional()
+    @IsString()
+    title?: string;
+
+    @IsOptional()
+    @IsString()
+    ontologyIri?: string;
+}
+
+export class UpdateChatSessionDto {
+    @IsOptional()
+    @IsString()
+    title?: string;
+}

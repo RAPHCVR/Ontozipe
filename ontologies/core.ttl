@@ -34,6 +34,8 @@ core:OntologyProject a owl:Class ; rdfs:subClassOf void:Dataset, core:Resource .
 core:Resource        a owl:Class ; rdfs:subClassOf owl:Thing .
 core:Comment         a owl:Class ; rdfs:subClassOf schema:Comment .
 core:AccessPolicy    a owl:Class ; rdfs:subClassOf acl:Authorization .
+core:ChatSession     a owl:Class ; rdfs:subClassOf core:Resource .
+core:ChatMessage     a owl:Class ; rdfs:subClassOf core:Resource .
 
 core:Organization  a owl:Class ; rdfs:subClassOf foaf:Organization .
 core:Role          a owl:Class .
@@ -59,6 +61,7 @@ core:onResource     a owl:ObjectProperty ; rdfs:domain core:AccessPolicy ; rdfs:
 
 core:hasRole               a owl:ObjectProperty ; rdfs:domain core:User ; rdfs:range core:Role .
 core:belongsToOrganization a owl:ObjectProperty ; rdfs:domain core:User ; rdfs:range core:Organization .
+core:hasChatSession        a owl:ObjectProperty ; rdfs:domain core:User ; rdfs:range core:ChatSession .
 
 core:memberOfOrganization a owl:ObjectProperty ;
     owl:inverseOf core:belongsToOrganization ;
@@ -78,6 +81,10 @@ core:ownedBy a owl:ObjectProperty ;
     rdfs:domain core:Organization ;
     rdfs:range  core:User ;
     rdfs:comment "Utilisateur qui possède / administre l’organisation"@fr .
+
+core:hasChatMessage   a owl:ObjectProperty ; rdfs:domain core:ChatSession ; rdfs:range core:ChatMessage .
+core:belongsToSession a owl:ObjectProperty ; rdfs:domain core:ChatMessage ; rdfs:range core:ChatSession .
+core:sessionForOntology a owl:ObjectProperty ; rdfs:domain core:ChatSession ; rdfs:range core:OntologyProject .
 
 # --- Restrictions --------------------------------------------------
 core:Group rdfs:subClassOf [
@@ -116,6 +123,12 @@ core:isVerified a owl:DatatypeProperty ; rdfs:domain core:Account ; rdfs:range x
 core:createdAt a owl:DatatypeProperty ; rdfs:domain core:Resource, core:Comment ; rdfs:range xsd:dateTime .
 core:updatedAt a owl:DatatypeProperty ; rdfs:domain core:Resource ; rdfs:range xsd:dateTime .
 core:text      a owl:DatatypeProperty ; rdfs:domain core:Comment ; rdfs:range xsd:string .
+core:sessionId     a owl:DatatypeProperty ; rdfs:domain core:ChatSession ; rdfs:range xsd:string .
+core:sessionTitle  a owl:DatatypeProperty ; rdfs:domain core:ChatSession ; rdfs:range xsd:string .
+core:messageRole   a owl:DatatypeProperty ; rdfs:domain core:ChatMessage ; rdfs:range xsd:string .
+core:messageIndex  a owl:DatatypeProperty ; rdfs:domain core:ChatMessage ; rdfs:range xsd:integer .
+core:messageContent a owl:DatatypeProperty ; rdfs:domain core:ChatMessage ; rdfs:range xsd:string .
+core:agentSteps     a owl:DatatypeProperty ; rdfs:domain core:ChatMessage ; rdfs:range xsd:string .
 
 ##############################
 ## 7. Règles & annotations ###
