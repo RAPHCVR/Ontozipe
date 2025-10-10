@@ -20,6 +20,7 @@ import {
     BaseMessage,
     HumanMessage,
     SystemMessage,
+    ToolMessage,
 } from "@langchain/core/messages";
 import { SYSTEM_PROMPT_FR } from "./prompt";
 import { AskDto, HistoryItemDto, CreateChatSessionDto, UpdateChatSessionDto } from "./llm.dto";
@@ -269,13 +270,24 @@ export class LlmController {
                 if (finalText?.trim()) {
                     finalAssistantText = finalText;
                 }
-                messages.push(new AIMessage({ content: finalText }));
+
+                const toolCallPayload =
+                    (finalChunk as any)?.tool_calls ??
+                    (finalChunk as any)?.additional_kwargs?.tool_calls ??
+                    undefined;
+                const aiMessageForHistory = new AIMessage({
+                    content: finalText,
+                    ...(toolCallPayload ? { tool_calls: toolCallPayload } : {}),
+                    additional_kwargs: (finalChunk as any)?.additional_kwargs ?? {},
+                });
+                messages.push(aiMessageForHistory);
 
                 const toolCalls = finalChunk ? this.extractToolCalls(finalChunk) : [];
                 if (toolCalls.length === 0) {
                     break;
                 }
 
+                const toolMessages: ToolMessage[] = [];
                 const toolSysMessages: SystemMessage[] = [];
                 for (const tc of toolCalls) {
                     const stepIndex = agentSteps.length;
@@ -295,6 +307,7 @@ export class LlmController {
                             type: "tool_result",
                             data: { id: tc.id, name: tc.name, observation: errorMsg },
                         });
+                        toolMessages.push(new ToolMessage({ tool_call_id: tc.id, content: errorMsg }));
                         toolSysMessages.push(
                             new SystemMessage(`Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${errorMsg}`)
                         );
@@ -310,6 +323,7 @@ export class LlmController {
                             type: "tool_result",
                             data: { id: tc.id, name: tc.name, observation: observationStr },
                         });
+                        toolMessages.push(new ToolMessage({ tool_call_id: tc.id, content: observationStr }));
                         toolSysMessages.push(
                             new SystemMessage(
                                 `Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${observationStr}`
@@ -325,13 +339,19 @@ export class LlmController {
                             type: "tool_result",
                             data: { id: tc.id, name: tc.name, observation: errorMsg },
                         });
+                        toolMessages.push(new ToolMessage({ tool_call_id: tc.id, content: errorMsg }));
                         toolSysMessages.push(
                             new SystemMessage(`Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${errorMsg}`)
                         );
                     }
                 }
 
-                messages.push(...toolSysMessages);
+                if (toolMessages.length) {
+                    messages.push(...toolMessages);
+                }
+                if (toolSysMessages.length) {
+                    messages.push(...toolSysMessages);
+                }
 
                 const updatedPrompt = buildSystemPrompt();
                 messages[0] = new SystemMessage(updatedPrompt);
@@ -449,4 +469,3 @@ export class LlmController {
         };
     }
 }
-

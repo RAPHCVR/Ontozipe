@@ -14,7 +14,14 @@ import { messages as localeMessages } from "../language/messages";
 import { useTranslation } from "../language/useTranslation";
 import { useToast } from "../hooks/toast";
 
-type ChatMsg = { role: "user" | "assistant"; content: string; agentSteps?: AgentStep[] };
+type ChatMsg = {
+	role: "user" | "assistant";
+	content: string;
+	plan?: string | null;
+	status?: string | null;
+	isStreaming?: boolean;
+	agentSteps?: AgentStep[];
+};
 type Ontology = { iri: string; label?: string };
 type AgentStep = { id: string; type: "tool_call"; name: string; args: any; result?: string };
 type ChatSession = { id: string; title: string; ontologyIri?: string; createdAt?: string; updatedAt?: string };
@@ -114,26 +121,29 @@ export default function AssistantPage() {
                 const response = await api(`/llm/chat-sessions/${sessionId}/messages`, { signal });
                 if (signal?.aborted) return [];
                 const json = await response.json();
-                const mapped: ChatMsg[] = (Array.isArray(json.messages) ? json.messages : []).map((msg: any) => ({
-                    role: msg.role === "assistant" ? "assistant" : "user",
-                    content: typeof msg.content === "string" ? msg.content : "",
-                    agentSteps: Array.isArray(msg.agentSteps)
-                        ? msg.agentSteps
-                              .filter((step: any) => step && typeof step === "object")
-                              .map((step: any) => ({
-                                  id: typeof step.id === "string" ? step.id : uuidv4(),
-                                  type: "tool_call",
-                                  name: typeof step.name === "string" ? step.name : "tool",
-                                  args: step.args ?? {},
-                                  result:
-                                      typeof step.result === "string"
-                                          ? step.result
-                                          : step.result != null
-                                              ? JSON.stringify(step.result)
-                                              : undefined,
-                              }))
-                        : undefined,
-                }));
+				const mapped: ChatMsg[] = (Array.isArray(json.messages) ? json.messages : []).map((msg: any) => ({
+					role: msg.role === "assistant" ? "assistant" : "user",
+					content: typeof msg.content === "string" ? msg.content : "",
+					plan: typeof msg.plan === "string" ? msg.plan : null,
+					status: null,
+					isStreaming: false,
+					agentSteps: Array.isArray(msg.agentSteps)
+						? msg.agentSteps
+								.filter((step: any) => step && typeof step === "object")
+								.map((step: any) => ({
+									id: typeof step.id === "string" ? step.id : uuidv4(),
+									type: "tool_call" as const,
+									name: typeof step.name === "string" ? step.name : "tool",
+									args: step.args ?? {},
+									result:
+										typeof step.result === "string"
+											? step.result
+											: step.result != null
+												? JSON.stringify(step.result)
+												: undefined,
+								}))
+						: undefined,
+				}));
                 if (!signal?.aborted) {
                     setMessages([{ role: "assistant", content: initialAssistant }, ...mapped]);
                 }
@@ -353,7 +363,18 @@ export default function AssistantPage() {
         const history = messages.slice(1);
         const questionMsg: ChatMsg = { role: "user", content: q };
 
-        setMessages((prev) => [...prev, questionMsg, { role: "assistant", content: "", agentSteps: [] }]);
+        setMessages((prev) => [
+            ...prev,
+            questionMsg,
+            {
+                role: "assistant",
+                content: "",
+                plan: null,
+                status: null,
+                isStreaming: true,
+                agentSteps: [],
+            },
+        ]);
         setInput("");
         setSending(true);
         const idempotencyKey = uuidv4();
@@ -384,90 +405,150 @@ export default function AssistantPage() {
                         const parsedEvent = JSON.parse(event.data);
                         const { type, data } = parsedEvent as { type: string; data: any };
 
-                        switch (type) {
-                            case "system_prompt":
-                                if (typeof data === "string") setSystemPrompt(data);
-                                break;
-                            case "tool_call":
-                                setMessages((prev) => {
-                                    if (prev.length === 0) return prev;
-                                    const lastMsg = prev[prev.length - 1];
-                                    if (lastMsg.role !== "assistant") return prev;
+						switch (type) {
+							case "system_prompt":
+								if (typeof data === "string") setSystemPrompt(data);
+								break;
+							case "tool_call":
+								setMessages((prev) => {
+									if (prev.length === 0) return prev;
+									const lastMsg = prev[prev.length - 1];
+									if (lastMsg.role !== "assistant") return prev;
 
-                                    const step: AgentStep = {
-                                        id: String(data?.id ?? uuidv4()),
-                                        type: "tool_call",
-                                        name: typeof data?.name === "string" ? data.name : "tool",
-                                        args: data?.args ?? {},
-                                    };
+									const step: AgentStep = {
+										id: String(data?.id ?? uuidv4()),
+										type: "tool_call",
+										name: typeof data?.name === "string" ? data.name : "tool",
+										args: data?.args ?? {},
+									};
 
-                                    const updatedSteps: AgentStep[] = [...(lastMsg.agentSteps ?? []), step];
-                                    const newLastMsg: ChatMsg = { ...lastMsg, agentSteps: updatedSteps };
-                                    return [...prev.slice(0, -1), newLastMsg];
-                                });
-                                break;
+									const updatedSteps: AgentStep[] = [...(lastMsg.agentSteps ?? []), step];
+									const newLastMsg: ChatMsg = {
+										...lastMsg,
+										agentSteps: updatedSteps,
+										isStreaming: true,
+									};
+									return [...prev.slice(0, -1), newLastMsg];
+								});
+								break;
 
-                            case "tool_result":
-                                setMessages((prev) => {
-                                    if (prev.length === 0) return prev;
-                                    const lastMsg = prev[prev.length - 1];
-                                    if (lastMsg.role !== "assistant") return prev;
+							case "tool_result":
+								setMessages((prev) => {
+									if (prev.length === 0) return prev;
+									const lastMsg = prev[prev.length - 1];
+									if (lastMsg.role !== "assistant") return prev;
 
-                                    const currentSteps = [...(lastMsg.agentSteps ?? [])];
-                                    const stepId = String(data?.id ?? uuidv4());
-                                    const observation = formatObservation(data?.observation);
-                                    const idx = currentSteps.findIndex((s) => s.id === stepId);
+									const currentSteps = [...(lastMsg.agentSteps ?? [])];
+									const stepId = String(data?.id ?? uuidv4());
+									const observation = formatObservation(data?.observation);
+									const idx = currentSteps.findIndex((s) => s.id === stepId);
 
-                                    if (idx >= 0) {
-                                        currentSteps[idx] = { ...currentSteps[idx], result: observation };
-                                    } else {
-                                        currentSteps.push({
-                                            id: stepId,
-                                            type: "tool_call",
-                                            name: typeof data?.name === "string" ? data.name : "tool",
-                                            args: data?.args ?? {},
-                                            result: observation,
-                                        });
-                                    }
+									if (idx >= 0) {
+										currentSteps[idx] = { ...currentSteps[idx], result: observation };
+									} else {
+										currentSteps.push({
+											id: stepId,
+											type: "tool_call",
+											name: typeof data?.name === "string" ? data.name : "tool",
+											args: data?.args ?? {},
+											result: observation,
+										});
+									}
 
-                                    const newLastMsg: ChatMsg = { ...lastMsg, agentSteps: currentSteps };
-                                    return [...prev.slice(0, -1), newLastMsg];
-                                });
-                                break;
+									const newLastMsg: ChatMsg = {
+										...lastMsg,
+										agentSteps: currentSteps,
+										isStreaming: true,
+									};
+									return [...prev.slice(0, -1), newLastMsg];
+								});
+								break;
 
-                            case "chunk":
-                                setMessages((prev) => {
-                                    if (prev.length === 0) return prev;
-                                    const lastMsg = prev[prev.length - 1];
-                                    if (lastMsg.role !== "assistant") return prev;
-                                    const chunk = typeof data === "string" ? data : String(data ?? "");
-                                    const newLastMsg: ChatMsg = {
-                                        ...lastMsg,
-                                        content: (lastMsg.content ?? "") + chunk,
-                                    };
-                                    return [...prev.slice(0, -1), newLastMsg];
-                                });
-                                break;
+							case "info":
+								setMessages((prev) => {
+									if (prev.length === 0) return prev;
+									const lastMsg = prev[prev.length - 1];
+									if (lastMsg.role !== "assistant") return prev;
+									const infoText =
+										typeof data === "string"
+											? data
+											: data != null
+												? String(data)
+												: "";
+									if (!infoText) return prev;
+									const newLastMsg: ChatMsg = {
+										...lastMsg,
+										status: infoText,
+										isStreaming: true,
+									};
+									return [...prev.slice(0, -1), newLastMsg];
+								});
+								break;
 
-                            case "done":
-                                setSending(false);
-                                break;
+							case "chunk":
+								setMessages((prev) => {
+									if (prev.length === 0) return prev;
+									const lastMsg = prev[prev.length - 1];
+									if (lastMsg.role !== "assistant") return prev;
+									let chunk = typeof data === "string" ? data : String(data ?? "");
+									if (!chunk) return prev;
 
-                            case "error":
-                                console.error("Received error from server:", data);
-                                setMessages((prev) => {
-                                    if (prev.length === 0) return prev;
-                                    const lastMsg = prev[prev.length - 1];
-                                    if (lastMsg.role !== "assistant") return prev;
-                                    const message = typeof data === "string" ? data : String(data ?? "");
-                                    const errorMsg: ChatMsg = {
-                                        ...lastMsg,
-                                        content: `Erreur du serveur: ${message}`,
-                                    };
-                                    return [...prev.slice(0, -1), errorMsg];
-                                });
-                                break;
-                        }
+									let updatedPlan = lastMsg.plan ?? null;
+									if (!updatedPlan) {
+										const strategyPattern = /^(Stratégie[\s\S]*?)(?:\r?\n\r?\n|$)/i;
+										const match = chunk.match(strategyPattern);
+										if (match) {
+											updatedPlan = match[1].trim();
+											chunk = chunk.slice(match[0].length);
+										} else if (chunk.trim().toLowerCase().startsWith("stratégie")) {
+											updatedPlan = chunk.trim();
+											chunk = "";
+										}
+									}
+
+									const newLastMsg: ChatMsg = {
+										...lastMsg,
+										plan: updatedPlan,
+										content: (lastMsg.content ?? "") + chunk,
+										isStreaming: true,
+									};
+									return [...prev.slice(0, -1), newLastMsg];
+								});
+								break;
+
+							case "done":
+								setSending(false);
+								setMessages((prev) => {
+									if (prev.length === 0) return prev;
+									const lastMsg = prev[prev.length - 1];
+									if (lastMsg.role !== "assistant") return prev;
+									const newLastMsg: ChatMsg = {
+										...lastMsg,
+										isStreaming: false,
+										status: null,
+									};
+									return [...prev.slice(0, -1), newLastMsg];
+								});
+								break;
+
+							case "error":
+								console.error("Received error from server:", data);
+								setMessages((prev) => {
+									if (prev.length === 0) return prev;
+									const lastMsg = prev[prev.length - 1];
+									if (lastMsg.role !== "assistant") return prev;
+									const message = typeof data === "string" ? data : String(data ?? "");
+									const errorMsg: ChatMsg = {
+										...lastMsg,
+										content: `Erreur du serveur: ${message}`,
+										isStreaming: false,
+										status: null,
+									};
+									return [...prev.slice(0, -1), errorMsg];
+								});
+								setSending(false);
+								break;
+						}
                     } catch (parseErr) {
                         console.error("Failed to parse SSE data chunk:", event.data, parseErr);
                     }
@@ -477,20 +558,23 @@ export default function AssistantPage() {
                     setSending(false);
                 },
 
-                onerror(err) {
-                    console.error("SSE connection error:", err);
-                    setMessages((prev) => {
-                        if (prev.length === 0) return prev;
-                        const lastMsg = prev[prev.length - 1];
-                        if (lastMsg.role !== "assistant") return prev;
-                        const errorMsg: ChatMsg = {
-                            ...lastMsg,
-                            content: t("assistant.errors.connection"),
-                        };
-                        return [...prev.slice(0, -1), errorMsg];
-                    });
-                    setSending(false);
-                    throw err;
+				onerror(err) {
+					console.error("SSE connection error:", err);
+					setMessages((prev) => {
+						if (prev.length === 0) return prev;
+						const lastMsg = prev[prev.length - 1];
+						if (lastMsg.role !== "assistant") return prev;
+						const fallback = t("assistant.errors.connection");
+						const errorMsg: ChatMsg = {
+							...lastMsg,
+							content: lastMsg.content ? `${lastMsg.content}\n\n${fallback}` : fallback,
+							isStreaming: false,
+							status: null,
+						};
+						return [...prev.slice(0, -1), errorMsg];
+					});
+					setSending(false);
+					throw err;
                 },
             });
         } catch (error) {
@@ -634,12 +718,35 @@ export default function AssistantPage() {
                             key={idx}
                             className={`flex ${m.role === "user" ? "justify-end" : "flex-col items-start"}`}
                         >
-                            {m.role === "assistant" && m.agentSteps && m.agentSteps.length > 0 && (
-                                <div className="mb-2 w-full max-w-[80%]">
-                                    <details className="rounded-lg bg-gray-100 dark:bg-slate-800 p-2">
-                                        <summary className="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-400">
-                                            {t("assistant.agentReasoning.summary")}
-                                        </summary>
+							{m.role === "assistant" && m.status && m.isStreaming && (
+								<div className="mb-1 w-full max-w-[80%] text-xs text-indigo-500 dark:text-indigo-300">
+									<span className="mr-2 uppercase tracking-wide text-[10px] font-semibold">
+										{t("assistant.agentReasoning.liveStatus")}
+									</span>
+									<span>{m.status}</span>
+								</div>
+							)}
+
+							{m.role === "assistant" && m.plan && (
+								<div className="mb-2 w-full max-w-[80%] rounded-lg border border-indigo-200/60 bg-indigo-50/60 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-500/40 dark:bg-slate-800/60 dark:text-indigo-100">
+									<p className="uppercase tracking-wide text-[10px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1">
+										{t("assistant.agentReasoning.planTitle")}
+									</p>
+									<ReactMarkdown
+										remarkPlugins={[remarkGfm]}
+										className="prose prose-sm dark:prose-invert"
+									>
+										{m.plan}
+									</ReactMarkdown>
+								</div>
+							)}
+
+							{m.role === "assistant" && m.agentSteps && m.agentSteps.length > 0 && (
+								<div className="mb-2 w-full max-w-[80%]">
+									<details className="rounded-lg bg-gray-100 dark:bg-slate-800 p-2">
+										<summary className="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-400">
+											{t("assistant.agentReasoning.summary")}
+										</summary>
                                         <div className="mt-2 space-y-2">
                                             {m.agentSteps.map((step, stepIdx) => (
                                                 <div

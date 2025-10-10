@@ -27,6 +27,11 @@ export class LlmService {
         return `${userIri}::${ontologyIri ?? "default"}::${sessionId ?? "default"}`;
     }
 
+    private isLikelyIri(value?: string | null): value is string {
+        if (!value) return false;
+        return /^https?:\/\//i.test(value);
+    }
+
     private getOrCreateRepresentation(userIri: string, ontologyIri?: string, sessionId?: string): ResultRepresentation {
         const key = this.makeContextKey(userIri, ontologyIri, sessionId);
         let rep = this.representations.get(key);
@@ -409,7 +414,9 @@ export class LlmService {
                             })),
                             max_results: sanitizedMax,
                         });
-                        nodes = await request.fetch(this.http, this.FUSEKI_SPARQL, onto);
+                        nodes = (await request.fetch(this.http, this.FUSEKI_SPARQL, onto)).filter(
+                            (node) => this.isLikelyIri(node?.uri)
+                        );
                     } else {
                         if (!keywords || keywords.length === 0) {
                             return "Erreur : au moins un mot-clé est requis pour la recherche.";
@@ -418,6 +425,9 @@ export class LlmService {
                         const firstHits = results.slice(0, sanitizedMax);
                         const covered = new Set<string>();
                         for (const hit of firstHits) {
+                            if (!this.isLikelyIri(hit.uri)) {
+                                continue;
+                            }
                             try {
                                 const node = await buildNodeFromUri(this.http, this.FUSEKI_SPARQL, onto, hit.uri);
                                 if (covered.has(node.uri)) continue;
@@ -508,7 +518,13 @@ export class LlmService {
                         ontologyIri: onto || ontologyIri,
                         sessionId,
                     });
-                    const uniqueUris = Array.from(new Set((normalizedUris.length ? normalizedUris : uris).filter(Boolean)));
+                    const baseCandidates = normalizedUris.length ? normalizedUris : uris;
+                    const uniqueUris = Array.from(
+                        new Set(baseCandidates.filter((uri) => this.isLikelyIri(uri)))
+                    );
+                    if (uniqueUris.length === 0) {
+                        return "Erreur : aucune URI valide n'a été fournie pour créer le graph de debug.";
+                    }
                     if (uniqueUris.length === 0) {
                         return "Erreur : aucune URI valide n'a été fournie.";
                     }
@@ -527,6 +543,8 @@ export class LlmService {
                             }
                         }
                     }
+
+                    nodes = nodes.filter((node) => this.isLikelyIri(node?.uri));
 
                     this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
 

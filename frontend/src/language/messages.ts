@@ -934,6 +934,16 @@ const definitions = {
 		en: "Observation in progress...",
 		es: "Observación en curso...",
 	},
+	"assistant.agentReasoning.planTitle": {
+		fr: "Stratégie",
+		en: "Strategy",
+		es: "Estrategia",
+	},
+	"assistant.agentReasoning.liveStatus": {
+		fr: "Progression",
+		en: "Live status",
+		es: "Estado en vivo",
+	},
 	"assistant.input.placeholder": {
 		fr: "Posez votre question (Maj+Entrée pour nouvelle ligne)…",
 		en: "Ask your question (Shift+Enter for a new line)…",
