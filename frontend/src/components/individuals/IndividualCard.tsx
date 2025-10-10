@@ -7,28 +7,52 @@ import CommentBlock from "../comment/CommentComponent";
 import { v4 as uuidv4 } from "uuid";
 import { useApi } from "../../lib/api";
 
-// Fonction utilitaire pour transformer [PDF:nom.pdf] en lien cliquable
+// Fonction utilitaire pour transformer [PDF:nom.pdf] en bouton cliquable et URLs PDF en liens
 export function renderCommentWithPdfLinks(text: string, pdfs: { url: string, originalName: string }[]) {
-	return text.split(/(\[PDF:[^\]]+\])/g).map((part, i) => {
+	// Regex pour détecter les URLs PDF (http/https avec extension .pdf)
+	const pdfUrlRegex = /(https?:\/\/[^\s]+\.pdf)/gi;
+	
+	// Première étape : transformer les mentions [PDF:nom.pdf]
+	let processedText = text.split(/(\[PDF:[^\]]+\])/g).map((part, i) => {
 		const match = part.match(/^\[PDF:(.+)\]$/);
 		if (match) {
 			const pdf = pdfs.find(p => p.originalName === match[1]);
 			if (pdf) {
 				return (
-					<a
-						key={i}
-						href={pdf.url}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="text-blue-700 hover:underline"
+					<button
+						key={`mention-${i}`}
+						type="button"
+						data-pdf-url={pdf.url}
+						className="text-blue-700 hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit pdf-mention-btn"
 					>
 						{pdf.originalName}
-					</a>
+					</button>
 				);
 			}
 		}
+		// Deuxième étape : transformer les URLs PDF brutes dans cette partie
+		if (typeof part === 'string' && pdfUrlRegex.test(part)) {
+			return part.split(pdfUrlRegex).map((segment, j) => {
+				if (segment.match(pdfUrlRegex)) {
+					return (
+						<a
+							key={`url-${i}-${j}`}
+							href={segment}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-blue-700 hover:underline cursor-pointer"
+						>
+							{segment}
+						</a>
+					);
+				}
+				return segment;
+			});
+		}
 		return part;
 	});
+	
+	return processedText;
 }
 
 const IndividualCard: React.FC<{
@@ -147,6 +171,16 @@ const IndividualCard: React.FC<{
 	const [showPdfAutocomplete, setShowPdfAutocomplete] = useState(false);
 	const [pdfAutocompleteOptions, setPdfAutocompleteOptions] = useState(pdfs);
 	const [pdfAutocompleteIndex, setPdfAutocompleteIndex] = useState(0);
+
+	// États pour la modal PDF des documents associés
+	const [showPdfModal, setShowPdfModal] = useState(false);
+	const [currentPdfUrl, setCurrentPdfUrl] = useState<string>("");
+
+	// Handler pour ouvrir la modal PDF
+	const openPdfModal = (pdfUrl: string) => {
+		setCurrentPdfUrl(pdfUrl);
+		setShowPdfModal(true);
+	};
 
 	// Détecte le déclencheur d'autocomplétion
 	const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -280,15 +314,14 @@ const IndividualCard: React.FC<{
 								<ul className="space-y-1">
 									{pdfs.map((pdf, idx) => (
 										<li key={idx}>
-											<a
-												href={pdf.url}
-												target="_blank"
-												rel="noopener noreferrer"
-												className="text-blue-700 hover:underline"
+											<button
+												type="button"
+												onClick={() => openPdfModal(pdf.url)}
+												className="text-blue-700 hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
 											>
 												{pdf.originalName}
-											</a>
-											<span className="ml-2 text-xs text-gray-400">(ouvrir dans un nouvel onglet)</span>
+											</button>
+											<span className="ml-2 text-xs text-gray-400">(cliquer pour prévisualiser)</span>
 										</li>
 									))}
 								</ul>
@@ -499,6 +532,22 @@ const IndividualCard: React.FC<{
 							Aucune donnée disponible
 						</p>
 					)}
+				</div>
+			)}
+
+			{/* Modal PDF pour les documents associés */}
+			{showPdfModal && currentPdfUrl && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+					<div className="bg-white dark:bg-slate-900 rounded shadow-lg p-6 max-w-5xl w-full relative">
+						<button
+							onClick={() => setShowPdfModal(false)}
+							className="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-red-500 text-2xl"
+							title="Fermer"
+						>
+							✖
+						</button>
+						<PdfViewer fileUrl={currentPdfUrl} height={window.innerHeight * 0.8 - 100} />
+					</div>
 				</div>
 			)}
 		</div>

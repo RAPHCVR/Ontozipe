@@ -43,9 +43,26 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 	const [replying, setReplying] = useState(false);
 	const [replyDraft, setReplyDraft] = useState("");
 
-	// PDF modal state and match
+	// PDF modal state (uniquement pour les mentions [PDF:...])
 	const [showPdfModal, setShowPdfModal] = useState(false);
-	const pdfMatch = comment.body.match(/https?:\/\/[^\s]+\.pdf/);
+	const [currentPdfUrl, setCurrentPdfUrl] = useState<string>("");
+
+	// Rendu du corps du commentaire
+	const renderedBody = renderBody ? renderBody(comment.body) : comment.body;
+
+	// Handler pour intercepter les clics sur les boutons PDF mentions (modal)
+	const handleCommentClick = (e: React.MouseEvent) => {
+		const target = e.target as HTMLElement;
+		if (target.classList.contains('pdf-mention-btn')) {
+			e.preventDefault();
+			e.stopPropagation();
+			const pdfUrl = target.getAttribute('data-pdf-url');
+			if (pdfUrl) {
+				setCurrentPdfUrl(pdfUrl);
+				setShowPdfModal(true);
+			}
+		}
+	};
 
 	const authorNode = snapshot.persons.find((p) => p.id === comment.createdBy);
 	const authorName =
@@ -58,7 +75,8 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 	return (
 		<div
 			style={{ marginLeft: level * 16 }}
-			className="pb-3 mb-3 text-sm max-w-prose border-l-2 pl-3 border-b border-slate-200 dark:border-slate-700">
+			className="pb-3 mb-3 text-sm max-w-prose border-l-2 pl-3 border-b border-slate-200 dark:border-slate-700"
+			onClick={handleCommentClick}>
 			<div className="flex-1 space-y-0.5">
 				<div className="flex items-center gap-2">
 					<span className="font-semibold">{formatLabel(authorName)}</span>
@@ -98,22 +116,13 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 					</div>
 				   ) : (
 					   <p className="whitespace-pre-wrap">
-						   {renderBody ? renderBody(comment.body) : comment.body}
+						   {renderedBody}
 					   </p>
 				   )}
 				<div className="flex items-center gap-3 text-xs text-sky-600">
 					<button onClick={() => setReplying((v) => !v)} title="Répondre">
 						Repondre
 					</button>
-					{pdfMatch && !editing && (
-						<button
-							onClick={() => setShowPdfModal(true)}
-							title="Voir le PDF"
-							className="text-yellow-700 bg-yellow-100 border border-yellow-300 rounded px-2 py-1 hover:bg-yellow-200"
-						>
-							📄
-						</button>
-					)}
 					{isAuthor && !editing && (
 						<>
 							<button onClick={() => setEditing(true)} title="Modifier">
@@ -165,8 +174,8 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 				)}
 			</div>
 
-			{/* ----- PDF Modal ----- */}
-			{showPdfModal && pdfMatch && (
+			{/* ----- PDF Modal (uniquement pour mentions [PDF:...]) ----- */}
+			{showPdfModal && currentPdfUrl && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
 					<div className="bg-white dark:bg-slate-900 rounded shadow-lg p-6 max-w-5xl w-full relative">
 						<button
@@ -177,7 +186,7 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 							✖
 						</button>
 						<iframe
-							src={pdfMatch[0]}
+							src={currentPdfUrl}
 							title="Aperçu PDF"
 							className="w-full h-[80vh] border"
 							frameBorder="0"
@@ -223,6 +232,7 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 						onDelete={onDelete}
 						currentUserIri={currentUserIri}
 						level={level + 1}
+						renderBody={renderBody}
 					/>
 				))}
 		</div>
