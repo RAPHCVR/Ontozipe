@@ -7,13 +7,15 @@ interface PdfViewerProps {
 
 const PdfViewer: React.FC<PdfViewerProps> = ({ fileUrl, height = 400 }) => {
   if (!fileUrl) return null;
+  
   return (
     <iframe
       src={fileUrl}
       title="PDF Preview"
       width="100%"
       height={height}
-      style={{ border: "1px solid #ccc", borderRadius: 4 }}
+      className="border border-gray-300 dark:border-slate-600 rounded"
+      style={{ borderRadius: 4 }}
       allow="autoplay"
     />
   );

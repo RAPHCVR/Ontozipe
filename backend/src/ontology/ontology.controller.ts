@@ -202,11 +202,11 @@ class CreateCommentDto {
     @IsString() @IsNotEmpty()
     body!: string;
 
-    @IsUrl()
+    @IsUrl({ require_tld: false }, { message: 'onResource must be a URL address' })
     onResource!: string; // IRI de la ressource cible (obligatoire)
 
-    @IsOptional() @IsUrl()
-    replyTo?: string; // IRI du commentaire parent (optionnel)
+    @IsOptional() @IsString()
+    replyTo?: string; // IRI du commentaire parent (URN urn:uuid:... ou URL)
 
     @IsUrl()
     ontologyIri!: string;

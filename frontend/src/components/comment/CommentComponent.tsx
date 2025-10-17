@@ -3,6 +3,8 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { CommentNode, Snapshot } from "../../types";
 import { formatLabel } from "../../utils/formatLabel";
+import PdfModal from "../pdf/PdfModal";
+import { usePdfModal } from "../../hooks/usePdfModal";
 
 dayjs.extend(relativeTime);
 
@@ -20,6 +22,8 @@ type CommentBlockProps = {
 	currentUserIri: string;
 	level?: number;
 	renderBody?: (body: string) => React.ReactNode;
+	ontologyIri?: string;
+	availablePdfs?: {url: string, originalName: string}[];
 };
 
 const CommentBlock: React.FC<CommentBlockProps> = ({
@@ -32,6 +36,8 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 	currentUserIri,
 	level = 0,
 	renderBody,
+	ontologyIri,
+	availablePdfs = [],
 }) => {
 	const replies = allComments.filter((c) => c.replyTo === comment.id);
 	const [showReplies, setShowReplies] = useState(false);
@@ -42,10 +48,14 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 
 	const [replying, setReplying] = useState(false);
 	const [replyDraft, setReplyDraft] = useState("");
+	
+	// États pour l'auto-complétion @pdf avec navigation clavier
+	const [pdfSuggestions, setPdfSuggestions] = useState<{ url: string; originalName: string }[]>([]);
+	const [selectedPdfIndex, setSelectedPdfIndex] = useState(0);
+	const [showPdfSuggestions, setShowPdfSuggestions] = useState(false);
 
-	// PDF modal state (uniquement pour les mentions [PDF:...])
-	const [showPdfModal, setShowPdfModal] = useState(false);
-	const [currentPdfUrl, setCurrentPdfUrl] = useState<string>("");
+	// Hook pour gérer la modal PDF (uniquement pour les mentions [PDF:...])
+	const { isOpen: showPdfModal, pdfUrl: currentPdfUrl, pdfName: currentPdfName, openModal: openPdfModal, closeModal: closePdfModal } = usePdfModal();
 
 	// Rendu du corps du commentaire
 	const renderedBody = renderBody ? renderBody(comment.body) : comment.body;
@@ -57,11 +67,71 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 			e.preventDefault();
 			e.stopPropagation();
 			const pdfUrl = target.getAttribute('data-pdf-url');
+			const pdfName = target.textContent;
 			if (pdfUrl) {
-				setCurrentPdfUrl(pdfUrl);
-				setShowPdfModal(true);
+				openPdfModal(pdfUrl, pdfName || undefined);
 			}
 		}
+	};
+
+	// Fonction pour gérer les changements dans la zone de réponse avec auto-complétion @pdf
+	const handleReplyTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+		const value = e.target.value;
+		setReplyDraft(value);
+		
+		// Détecter @pdf pour afficher suggestions
+		const cursorPosition = e.target.selectionStart;
+		const beforeCursor = value.slice(0, cursorPosition);
+		const match = beforeCursor.match(/@pdf\s*$/i);
+		
+		if (match && availablePdfs.length > 0) {
+			setPdfSuggestions(availablePdfs);
+			setSelectedPdfIndex(0); // Toujours réinitialiser à 0
+			setShowPdfSuggestions(true);
+		} else {
+			setShowPdfSuggestions(false);
+			setSelectedPdfIndex(0);
+		}
+	};
+
+	// Fonction pour gérer la navigation au clavier dans les suggestions
+	const handleReplyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+		if (showPdfSuggestions && pdfSuggestions.length > 0) {
+			switch (e.key) {
+				case 'ArrowDown':
+					e.preventDefault();
+					setSelectedPdfIndex(prev => (prev + 1) % pdfSuggestions.length);
+					break;
+				case 'ArrowUp':
+					e.preventDefault();
+					setSelectedPdfIndex(prev => (prev - 1 + pdfSuggestions.length) % pdfSuggestions.length);
+					break;
+				case 'Enter':
+					e.preventDefault();
+					const selectedPdf = pdfSuggestions[selectedPdfIndex];
+					insertPdfMention(selectedPdf);
+					break;
+				case 'Escape':
+					setShowPdfSuggestions(false);
+					setSelectedPdfIndex(0);
+					break;
+			}
+		}
+	};
+
+	// Fonction pour insérer une mention PDF
+	const insertPdfMention = (pdf: {url: string, originalName: string}) => {
+		const cursorPosition = replyDraft.length; // Position à la fin pour simplifier
+		const beforeCursor = replyDraft.slice(0, cursorPosition);
+		const afterCursor = replyDraft.slice(cursorPosition);
+		
+		// Remplacer @pdf par [PDF:filename]
+		const beforeMatch = beforeCursor.replace(/@pdf\s*$/i, '');
+		const newValue = `${beforeMatch}[PDF:${pdf.originalName}]${afterCursor}`;
+		
+		setReplyDraft(newValue);
+		setShowPdfSuggestions(false);
+		setSelectedPdfIndex(0); // Réinitialiser après insertion
 	};
 
 	const authorNode = snapshot.persons.find((p) => p.id === comment.createdBy);
@@ -138,14 +208,35 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 					)}
 				</div>
 				{replying && (
-					<div className="mt-2">
+					<div className="mt-2 relative">
 						<textarea
 							value={replyDraft}
-							onChange={(e) => setReplyDraft(e.target.value)}
+							onChange={handleReplyTextChange}
+							onKeyDown={handleReplyKeyDown}
 							rows={3}
 							className="w-full text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none"
-							placeholder="Votre réponse…"
+							placeholder="Votre réponse… (tapez @pdf pour suggérer des documents)"
 						/>
+						
+						{/* Suggestions @pdf */}
+						{showPdfSuggestions && pdfSuggestions.length > 0 && (
+							<ul className="absolute left-0 top-full z-50 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded shadow w-64 max-h-40 overflow-auto text-xs mt-1">
+								{pdfSuggestions.map((pdf, index) => (
+									<li
+										key={pdf.url}
+										className={
+											"px-2 py-1 cursor-pointer " +
+											(index === selectedPdfIndex
+												? "bg-indigo-600 text-white"
+												: "hover:bg-indigo-100 dark:hover:bg-slate-700")
+										}
+										onMouseDown={() => insertPdfMention(pdf)}
+									>
+										{pdf.originalName}
+									</li>
+								))}
+							</ul>
+						)}
 						<div className="flex gap-2 justify-end mt-1">
 							<button
 								disabled={!replyDraft.trim()}
@@ -154,6 +245,8 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 										onAddReply(comment, replyDraft.trim());
 										setReplyDraft("");
 										setReplying(false);
+										setShowPdfSuggestions(false);
+										setSelectedPdfIndex(0);
 									}
 								}}
 								title="Envoyer"
@@ -164,6 +257,8 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 								onClick={() => {
 									setReplying(false);
 									setReplyDraft("");
+									setShowPdfSuggestions(false);
+									setSelectedPdfIndex(0);
 								}}
 								title="Annuler"
 								className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-xs rounded">
@@ -174,26 +269,16 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 				)}
 			</div>
 
-			{/* ----- PDF Modal (uniquement pour mentions [PDF:...]) ----- */}
-			{showPdfModal && currentPdfUrl && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-					<div className="bg-white dark:bg-slate-900 rounded shadow-lg p-6 max-w-5xl w-full relative">
-						<button
-							onClick={() => setShowPdfModal(false)}
-							className="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-red-500 text-2xl"
-							title="Fermer"
-						>
-							✖
-						</button>
-						<iframe
-							src={currentPdfUrl}
-							title="Aperçu PDF"
-							className="w-full h-[80vh] border"
-							frameBorder="0"
-						></iframe>
-					</div>
-				</div>
-			)}
+			{/* Modal PDF unifiée (uniquement pour mentions [PDF:...]) */}
+
+			<PdfModal
+				isOpen={showPdfModal}
+				pdfUrl={currentPdfUrl}
+				pdfName={currentPdfName}
+				onClose={closePdfModal}
+				ontologyIri={ontologyIri}
+				snapshot={snapshot}
+			/>
 
 			{/* ----- link to show/hide replies ----- */}
 			{replies.length > 0 && (
@@ -233,6 +318,8 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 						currentUserIri={currentUserIri}
 						level={level + 1}
 						renderBody={renderBody}
+						ontologyIri={ontologyIri}
+						availablePdfs={availablePdfs}
 					/>
 				))}
 		</div>

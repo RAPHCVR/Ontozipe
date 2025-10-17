@@ -1,11 +1,12 @@
 import React, { useMemo, useState, useEffect } from "react";
-import PdfViewer from "../PdfViewer";
 import { IndividualNode, Snapshot, CommentNode } from "../../types";
 import { formatLabel } from "../../utils/formatLabel";
 import { useAuth } from "../../auth/AuthContext";
 import CommentBlock from "../comment/CommentComponent";
 import { v4 as uuidv4 } from "uuid";
 import { useApi } from "../../lib/api";
+import PdfModal from "../pdf/PdfModal";
+import { usePdfModal } from "../../hooks/usePdfModal";
 
 // Fonction utilitaire pour transformer [PDF:nom.pdf] en bouton cliquable et URLs PDF en liens
 export function renderCommentWithPdfLinks(text: string, pdfs: { url: string, originalName: string }[]) {
@@ -25,7 +26,7 @@ export function renderCommentWithPdfLinks(text: string, pdfs: { url: string, ori
 						data-pdf-url={pdf.url}
 						className="text-blue-700 hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit pdf-mention-btn"
 					>
-						{pdf.originalName}
+						📄 {pdf.originalName}
 					</button>
 				);
 			}
@@ -172,15 +173,8 @@ const IndividualCard: React.FC<{
 	const [pdfAutocompleteOptions, setPdfAutocompleteOptions] = useState(pdfs);
 	const [pdfAutocompleteIndex, setPdfAutocompleteIndex] = useState(0);
 
-	// États pour la modal PDF des documents associés
-	const [showPdfModal, setShowPdfModal] = useState(false);
-	const [currentPdfUrl, setCurrentPdfUrl] = useState<string>("");
-
-	// Handler pour ouvrir la modal PDF
-	const openPdfModal = (pdfUrl: string) => {
-		setCurrentPdfUrl(pdfUrl);
-		setShowPdfModal(true);
-	};
+	// Hook pour gérer la modal PDF
+	const { isOpen: showPdfModal, pdfUrl: currentPdfUrl, pdfName: currentPdfName, openModal: openPdfModal, closeModal: closePdfModal } = usePdfModal();
 
 	// Détecte le déclencheur d'autocomplétion
 	const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -316,7 +310,7 @@ const IndividualCard: React.FC<{
 										<li key={idx}>
 											<button
 												type="button"
-												onClick={() => openPdfModal(pdf.url)}
+												onClick={() => openPdfModal(pdf.url, pdf.originalName)}
 												className="text-blue-700 hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
 											>
 												{pdf.originalName}
@@ -521,6 +515,8 @@ const IndividualCard: React.FC<{
 																onEdit={handleEditComment}
 																onDelete={handleDeleteComment}
 																currentUserIri={currentUserIri || ""}
+																ontologyIri={ontologyIri}
+																availablePdfs={pdfs}
 																renderBody={(body: string) => renderCommentWithPdfLinks(body, pdfs)}
 															/>
 														))}
@@ -535,21 +531,15 @@ const IndividualCard: React.FC<{
 				</div>
 			)}
 
-			{/* Modal PDF pour les documents associés */}
-			{showPdfModal && currentPdfUrl && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-					<div className="bg-white dark:bg-slate-900 rounded shadow-lg p-6 max-w-5xl w-full relative">
-						<button
-							onClick={() => setShowPdfModal(false)}
-							className="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-red-500 text-2xl"
-							title="Fermer"
-						>
-							✖
-						</button>
-						<PdfViewer fileUrl={currentPdfUrl} height={window.innerHeight * 0.8 - 100} />
-					</div>
-				</div>
-			)}
+			{/* Modal PDF unifiée avec commentaires */}
+			<PdfModal
+				isOpen={showPdfModal}
+				pdfUrl={currentPdfUrl}
+				pdfName={currentPdfName}
+				onClose={closePdfModal}
+				ontologyIri={ontologyIri}
+				snapshot={snapshot}
+			/>
 		</div>
 	);
 };
