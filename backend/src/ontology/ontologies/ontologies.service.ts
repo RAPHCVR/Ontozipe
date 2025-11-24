@@ -187,7 +187,7 @@ export class OntologiesService extends OntologyBaseService {
             query: `
                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
                 PREFIX owl:  <http://www.w3.org/2002/07/owl#>
-                SELECT ?s ?sLabel ?o ?oLabel WHERE {
+                SELECT DISTINCT ?s ?sLabel ?o ?oLabel WHERE {
                   GRAPH <${ontologyIri}> {
                     ?s rdfs:subClassOf ?o .
                     FILTER(isIRI(?s) && isIRI(?o))

@@ -812,6 +812,88 @@ const definitions = {
 		en: "Ontology:",
 		es: "Ontología:",
 	},
+	"assistant.sessions.current": {
+		fr: "Conversation :",
+		en: "Conversation:",
+		es: "Conversación:",
+	},
+	"assistant.sessions.new": {
+		fr: "Nouvelle conversation",
+		en: "New conversation",
+		es: "Nueva conversación",
+	},
+	"assistant.sessions.rename": { fr: "Renommer", en: "Rename", es: "Renombrar" },
+	"assistant.sessions.delete": { fr: "Supprimer", en: "Delete", es: "Eliminar" },
+	"assistant.sessions.emptyState": {
+		fr: "Aucune conversation",
+		en: "No conversations yet",
+		es: "Sin conversaciones",
+	},
+	"assistant.sessions.created": {
+		fr: "Nouvelle conversation créée.",
+		en: "New conversation created.",
+		es: "Nueva conversación creada.",
+	},
+	"assistant.sessions.renamed": {
+		fr: "Conversation renommée.",
+		en: "Conversation renamed.",
+		es: "Conversación renombrada.",
+	},
+	"assistant.sessions.deleted": {
+		fr: "Conversation supprimée.",
+		en: "Conversation deleted.",
+		es: "Conversación eliminada.",
+	},
+	"assistant.sessions.renamePrompt": {
+		fr: "Renommer la conversation :",
+		en: "Rename conversation:",
+		es: "Renombrar la conversación:",
+	},
+	"assistant.sessions.deleteConfirm": {
+		fr: "Supprimer la conversation « {{title}} » ?",
+		en: "Delete conversation \"{{title}}\"?",
+		es: "¿Eliminar la conversación \"{{title}}\"?",
+	},
+	"assistant.sessions.errors.load": {
+		fr: "Impossible de charger les conversations.",
+		en: "Unable to load conversations.",
+		es: "No se pudieron cargar las conversaciones.",
+	},
+	"assistant.sessions.errors.create": {
+		fr: "Impossible de créer la conversation.",
+		en: "Unable to create the conversation.",
+		es: "No se pudo crear la conversación.",
+	},
+	"assistant.sessions.errors.rename": {
+		fr: "Erreur lors du renommage de la conversation.",
+		en: "Could not rename the conversation.",
+		es: "No se pudo renombrar la conversación.",
+	},
+	"assistant.sessions.errors.renameEmpty": {
+		fr: "Le nom ne peut pas être vide.",
+		en: "Name cannot be empty.",
+		es: "El nombre no puede estar vacío.",
+	},
+	"assistant.sessions.errors.delete": {
+		fr: "Impossible de supprimer la conversation.",
+		en: "Unable to delete the conversation.",
+		es: "No se pudo eliminar la conversación.",
+	},
+	"assistant.sessions.errors.deleteLast": {
+		fr: "Vous devez conserver au moins une conversation.",
+		en: "You must keep at least one conversation.",
+		es: "Debes conservar al menos una conversación.",
+	},
+	"assistant.sessions.errors.noActive": {
+		fr: "Aucune conversation active. Créez-en une pour démarrer.",
+		en: "No active conversation. Create one to start.",
+		es: "No hay conversación activa. Crea una para comenzar.",
+	},
+	"assistant.sessions.errors.loadMessages": {
+		fr: "Impossible de charger l'historique de la conversation.",
+		en: "Unable to load conversation history.",
+		es: "No se pudo cargar el historial de la conversación.",
+	},
 	"assistant.systemPrompt.title": {
 		fr: "Prompt système",
 		en: "System prompt",
@@ -851,6 +933,16 @@ const definitions = {
 		fr: "Observation en cours...",
 		en: "Observation in progress...",
 		es: "Observación en curso...",
+	},
+	"assistant.agentReasoning.planTitle": {
+		fr: "Stratégie",
+		en: "Strategy",
+		es: "Estrategia",
+	},
+	"assistant.agentReasoning.liveStatus": {
+		fr: "Progression",
+		en: "Live status",
+		es: "Estado en vivo",
 	},
 	"assistant.input.placeholder": {
 		fr: "Posez votre question (Maj+Entrée pour nouvelle ligne)…",
