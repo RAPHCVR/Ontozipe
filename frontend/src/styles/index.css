@@ -4,9 +4,6 @@
 /* Importe le thème (variables, etc.) de Tailwind v4 */
 @import "tailwindcss/theme.css";
 
-/* Google Font */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
-
 /* Charge le plugin typography pour Tailwind v4 */
 @plugin "@tailwindcss/typography";
 

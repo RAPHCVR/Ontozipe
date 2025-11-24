@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { IndividualNode, Snapshot, CommentNode } from "../../types";
 import { formatLabel } from "../../utils/formatLabel";
 import { useAuth } from "../../auth/AuthContext";
@@ -13,6 +13,7 @@ const IndividualCard: React.FC<{
 	onShow: (target: IndividualNode) => void;
 	idx: number;
 	defaultOpen?: boolean;
+	highlighted?: boolean;
 	onEdit: (ind: IndividualNode) => void;
 	onDelete: (ind: IndividualNode) => void;
 }> = ({
@@ -21,6 +22,7 @@ const IndividualCard: React.FC<{
 	onShow,
 	idx,
 	defaultOpen = false,
+	highlighted = false,
 	onEdit,
 	onDelete,
 }) => {
@@ -79,12 +81,24 @@ const IndividualCard: React.FC<{
 	// état d’ouverture de la carte
 	const [open, setOpen] = useState(defaultOpen);
 
+	const cardRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		setOpen(defaultOpen);
+	}, [defaultOpen]);
+
 	// récupère les commentaires dès que la carte s'ouvre ou change de ressource
 	useEffect(() => {
 		if (open) {
 			fetchComments();
 		}
 	}, [open, ind.id, ontologyIri]);
+
+	useEffect(() => {
+		if ((defaultOpen || highlighted) && cardRef.current) {
+			cardRef.current.scrollIntoView({ block: "start", behavior: "smooth" });
+		}
+	}, [defaultOpen, highlighted]);
 
 	// saisie rapide d'un nouveau commentaire
 	const [draftComment, setDraftComment] = useState("");
@@ -150,11 +164,12 @@ const IndividualCard: React.FC<{
 	if (!hasData) {
 		return (
 			<div
+				ref={cardRef}
 				className={`p-3 pl-4 border-l-4 border-indigo-500 ${
 					idx % 2 === 0
 						? "bg-white dark:bg-slate-700"
 						: "bg-slate-50 dark:bg-slate-800"
-				}`}>
+				} ${highlighted ? "ring-2 ring-offset-2 ring-indigo-300 dark:ring-indigo-500" : ""}`}>
 				<span className="font-medium">{formatLabel(ind.label)}</span>
 				<span className="text-gray-400 text-xs ml-2">({t("individual.noDataShort")})</span>
 			</div>
@@ -162,11 +177,12 @@ const IndividualCard: React.FC<{
 	} else {
 		return (
 			<div
+				ref={cardRef}
 				className={`p-3 pl-4 border-l-4 border-indigo-500 space-y-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors ${
 					idx % 2 === 0
 						? "bg-white dark:bg-slate-700"
 						: "bg-slate-50 dark:bg-slate-800"
-				}`}>
+				} ${highlighted ? "ring-2 ring-offset-2 ring-indigo-300 dark:ring-indigo-500" : ""}`}>
 				<div
 					className="flex items-center justify-between cursor-pointer"
 					onClick={() => setOpen((v: any) => !v)}>

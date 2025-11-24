@@ -11,6 +11,7 @@ import { useTranslation } from "../../language/useTranslation";
 const IndividualsPanel: React.FC<{
 	snapshot: Snapshot;
 	classId: string | null;
+	focusedIndividualId?: string | null;
 	onShow: (ind: IndividualNode) => void;
 	onCreate: (classId: string) => void;
 	onEdit: (ind: IndividualNode) => void;
@@ -20,6 +21,7 @@ const IndividualsPanel: React.FC<{
 }> = ({
 	snapshot,
 	classId,
+	focusedIndividualId,
 	onShow,
 	onCreate,
 	onEdit,
@@ -160,6 +162,8 @@ const IndividualsPanel: React.FC<{
 						onEdit={onEdit}
 						onDelete={onDelete}
 						idx={index}
+						defaultOpen={ind.id === focusedIndividualId}
+						highlighted={ind.id === focusedIndividualId}
 					/>
 				))}
 			</div>
