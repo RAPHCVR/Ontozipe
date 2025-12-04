@@ -184,6 +184,17 @@ export class LlmController {
         }
     }
 
+    @Post("dashboard-summary")
+    async summarizeDashboard(
+        @Req() req: AuthRequest,
+        @Body() body: { section: string; payload: unknown; language?: string }
+    ) {
+        const section = body.section || "dashboard";
+        const lang = body.language || "fr";
+        const summary = await this.llmService.summarizeDashboard(section, body.payload, lang);
+        return { summary };
+    }
+
     @Post("ask")
     async ask(@Req() req: AuthRequest, @Body() dto: AskDto, @Res() res: Response) {
         if (!dto.idempotencyKey) {

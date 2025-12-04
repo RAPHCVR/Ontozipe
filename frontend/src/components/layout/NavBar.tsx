@@ -139,6 +139,11 @@ export default function Navbar() {
 						</Link>
 					</li>
 					<li className="navbar__item">
+						<Link to="/dashboard" className="navbar__link" onClick={closeMenu}>
+							{t("navbar.dashboard")}
+						</Link>
+					</li>
+					<li className="navbar__item">
 						<Link to="/assistant" className="navbar__link" onClick={closeMenu}>
 							{t("navbar.assistant")}
 						</Link>

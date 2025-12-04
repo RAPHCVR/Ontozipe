@@ -5,6 +5,7 @@ import { HttpModule } from "@nestjs/axios";
 import * as http from "http";
 import * as https from "https";
 import { LlmModule } from "./llm/llm.module";
+import { DashboardModule } from "./dashboard/dashboard.module";
 
 @Module({
     imports: [
@@ -18,6 +19,7 @@ import { LlmModule } from "./llm/llm.module";
         AuthModule,
         OntologyModule,
         LlmModule,
+        DashboardModule,
     ],
 })
 export class AppModule {}
