@@ -13,7 +13,7 @@ export class CreateCommentDto {
     onResource!: string;
 
     @IsOptional()
-    @IsUrl()
+    @IsString()
     replyTo?: string;
 
     @IsUrl()
@@ -24,4 +24,3 @@ export class CreateCommentDto {
     @IsUrl({}, { each: true })
     visibleToGroups?: string[];
 }
-

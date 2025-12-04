@@ -94,7 +94,9 @@ const CommentBlock: React.FC<{
 					<p className="whitespace-pre-wrap">{comment.body}</p>
 				)}
 				<div className="flex items-center gap-3 text-xs text-sky-600">
-					<button onClick={() => setReplying((v) => !v)} title={t("comment.replyAction")}>
+					<button
+						onClick={() => setReplying((v) => !v)}
+						title={t("comment.replyAction")}>
 						{t("comment.reply")}
 					</button>
 					{isAuthor && !editing && (
@@ -104,9 +106,9 @@ const CommentBlock: React.FC<{
 							</button>
 							<button
 								onClick={() => {
-								if (!window.confirm(t("comment.confirm.delete"))) return;
-								onDelete(comment);
-							}}
+									if (!window.confirm(t("comment.confirm.delete"))) return;
+									onDelete(comment);
+								}}
 								title={t("common.delete")}
 								className="text-red-500">
 								🗑️
@@ -158,8 +160,7 @@ const CommentBlock: React.FC<{
 						<button
 							onClick={() => setShowReplies(true)}
 							className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-							title={t("comment.showReplies")}
-						>
+							title={t("comment.showReplies")}>
 							↳
 							<span>
 								{replies.length === 1
@@ -171,8 +172,7 @@ const CommentBlock: React.FC<{
 						<button
 							onClick={() => setShowReplies(false)}
 							className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-							title={t("comment.hideReplies")}
-						>
+							title={t("comment.hideReplies")}>
 							↩︎
 							<span>{t("comment.hideReplies")}</span>
 						</button>

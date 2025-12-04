@@ -24,14 +24,17 @@ type ListItem = {
 	href?: string;
 };
 
-const PERIOD_PRESETS: Array<{ key: string; days?: number; labelKey: TranslationKey }> =
-	[
-		{ key: "7d", days: 7, labelKey: "dashboard.period.7d" },
-		{ key: "30d", days: 30, labelKey: "dashboard.period.30d" },
-		{ key: "90d", days: 90, labelKey: "dashboard.period.90d" },
-		{ key: "all", days: undefined, labelKey: "dashboard.period.all" },
-		{ key: "custom", days: undefined, labelKey: "dashboard.period.custom" },
-	];
+const PERIOD_PRESETS: Array<{
+	key: string;
+	days?: number;
+	labelKey: TranslationKey;
+}> = [
+	{ key: "7d", days: 7, labelKey: "dashboard.period.7d" },
+	{ key: "30d", days: 30, labelKey: "dashboard.period.30d" },
+	{ key: "90d", days: 90, labelKey: "dashboard.period.90d" },
+	{ key: "all", days: undefined, labelKey: "dashboard.period.all" },
+	{ key: "custom", days: undefined, labelKey: "dashboard.period.custom" },
+];
 
 const TABS: { key: TabKey; labelKey: TranslationKey }[] = [
 	{ key: "platform", labelKey: "dashboard.tabs.platform" },
@@ -296,11 +299,11 @@ export default function DashboardPage() {
 								</option>
 								<option value="group">{t("dashboard.scope.group")}</option>
 							</select>
-					{scopeType !== "all" && (
-						<select
-							value={scopeId ?? ""}
-							onChange={(e) => setScopeId(e.target.value || undefined)}
-							className="form-input">
+							{scopeType !== "all" && (
+								<select
+									value={scopeId ?? ""}
+									onChange={(e) => setScopeId(e.target.value || undefined)}
+									className="form-input">
 									<option value="">{t("dashboard.empty")}</option>
 									{scopeType === "ontology" &&
 										(ontologiesQuery.data ?? []).map((o) => (
@@ -357,7 +360,9 @@ export default function DashboardPage() {
 								onClose={() => setSummaryOpen(false)}
 								onSubmit={() => setSummaryOpen(false)}>
 								{summaryQuery.isLoading && (
-									<p className="dash-muted">{t("dashboard.state.loading")}</p>
+									<p className="flex items-center gap-2 text-sm text-gray-500">
+										<div className="page-state__spinner" aria-hidden />
+									</p>
 								)}
 								{summaryQuery.isError && (
 									<p className="dash-muted">{t("dashboard.state.error")}</p>
