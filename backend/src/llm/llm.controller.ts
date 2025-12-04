@@ -195,6 +195,25 @@ export class LlmController {
         return { summary };
     }
 
+    @Post("comment-summary")
+    async summarizeComments(
+        @Req() req: AuthRequest,
+        @Body()
+        body: {
+            individual: { id: string; label?: string; classId?: string; properties?: Array<{ predicate: string; value: string }> };
+            comments: Array<{ id: string; body: string; createdBy?: string; createdAt?: string; replyTo?: string; onResource?: string }>;
+            language?: string;
+        }
+    ) {
+        const lang = body.language || "fr";
+        const summary = await this.llmService.summarizeIndividualComments({
+            individual: body.individual,
+            comments: body.comments,
+            language: lang,
+        });
+        return { summary };
+    }
+
     @Post("ask")
     async ask(@Req() req: AuthRequest, @Body() dto: AskDto, @Res() res: Response) {
         if (!dto.idempotencyKey) {

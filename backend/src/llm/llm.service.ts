@@ -864,4 +864,48 @@ export class LlmService {
 		}
 		return "Résumé indisponible.";
 	}
+
+	public async summarizeIndividualComments(params: {
+		individual: {
+			label?: string;
+			properties?: Array<{ predicate: string; value: string }>;
+		};
+		comments: Array<{
+			body: string;
+			replyTo?: string;
+		}>;
+		language?: string;
+	}): Promise<string> {
+		const llm = this.buildModel();
+		const lang = params.language || "fr";
+		const system = [
+			"Tu es un assistant spécialisé dans la synthèse de discussions autour d'un individu RDF/OWL.",
+			"Tu reçois uniquement : le label de l'individu, quelques propriétés (pour contexte), et les commentaires (body + replyTo).",
+			"Rédige un tres court paragraphe, sans puces ni listes, qui synthétise UNIQUEMENT les commentaires.",
+			"Ensuite saute une ligne puis ajoute un court paragraphe qui met en lumiere les questionnements des commentaires ou incomprehension ou alors pour completer un sujet de discussion dans les commentaires",
+			"Ne parle pas de choses qui non pas ete cité dans les commantaires et soit bref, Ne pose pas de question, repond directement",
+		].join("\n");
+
+		const prompt = [
+			{ role: "system", content: system },
+			{
+				role: "user",
+				content: `Langue: ${lang}
+Individu (contexte) : ${JSON.stringify(params.individual)}
+Commentaires (body, replyTo) : ${JSON.stringify(params.comments)}`,
+			},
+		];
+
+		const res = await llm.invoke(prompt as any);
+		const content = (res as any)?.content;
+		if (typeof content === "string") return content;
+		if (Array.isArray(content)) {
+			return content
+				.map((c: any) =>
+					typeof c?.text === "string" ? c.text : typeof c === "string" ? c : ""
+				)
+				.join("");
+		}
+		return "Résumé indisponible.";
+	}
 }
