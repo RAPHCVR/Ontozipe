@@ -300,9 +300,11 @@ hr {
 	padding: 0.45rem 0.85rem;
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: 0.4rem;
 	cursor: pointer;
 	box-shadow: 0 6px 16px -12px rgba(15, 23, 42, 0.25);
+	text-align: center;
 }
 
 .dashboard-summary__popover {
@@ -414,12 +416,78 @@ hr {
 	background-color: #ffffff !important;
 	color: #0f172a !important;
 	border: 1px solid #d1d5db !important;
+	box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.4);
+}
+
+.assistant-page .assistant-message a,
+.assistant-page .assistant-system a {
+	color: #2563eb !important;
+	text-decoration: underline;
+	font-weight: 600;
+}
+
+.assistant-page .assistant-message--assistant.prose,
+.assistant-page .assistant-system {
+	--tw-prose-body: #0f172a;
+	--tw-prose-headings: #0f172a;
+	--tw-prose-links: #1d4ed8;
+	--tw-prose-bold: #0f172a;
+	--tw-prose-counters: #475569;
+	--tw-prose-bullets: #475569;
+	--tw-prose-hr: #cbd5f5;
+	--tw-prose-quotes: #0f172a;
+	--tw-prose-quote-borders: #e2e8f0;
+	--tw-prose-captions: #475569;
+	--tw-prose-code: #0f172a;
+	--tw-prose-pre-code: #0f172a;
+	--tw-prose-pre-bg: #f8fafc;
+	color: #0f172a;
+}
+
+.assistant-page .assistant-message--assistant.prose :where(p, ul, ol, li, strong, em, code, blockquote),
+.assistant-page .assistant-system :where(p, ul, ol, li, strong, em, code, blockquote) {
+	color: #0f172a !important;
+}
+
+.assistant-page .assistant-message--assistant.prose li::marker,
+.assistant-page .assistant-system li::marker {
+	color: #475569 !important;
+}
+
+.assistant-page .assistant-message--user.prose {
+	--tw-prose-body: #ffffff;
+	--tw-prose-headings: #ffffff;
+	--tw-prose-links: #c7d2fe;
+	--tw-prose-bold: #ffffff;
+	--tw-prose-counters: rgba(255, 255, 255, 0.85);
+	--tw-prose-bullets: rgba(255, 255, 255, 0.7);
+	--tw-prose-hr: rgba(255, 255, 255, 0.3);
+	--tw-prose-quotes: #ffffff;
+	--tw-prose-quote-borders: rgba(255, 255, 255, 0.3);
+	--tw-prose-captions: rgba(255, 255, 255, 0.85);
+	--tw-prose-code: #ffffff;
+	--tw-prose-pre-code: #ffffff;
+	--tw-prose-pre-bg: rgba(255, 255, 255, 0.1);
+	color: #ffffff;
+}
+
+.assistant-page .assistant-message--user.prose :where(p, ul, ol, li, strong, em, code, blockquote) {
+	color: #ffffff !important;
+}
+
+.assistant-page .assistant-message--user.prose li::marker {
+	color: rgba(255, 255, 255, 0.85) !important;
 }
 
 .assistant-page .assistant-message--user {
 	background-color: #4f46e5 !important;
 	border-color: #4338ca !important;
 	color: #ffffff !important;
+	box-shadow: 0 12px 30px -18px rgba(79, 70, 229, 0.55);
+}
+
+.assistant-page .assistant-agent-details summary {
+	color: #1e293b !important;
 }
 
 .assistant-page .assistant-input {
@@ -438,6 +506,10 @@ hr {
 	background-color: #0f172a !important;
 	border-color: #475569 !important;
 	color: #e2e8f0;
+}
+
+.dark .assistant-page .assistant-agent-details summary {
+	color: #e2e8f0 !important;
 }
 
 .dark .assistant-page .assistant-agent-step {
@@ -459,6 +531,65 @@ hr {
 	background-color: #0f172a !important;
 	border-color: #334155 !important;
 	color: #f8fafc !important;
+	box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.65);
+}
+
+.dark .assistant-page .assistant-message--user {
+	background-color: #4338ca !important;
+	border-color: #312e81 !important;
+	color: #fef9ff !important;
+	box-shadow: 0 12px 30px -18px rgba(49, 46, 129, 0.7);
+}
+
+.dark .assistant-page .assistant-message a,
+.dark .assistant-page .assistant-system a {
+	color: #93c5fd !important;
+}
+
+.dark .assistant-page .assistant-message--assistant.prose,
+.dark .assistant-page .assistant-system {
+	--tw-prose-body: #e2e8f0;
+	--tw-prose-headings: #ffffff;
+	--tw-prose-links: #93c5fd;
+	--tw-prose-bold: #ffffff;
+	--tw-prose-counters: #94a3b8;
+	--tw-prose-bullets: #94a3b8;
+	--tw-prose-hr: #334155;
+	--tw-prose-quotes: #f8fafc;
+	--tw-prose-quote-borders: #334155;
+	--tw-prose-captions: #94a3b8;
+	--tw-prose-code: #f8fafc;
+	--tw-prose-pre-code: #f8fafc;
+	--tw-prose-pre-bg: #0f172a;
+	color: #e2e8f0;
+}
+
+.dark .assistant-page .assistant-message--assistant.prose :where(p, ul, ol, li, strong, em, code, blockquote),
+.dark .assistant-page .assistant-system :where(p, ul, ol, li, strong, em, code, blockquote) {
+	color: #e2e8f0 !important;
+}
+
+.dark .assistant-page .assistant-message--assistant.prose li::marker,
+.dark .assistant-page .assistant-system li::marker {
+	color: #94a3b8 !important;
+}
+
+.dark .assistant-page .assistant-message--user.prose {
+	--tw-prose-body: #ffffff;
+	--tw-prose-headings: #ffffff;
+	--tw-prose-links: #e0e7ff;
+	--tw-prose-bold: #ffffff;
+	--tw-prose-counters: rgba(255, 255, 255, 0.85);
+	--tw-prose-bullets: rgba(255, 255, 255, 0.75);
+	color: #ffffff;
+}
+
+.dark .assistant-page .assistant-message--user.prose :where(p, ul, ol, li, strong, em, code, blockquote) {
+	color: #ffffff !important;
+}
+
+.dark .assistant-page .assistant-message--user.prose li::marker {
+	color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .dark .assistant-page .assistant-input {
@@ -466,7 +597,6 @@ hr {
 	border-color: #334155 !important;
 	color: #f8fafc !important;
 }
-
 .dash-list {
 	list-style: none;
 	padding: 0;

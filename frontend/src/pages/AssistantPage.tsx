@@ -802,8 +802,8 @@ export default function AssistantPage() {
             </div>
 
             <form onSubmit={handleSend} className="flex items-end gap-2">
-				<textarea
-					className="assistant-input flex-1 text-sm border rounded-md px-3 py-2 bg-white text-gray-900 border-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100"
+                <textarea
+                    className="assistant-input flex-1 text-sm border rounded-md px-3 py-2 bg-white text-gray-900 border-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100"
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
 					placeholder={t("assistant.input.placeholder")}

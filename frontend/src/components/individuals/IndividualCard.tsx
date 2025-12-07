@@ -8,6 +8,7 @@ import { useApi } from "../../lib/api";
 import { useTranslation } from "../../language/useTranslation";
 import { useCommentSummary } from "../../hooks/useCommentSummary";
 import SimpleModal from "../SimpleModal";
+import { SparklesIcon } from "@heroicons/react/24/solid";
 
 const IndividualCard: React.FC<{
 	ind: IndividualNode;
@@ -381,7 +382,7 @@ const IndividualCard: React.FC<{
 									type="button"
 									className="dashboard-summary__button"
 									onClick={() => setSummaryOpen(true)}>
-									<i className="fas fa-wand-magic-sparkles" aria-hidden />
+									<SparklesIcon className="h-4 w-4" aria-hidden="true" />
 									{t("dashboard.section.summary")}
 								</button>
 							</div>
