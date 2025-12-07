@@ -382,6 +382,91 @@ hr {
 	gap: 0.5rem;
 }
 
+/* Assistant page overrides */
+.assistant-page .assistant-system {
+	background-color: #ffffff !important;
+	color: #0f172a !important;
+	border: 1px solid #d1d5db !important;
+}
+
+.assistant-page .assistant-agent-details {
+	background-color: #ffffff !important;
+	border-color: #d1d5db !important;
+	color: #1f2937;
+}
+
+.assistant-page .assistant-agent-step {
+	background-color: #f8fafc !important;
+	border-color: #e2e8f0 !important;
+}
+
+.assistant-page .assistant-agent-step__args {
+	background-color: #ffffff !important;
+	border-color: #e2e8f0 !important;
+	color: #0f172a !important;
+}
+
+.assistant-page .assistant-agent-step__result {
+	border-color: #e2e8f0 !important;
+}
+
+.assistant-page .assistant-message {
+	background-color: #ffffff !important;
+	color: #0f172a !important;
+	border: 1px solid #d1d5db !important;
+}
+
+.assistant-page .assistant-message--user {
+	background-color: #4f46e5 !important;
+	border-color: #4338ca !important;
+	color: #ffffff !important;
+}
+
+.assistant-page .assistant-input {
+	background-color: #ffffff !important;
+	color: #0f172a !important;
+	border: 1px solid #d1d5db !important;
+}
+
+.dark .assistant-page .assistant-system {
+	background-color: #0f172a !important;
+	border-color: #475569 !important;
+	color: #e2e8f0 !important;
+}
+
+.dark .assistant-page .assistant-agent-details {
+	background-color: #0f172a !important;
+	border-color: #475569 !important;
+	color: #e2e8f0;
+}
+
+.dark .assistant-page .assistant-agent-step {
+	background-color: #1e293b !important;
+	border-color: #334155 !important;
+}
+
+.dark .assistant-page .assistant-agent-step__args {
+	background-color: #111827 !important;
+	border-color: #334155 !important;
+	color: #e2e8f0 !important;
+}
+
+.dark .assistant-page .assistant-agent-step__result {
+	border-color: #334155 !important;
+}
+
+.dark .assistant-page .assistant-message--assistant {
+	background-color: #0f172a !important;
+	border-color: #334155 !important;
+	color: #f8fafc !important;
+}
+
+.dark .assistant-page .assistant-input {
+	background-color: #0f172a !important;
+	border-color: #334155 !important;
+	color: #f8fafc !important;
+}
+
 .dash-list {
 	list-style: none;
 	padding: 0;

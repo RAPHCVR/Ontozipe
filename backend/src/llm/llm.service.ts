@@ -4,6 +4,9 @@ import { lastValueFrom } from "rxjs";
 import { ChatOllama } from "@langchain/ollama";
 import { Runnable } from "@langchain/core/runnables";
 import { tool, StructuredTool } from "@langchain/core/tools";
+import { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { escapeSparqlLiteral } from "../utils/sparql.utils";
 import { ChatOpenAI } from "@langchain/openai";
@@ -29,6 +32,11 @@ export class LlmService {
 
 	private readonly sseRuns = new Map<string, Set<Response>>();
 	private readonly representations = new Map<string, ResultRepresentation>();
+
+	private cleanThinking(text: string): string {
+		if (!text) return text;
+		return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+	}
 
 	private makeContextKey(
 		userIri: string,
@@ -57,38 +65,64 @@ export class LlmService {
 		return rep;
 	}
 
-	private buildModel2(): ChatOllama {
-		const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-		const model = process.env.OLLAMA_MODEL || "llama3";
-		const headers =
-			process.env.UTC_API_KEY && process.env.UTC_API_KEY.trim().length > 0
-				? { Authorization: `Bearer ${process.env.UTC_API_KEY}` }
-				: undefined;
-		return new ChatOllama({
-			baseUrl,
-			model,
+	/**
+	 * Single source of truth for every LLM usage.
+	 * @param mode 'chat' (assistant/synthèses) or 'decision' (fast reasoning).
+	 */
+	private getGlobalModel(mode: "chat" | "decision" = "chat"): BaseChatModel {
+		const provider = (process.env.LLM_PROVIDER || "openai").toLowerCase();
+
+		if (provider === "ollama") {
+			const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+			const model =
+				process.env.OLLAMA_MODEL ||
+				"hf.co/unsloth/Magistral-Small-2509-GGUF:UD-Q4_K_XL";
+			const headers =
+				process.env.UTC_API_KEY && process.env.UTC_API_KEY.trim().length > 0
+					? { Authorization: `Bearer ${process.env.UTC_API_KEY}` }
+					: undefined;
+			return new ChatOllama({
+				baseUrl,
+				model,
+				temperature: 0.2,
+				maxRetries: 2,
+				headers,
+			});
+		}
+
+		const openAIApiKey = process.env.OPENAI_API_KEY;
+		if (!openAIApiKey) {
+			throw new Error("OPENAI_API_KEY is not set in environment variables");
+		}
+
+		const modelName =
+			mode === "decision"
+				? process.env.OPENAI_DECISION_MODEL ||
+				  process.env.OPENAI_MODEL ||
+				  "gpt-4o-mini"
+				: process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+		const lower = modelName.toLowerCase();
+		const isReasoningModel =
+			lower.includes("gpt-5") || lower.startsWith("o1") || lower.startsWith("o3");
+
+		if (isReasoningModel) {
+			return new ChatOpenAI({
+				openAIApiKey,
+				model: modelName,
+				modelKwargs: { reasoning_effort: "medium" },
+			});
+		}
+
+		return new ChatOpenAI({
+			openAIApiKey,
+			model: modelName,
 			temperature: 0.2,
-			maxRetries: 2,
-			headers,
 		});
 	}
 
-	private buildModel(): ChatOpenAI {
-		const openAIApiKey = process.env.OPENAI_API_KEY;
-		if (!openAIApiKey) {
-			throw new Error("OPENAI_API_KEY is not set in environment variables");
-		}
-		const model = process.env.OPENAI_MODEL || "gpt-5-mini";
-		return new ChatOpenAI({ openAIApiKey, modelName: model });
-	}
-
-	public buildDecisionModel(): ChatOpenAI {
-		const openAIApiKey = process.env.OPENAI_API_KEY;
-		if (!openAIApiKey) {
-			throw new Error("OPENAI_API_KEY is not set in environment variables");
-		}
-		const model = process.env.OPENAI_DECISION_MODEL || "gpt-4.1-mini";
-		return new ChatOpenAI({ openAIApiKey, modelName: model });
+	public buildDecisionModel(): BaseChatModel {
+		return this.getGlobalModel("decision");
 	}
 
 	public registerSseSubscriber(
@@ -775,16 +809,21 @@ export class LlmService {
 		ontologyIri?: string;
 		sessionId?: string;
 	}): {
-		llm: ChatOpenAI;
+		llm: BaseChatModel;
 		llmWithTools: Runnable;
 		tools: StructuredTool[];
 	} {
-		const llm = this.buildModel();
+		const llm = this.getGlobalModel("chat");
 		const tools = this.buildTools(
 			params.userIri,
 			params.ontologyIri,
 			params.sessionId
 		);
+		if (!llm.bindTools) {
+			throw new Error(
+				`Le modèle configuré (${process.env.LLM_PROVIDER}) ne supporte pas les outils LangChain.`
+			);
+		}
 		const llmWithTools = llm.bindTools(tools);
 		return { llm, llmWithTools, tools };
 	}
@@ -837,33 +876,36 @@ export class LlmService {
 		payload: unknown,
 		language: string = "fr"
 	): Promise<string> {
-		const llm = this.buildModel();
-		const prompt = [
-			{
-				role: "system",
-				content:
-					"Tu es un assistant qui synthétise un tableau de bord. Rédige un court paragraphe (80-120 mots), sans puces, ni liste, ni chiffres exacts. " +
-					"Explique l'état général, les tendances, les zones de tension, les acteurs ou ressources les plus sollicités, et des pistes d'action. " +
-					'Ne répète pas les valeurs des KPI, parle qualitativement ("forte activité", "peu de participation", "concentration sur...", "manque de clarté"), ' +
-					"et n'invente pas de données absentes. Réponds dans la langue demandée.",
-			},
-			{
-				role: "user",
-				content: `Langue: ${language}\nSection: ${section}\nDonnées:\n${JSON.stringify(payload)}`,
-			},
-		];
-		const res = await llm.invoke(prompt as any);
-		const content = (res as any)?.content;
-		if (typeof content === "string") return content;
-		if (Array.isArray(content)) {
-			return content
-				.map((c: any) =>
-					typeof c?.text === "string" ? c.text : typeof c === "string" ? c : ""
-				)
-				.join("");
+		const llm = this.getGlobalModel("chat");
+
+		const systemPrompt = `
+Tu es un analyste de données expert. Tu reçois un extrait JSON d'un tableau de bord de gouvernance de données.
+Section analysée : "${section}".
+
+Instructions :
+1. Rédige un paragraphe narratif (80-120 mots) expliquant l'état général et les tendances.
+2. Évite les listes à puces. Fais des phrases complètes.
+3. Utilise des termes qualitatifs ("forte activité", "baisse notable", "concentration sur...") plutôt que de simplement lister tous les chiffres.
+4. Si les données sont vides ou nulles, indique simplement qu'il n'y a pas assez d'activité pour conclure.
+5. Réponds dans la langue : ${language}.
+`;
+
+		try {
+			const serializedPayload = JSON.stringify(payload) ?? "null";
+			const messages = [
+				new SystemMessage(systemPrompt),
+				new HumanMessage(`Données JSON :\n${serializedPayload}`),
+			];
+
+			const response = await llm.pipe(new StringOutputParser()).invoke(messages);
+			return this.cleanThinking(response);
+		} catch (error) {
+			console.error("Erreur lors du résumé dashboard:", error);
+			return "Résumé indisponible pour le moment.";
 		}
-		return "Résumé indisponible.";
 	}
+
+
 
 	public async summarizeIndividualComments(params: {
 		individual: {
@@ -876,36 +918,42 @@ export class LlmService {
 		}>;
 		language?: string;
 	}): Promise<string> {
-		const llm = this.buildModel();
+		const llm = this.getGlobalModel("chat");
 		const lang = params.language || "fr";
-		const system = [
-			"Tu es un assistant spécialisé dans la synthèse de discussions autour d'un individu RDF/OWL.",
-			"Tu reçois uniquement : le label de l'individu, quelques propriétés (pour contexte), et les commentaires (body + replyTo).",
-			"Rédige un tres court paragraphe, sans puces ni listes, qui synthétise UNIQUEMENT les commentaires.",
-			"Ensuite saute une ligne puis ajoute un court paragraphe qui met en lumiere les questionnements des commentaires ou incomprehension ou alors pour completer un sujet de discussion dans les commentaires",
-			"Ne parle pas de choses qui non pas ete cité dans les commantaires et soit bref, Ne pose pas de question, repond directement",
-		].join("\n");
 
-		const prompt = [
-			{ role: "system", content: system },
+		const systemPrompt = `
+Tu es un assistant expert en synthèse de données sémantiques.
+Ta tâche est d'analyser une liste de commentaires liés à une ressource (individu) et d'en faire une synthèse structurée.
+
+Règles strictes :
+1. Rédige un premier paragraphe court (max 60 mots) résumant factuellement ce qui est dit.
+2. Saute une ligne.
+3. Rédige un second paragraphe court mettant en lumière les points de friction, les questions ouvertes ou les besoins de clarification exprimés.
+4. Ne mentionne pas d'informations qui ne sont pas dans le contexte fourni.
+5. Adopte un ton neutre et professionnel.
+6. Réponds impérativement dans la langue demandée : ${lang}.
+`;
+
+		const contextData = JSON.stringify(
 			{
-				role: "user",
-				content: `Langue: ${lang}
-Individu (contexte) : ${JSON.stringify(params.individual)}
-Commentaires (body, replyTo) : ${JSON.stringify(params.comments)}`,
+				context: params.individual,
+				discussions: params.comments,
 			},
-		];
+			null,
+			2
+		);
 
-		const res = await llm.invoke(prompt as any);
-		const content = (res as any)?.content;
-		if (typeof content === "string") return content;
-		if (Array.isArray(content)) {
-			return content
-				.map((c: any) =>
-					typeof c?.text === "string" ? c.text : typeof c === "string" ? c : ""
-				)
-				.join("");
+		try {
+			const messages = [
+				new SystemMessage(systemPrompt),
+				new HumanMessage(`Voici les données à analyser :\n${contextData}`),
+			];
+
+			const response = await llm.pipe(new StringOutputParser()).invoke(messages);
+			return this.cleanThinking(response);
+		} catch (error) {
+			console.error("Erreur lors du résumé des commentaires:", error);
+			return "Une erreur est survenue lors de la génération du résumé.";
 		}
-		return "Résumé indisponible.";
 	}
 }
