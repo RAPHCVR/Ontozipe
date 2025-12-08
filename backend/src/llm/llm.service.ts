@@ -190,112 +190,6 @@ export class LlmService {
 		return (res.data.results.bindings as SparqlBinding[]).map((b) => b.g.value);
 	}
 
-	private async searchEntities(
-		term: string,
-		ontologyIri: string,
-		userIri: string,
-		limit = 10
-	): Promise<{ id: string; label?: string }[]> {
-		if (!ontologyIri) throw new BadRequestException("ontologyIri manquant");
-		const groups = await this.getUserGroups(userIri);
-		const groupsList = groups.map((g) => `<${g}>`).join(", ");
-		const aclFilter =
-			groups.length > 0
-				? `(!BOUND(?vg) || ?vg IN (${groupsList}) || EXISTS { ?s <${this.CORE}createdBy> <${userIri}> })`
-				: `(!BOUND(?vg) || EXISTS { ?s <${this.CORE}createdBy> <${userIri}> })`;
-
-		const sparql = `
-          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-          PREFIX core: <${this.CORE}>
-          SELECT DISTINCT ?s ?lbl WHERE {
-            GRAPH <${ontologyIri}> {
-              ?s ?p ?o . FILTER(isIRI(?s))
-              OPTIONAL { ?s rdfs:label ?lbl }
-              OPTIONAL { ?s core:visibleTo ?vg }
-              FILTER(
-                CONTAINS(LCASE(STR(COALESCE(?lbl, ""))), LCASE("${escapeSparqlLiteral(term)}")) ||
-                EXISTS { ?s ?p2 ?lit .
-                    FILTER(isLiteral(?lit) && CONTAINS(LCASE(STR(?lit)), LCASE("${escapeSparqlLiteral(term)}")))
-                }
-              )
-              FILTER(${aclFilter})
-            }
-          }
-          ORDER BY LCASE(STR(?lbl))
-          LIMIT ${Math.max(1, Math.min(50, limit))}`;
-
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-		const res = await lastValueFrom(
-			this.http.get(this.FUSEKI_SPARQL, { params })
-		);
-		type Row = { s: { value: string }; lbl?: { value: string } };
-		return (res.data.results.bindings as Row[]).map((r) => ({
-			id: r.s.value,
-			label: r.lbl?.value,
-		}));
-	}
-
-	private async getEntityDetails(
-		uri: string,
-		ontologyIri: string
-	): Promise<{
-		id: string;
-		label?: string;
-		types: string[];
-		properties: { predicate: string; value: string; isLiteral: boolean }[];
-	} | null> {
-		if (!ontologyIri) throw new BadRequestException("ontologyIri manquant");
-		const sparql = `
-            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            SELECT ?lbl ?p ?v WHERE {
-                GRAPH <${ontologyIri}> {
-                    OPTIONAL { <${uri}> rdfs:label ?lbl }
-                    { <${uri}> rdf:type ?v . BIND(rdf:type AS ?p) }
-                    UNION
-                    { <${uri}> ?p ?v . FILTER(?p != rdfs:label) }
-                }
-            }`;
-		const params = new URLSearchParams({
-			query: sparql,
-			format: "application/sparql-results+json",
-		});
-		const res = await lastValueFrom(
-			this.http.get(this.FUSEKI_SPARQL, { params })
-		);
-		type Row = {
-			lbl?: { value: string };
-			p: { value: string };
-			v: { value: string; type: string };
-		};
-		const rows = res.data.results.bindings as Row[];
-
-		if (rows.length === 0) return null;
-
-		const label = rows.find((r) => r.lbl)?.lbl?.value;
-		const types = Array.from(
-			new Set(
-				rows.filter((r) => r.p.value.endsWith("type")).map((r) => r.v.value)
-			)
-		);
-		const properties = rows
-			.filter((r) => !r.p.value.endsWith("type"))
-			.map((r) => ({
-				predicate: r.p.value,
-				value: r.v.value,
-				isLiteral: r.v.type !== "uri",
-			}));
-		return {
-			id: uri,
-			label: label || uri.split(/[#/]/).pop(),
-			types,
-			properties,
-		};
-	}
-
 	private async uriExistsInGraph(
 		ontologyIri: string,
 		candidate: string
@@ -395,73 +289,6 @@ export class LlmService {
 		ontologyIri?: string,
 		sessionId?: string
 	): StructuredTool[] {
-		const searchTool = tool(
-			async ({
-				query,
-				ontologyIri: onto,
-				limit,
-			}: {
-				query: string;
-				ontologyIri?: string;
-				limit?: number;
-			}) => {
-				const ontoEff = onto || ontologyIri || "";
-				if (!ontoEff) {
-					return "Erreur : l'URI de l'ontologie est manquant pour la recherche. Demandez à l'utilisateur de la préciser.";
-				}
-				const list = await this.searchEntities(
-					query,
-					ontoEff,
-					userIri,
-					limit ?? 10
-				);
-				if (list.length === 0) {
-					return `Aucune entité trouvée pour la recherche "${query}" dans l'ontologie <${ontoEff}>.`;
-				}
-				return JSON.stringify({ hits: list, ontologyIri: ontoEff });
-			},
-			{
-				name: "search_entities",
-				description:
-					"Recherche des individus pertinents par mot-clé dans une ontologie donnée.",
-				schema: z.object({
-					query: z.string().describe("Texte de recherche"),
-					ontologyIri: z
-						.string()
-						.optional()
-						.describe("URI du graph d'ontologie"),
-					limit: z.number().int().min(1).max(50).optional(),
-				}),
-			}
-		);
-
-		const getTool = tool(
-			async ({
-				uri,
-				ontologyIri: onto,
-			}: {
-				uri: string;
-				ontologyIri?: string;
-			}) => {
-				const ontoEff = onto || ontologyIri || "";
-				if (!ontoEff) {
-					return "Erreur : l'URI de l'ontologie est manquant pour la récupération de détails. Demandez à l'utilisateur de la préciser.";
-				}
-				const data = await this.getEntityDetails(uri, ontoEff);
-				if (!data) {
-					return `Aucun détail trouvé pour l'individu <${uri}> dans l'ontologie <${ontoEff}>. Il n'existe peut-être pas.`;
-				}
-				return JSON.stringify({ entity: data, ontologyIri: ontoEff });
-			},
-			{
-				name: "get_entity",
-				description: "Récupère le détail d'un individu (types et propriétés).",
-				schema: z.object({
-					uri: z.string().describe("URI de l'individu à détailler"),
-					ontologyIri: z.string().optional(),
-				}),
-			}
-		);
 
 		const getMostConnectedNodesTool = tool(
 			async ({ ontologyIri: onto }: { ontologyIri?: string }) => {
@@ -796,8 +623,6 @@ export class LlmService {
 		);
 
 		return [
-			searchTool,
-			getTool,
 			getMostConnectedNodesTool,
 			searchFromNaturalLanguageTool,
 			searchFromUriTool,
