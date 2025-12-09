@@ -1,5 +1,8 @@
 
-const defaultLifespan = 5;
+// CONFIGURATION
+const DEFAULT_LIFESPAN = 5;
+const THRESHOLD_HIDE_ATTRIBUTES = 3; // Below this, attributes vanish
+const THRESHOLD_HIDE_RELATIONS = 1;  // Below this, relations vanish (ghost mode)
 
 const isHttpUri = (value: string): boolean => /^https?:\/\//i.test(value);
 
@@ -79,7 +82,7 @@ export class Node {
         this.relationships = relationships ?? [];
 
         // Set the lifespan, using the default value if none is provided.
-        this.lifespan = lifespan ?? defaultLifespan;
+        this.lifespan = lifespan ?? DEFAULT_LIFESPAN;
 
         // Si il manque le type on ne considère pas les noeuds comme built.
         this.built = node_type !== undefined;
@@ -137,7 +140,7 @@ export class ResultRepresentation {
     /**
      * Produis un nouveau graph avec certains anciens et tous les nouveaux noeuds.
      * Met à jour la valeur lifespan des noeuds.
-     * Si le noeud était spécifié dans le paramètre nodes, son lifespan est réinitialisé à defaultLifespan.
+     * Si le noeud était spécifié dans le paramètre nodes, son lifespan est réinitialisé à DEFAULT_LIFESPAN.
      * Sinon, il est décrémenté. Le noeud est ommis du nouveau graph si son lifespan atteint zéro.
      * Ajoute un noeud partiel (non built) pour chaque URI inconnu découvert dans relationships.
      */
@@ -145,51 +148,50 @@ export class ResultRepresentation {
         const newNodesMap = new Map<string, Node>();
         const updatedUris = new Set(nodes.map(n => n.uri));
 
-        // Add or update nodes from the input, resetting their lifespan
+        // 1. Nouvelles Nodes : Réinitialiser lifespan au max
         for (const node of nodes) {
             newNodesMap.set(
                 node.uri,
-                new Node({
-                    ...node,
-                    lifespan: defaultLifespan
-                })
+                new Node({ ...node, lifespan: DEFAULT_LIFESPAN })
             );
         }
 
-        // Decrement lifespan for existing nodes not in the update
+        // 2. NOEUDS EXISTANTS : Décrémenter lifespan
         for (const [uri, node] of this.nodes.entries()) {
             if (!updatedUris.has(uri)) {
-                const newLifespan = (node.lifespan ?? defaultLifespan) - 1;
+                const newLifespan = (node.lifespan ?? DEFAULT_LIFESPAN) - 1;
+                
+                // Ne conserver que si lifespan > 0
                 if (newLifespan > 0) {
                     newNodesMap.set(
                         uri,
-                        new Node({
-                            ...node,
-                            lifespan: newLifespan
-                        })
+                        new Node({ ...node, lifespan: newLifespan })
                     );
                 }
             }
         }
 
-        // Ajoute un noeud non built pour chaque URI inconnu découvert dans relationships.
+        // 3. NOEUDS PARTIELS : Ajouter des noeuds non construits découverts dans les relations
+        // Seulement s'ils ne sont pas déjà dans le mapping (pour éviter d'écraser des noeuds détaillés avec des noeuds fantômes)
         const allKnownUris = new Set(newNodesMap.keys());
         const unknownUris = new Set<string>();
 
-        // 1. Récupérer tous les URI inconnus dans relationships
         for (const node of newNodesMap.values()) {
-            for (const relationship of node.relationships) {
-                if (!allKnownUris.has(relationship.target_uri)) {
-                    unknownUris.add(relationship.target_uri);
+            // N'afficher que les relations des noeuds qui ont un lifespan assez grand pour montrer les relations
+            if (node.lifespan > THRESHOLD_HIDE_RELATIONS) {
+                for (const relationship of node.relationships) {
+                    if (!allKnownUris.has(relationship.target_uri)) {
+                        unknownUris.add(relationship.target_uri);
+                    }
                 }
             }
         }
 
-        // 2. Créer les noeuds partiels (non built)
         for (const unknownUri of unknownUris) {
+            // Les noeuds "fantômes" commencent avec un lifespan plus court pour éviter l'accumulation de désordre
             newNodesMap.set(unknownUri, new Node({
                 uri: unknownUri,
-                lifespan: defaultLifespan
+                lifespan: Math.floor(DEFAULT_LIFESPAN / 2) 
             }));
         }
 
@@ -246,11 +248,9 @@ export class ResultRepresentation {
      */
     public toString(options?: { ontologyIri?: string; frontendBaseUrl?: string }): string {
         const lines: string[] = [];
-
         // Séparer les noeuds construits (built) et non construits
         const builtNodes: Node[] = [];
         const partialNodes: Node[] = [];
-
         for (const node of this.nodes.values()) {
             if (node.built) {
                 builtNodes.push(node);
@@ -259,8 +259,8 @@ export class ResultRepresentation {
             }
         }
 
-        // Trier par URI pour une sortie déterministe
-        builtNodes.sort((a, b) => a.uri.localeCompare(b.uri));
+        // Trier par lifespan décroissant (pertinence), puis par URI pour une sortie déterministe
+        builtNodes.sort((a, b) => (b.lifespan ?? 0) - (a.lifespan ?? 0) || a.uri.localeCompare(b.uri));
         partialNodes.sort((a, b) => a.uri.localeCompare(b.uri));
 
         lines.push("REPRESENTATION DES RECHERCHES ONTOLOGIQUES");
@@ -269,12 +269,21 @@ export class ResultRepresentation {
 
         // Section des noeuds complets (built)
         if (builtNodes.length > 0) {
-            lines.push("Entités Découvertes:");
+            lines.push("Entités (Détail décroissant selon pertinence):");
             lines.push("");
             
             for (const node of builtNodes) {
                 const handle = makeHandle(node.uri);
-                lines.push(`- Entité: ${handle}`);
+                
+                // --- LOGIQUE DE VISUALISATION (DECAY) ---
+                const showAttributes = (node.lifespan ?? 0) > THRESHOLD_HIDE_ATTRIBUTES;
+                const showRelations = (node.lifespan ?? 0) > THRESHOLD_HIDE_RELATIONS;
+                const isFading = (node.lifespan ?? 0) <= THRESHOLD_HIDE_ATTRIBUTES;
+
+                // En-tête de l'entité avec marqueur de contexte si ancien
+                let header = `- Entité: ${handle}`;
+                if (isFading) header += ` [Contexte ancien]`;
+                lines.push(header);
 
                 if (node.label) {
                     lines.push(`  label: "${node.label}"`);
@@ -283,7 +292,6 @@ export class ResultRepresentation {
                 if (node.node_type) {
                     lines.push(`  type: ${extractAfterLastSlash(node.node_type)}`);
                 }
-
                 if (options?.ontologyIri) {
                     const graphPath = buildGraphPath(options.ontologyIri, handle);
                     const link = options.frontendBaseUrl
@@ -293,7 +301,8 @@ export class ResultRepresentation {
                 }
 
                 // Attributs (propriétés avec valeurs littérales)
-                if (node.attributes.length > 0) {
+                // Masqués si le lifespan est sous le seuil
+                if (showAttributes && node.attributes.length > 0) {
                     lines.push("  attributes:");
                     for (const attr of node.attributes) {
                         const value = attr.parsed_value || attr.value;
@@ -306,7 +315,8 @@ export class ResultRepresentation {
                 }
                 
                 // Relations (propriétés avec valeurs d'objets)
-                if (node.relationships.length > 0) {
+                // Masqués si le lifespan est sous le seuil (mode fantôme)
+                if (showRelations && node.relationships.length > 0) {
                     lines.push("  relationships:");
                     for (const relationship of node.relationships) {
                         const direction = relationship.direction === 'outgoing' ? '→' : '←';

@@ -373,6 +373,8 @@ export class LlmService {
 					Boolean(typeNames?.length) ||
 					Boolean(relationNameFilters?.length);
 
+                let usedFallbackMostConnected = false;
+
 				try {
 					let nodes: Node[] = [];
 					if (hasAdvancedFilters) {
@@ -398,42 +400,66 @@ export class LlmService {
 							await request.fetch(this.http, this.FUSEKI_SPARQL, onto)
 						).filter((node) => this.isLikelyIri(node?.uri));
 					} else {
-						if (!keywords || keywords.length === 0) {
-							return "Erreur : au moins un mot-clé est requis pour la recherche.";
-						}
-						const results = await searchNodesByKeywords(
-							this.http,
-							this.FUSEKI_SPARQL,
-							onto,
-							keywords
-						);
-						const firstHits = results.slice(0, sanitizedMax);
-						const covered = new Set<string>();
-						for (const hit of firstHits) {
-							if (!this.isLikelyIri(hit.uri)) {
-								continue;
-							}
-							try {
-								const node = await buildNodeFromUri(
-									this.http,
-									this.FUSEKI_SPARQL,
-									onto,
-									hit.uri
-								);
-								if (covered.has(node.uri)) continue;
-								nodes.push(node);
-								covered.add(node.uri);
-								for (const relation of node.relationships) {
-									covered.add(relation.target_uri);
-								}
-								for (const attribute of node.attributes) {
-									covered.add(attribute.property_uri);
-								}
-							} catch (error) {
-								console.warn(`Failed to build node for URI ${hit.uri}:`, error);
-							}
-						}
-					}
+                        if (!keywords || keywords.length === 0) {
+                            return "Erreur : au moins un mot-clé est requis pour la recherche.";
+                        }
+
+                        // 1. Recherche par mots-clés
+                        const results = await searchNodesByKeywords(
+                            this.http,
+                            this.FUSEKI_SPARQL,
+                            onto,
+                            keywords
+                        );
+
+                        let urisToBuild: string[] = [];
+
+                        if (results.length === 0) {
+                            // 2. Fallback : 10 noeuds les plus connectés du graph
+                            const mostConnected = await getMostConnectedNodes(
+                            this.http,
+                            this.FUSEKI_SPARQL,
+                            onto
+                            );
+
+                            if (mostConnected.length === 0) {
+                            return `Aucune entité trouvée avec les mots-clés fournis, et aucun noeud très connecté n'a pu être récupéré dans l'ontologie <${onto}>.`;
+                            }
+
+                            usedFallbackMostConnected = true;
+                            urisToBuild = mostConnected.slice(0, sanitizedMax).map((n) => n.uri);
+                        } else {
+                            const firstHits = results.slice(0, sanitizedMax);
+                            urisToBuild = firstHits.map((hit) => hit.uri);
+                        }
+
+                        const covered = new Set<string>();
+                        for (const uri of urisToBuild) {
+                            if (!this.isLikelyIri(uri)) {
+                            continue;
+                            }
+                            try {
+                            const node = await buildNodeFromUri(
+                                this.http,
+                                this.FUSEKI_SPARQL,
+                                onto,
+                                uri
+                            );
+                            if (covered.has(node.uri)) continue;
+                            nodes.push(node);
+                            covered.add(node.uri);
+
+                            for (const relation of node.relationships) {
+                                covered.add(relation.target_uri);
+                            }
+                            for (const attribute of node.attributes) {
+                                covered.add(attribute.property_uri);
+                            }
+                            } catch (error) {
+                            console.warn("Failed to build node for URI", uri, error);
+                            }
+                        }
+                    }
 
 					this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
 
@@ -443,9 +469,18 @@ export class LlmService {
 						.join(", ");
 
 					if (entityLabels) {
-						return `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
-					}
-					return `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                        if (usedFallbackMostConnected) {
+                            return `Aucune entité ne correspondait directement aux mots-clés, mais les entités très connectées ${entityLabels} ont été proposées pour explorer le graphe. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                        }
+                        return `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                    }
+
+                    if (usedFallbackMostConnected) {
+                        return `${nodes.length} entité(s) très connectée(s) ont été proposées pour explorer le graphe. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                    }
+
+                    return `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+                    
 				} catch (error) {
 					const errorMessage =
 						error instanceof Error ? error.message : "Erreur inconnue";

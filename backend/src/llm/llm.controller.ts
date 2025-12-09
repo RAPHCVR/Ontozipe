@@ -31,7 +31,7 @@ import { ChatHistoryService, AppendMessageInput } from "./chat-history.service";
 
 const HISTORY_SUMMARY_TRIGGER = 14;
 const HISTORY_SUMMARY_TAKE_LAST = 10;
-const MAX_STEPS = 3;
+const MAX_STEPS = 5;
 
 type AuthRequest = Request & { user: { sub: string; email?: string } };
 

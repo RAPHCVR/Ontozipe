@@ -24,5 +24,5 @@ services:
     depends_on:
       - backend
     ports:
-      - "3000:5173"
+      - "5173:5173"
     platform: linux/amd64
