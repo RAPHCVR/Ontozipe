@@ -129,7 +129,7 @@ export default function ProfilePage() {
 
 	const apiBaseUrl = useMemo(
 		() =>
-			("https://ontozipe.hugopereira.fr/api").replace(
+			(import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(
 				/\/$/,
 				""
 			),
