@@ -76,7 +76,7 @@ export default function AssistantPage() {
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
 
-    const base = useMemo(() => ("https://ontozipe.hugopereira.fr/api").replace(/\/$/, ""), []);
+    const base = useMemo(() => ("https://ontozipe.hugopereira.fr").replace(/\/$/, ""), []);
 
     useEffect(() => {
         if (!activeIri && ontos.length > 0) {
