@@ -37,3 +37,4 @@ docker-publish:
     - echo "$REGISTRY_IMAGE/backend:$IMAGE_TAG" and "$REGISTRY_IMAGE/frontend:$IMAGE_TAG" are availaibles
   only:
     - comments-llm
+    
