@@ -11,7 +11,6 @@ const rootEnvDir = resolve(__dirname, "..");
 export default defineConfig({
 	envDir: rootEnvDir,
 	plugins: [react(), tailwindcss()],
-  base : "/frontend/",
 	server: { open: true },
 	resolve: { alias: { "@": resolve(__dirname, "src") } },
 	server: {
