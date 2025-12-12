@@ -76,7 +76,7 @@ export default function AssistantPage() {
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
 
-    const base = useMemo(() => (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, ""), []);
+    const base = useMemo(() => ("https://ontozipe.hugopereira.fr/api").replace(/\/$/, ""), []);
 
     useEffect(() => {
         if (!activeIri && ontos.length > 0) {
