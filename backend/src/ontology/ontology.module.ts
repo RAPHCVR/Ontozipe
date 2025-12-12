@@ -11,9 +11,10 @@ import { CommentsController } from "./comments/comments.controller";
 import { CommentsService } from "./comments/comments.service";
 import { OntologiesController } from "./ontologies/ontologies.controller";
 import { OntologiesService } from "./ontologies/ontologies.service";
+import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
-    imports: [HttpModule],
+    imports: [HttpModule, NotificationsModule],
     controllers: [
         IndividualsController,
         GroupsController,

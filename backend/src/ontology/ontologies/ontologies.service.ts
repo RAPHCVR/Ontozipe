@@ -9,12 +9,14 @@ import { FullSnapshot, NodeData, EdgeData } from "../common/types";
 import { rdfLiteral } from "../common/rdf.utils";
 import { LocalizedLabelDto } from "./dto/localized-label.dto";
 import { IndividualsService } from "../individuals/individuals.service";
+import { NotificationsService } from "../../notifications/notifications.service";
 
 @Injectable()
 export class OntologiesService extends OntologyBaseService {
     constructor(
         httpService: HttpService,
-        private readonly individualsService: IndividualsService
+        private readonly individualsService: IndividualsService,
+        private readonly notifications: NotificationsService
     ) {
         super(httpService);
     }
@@ -116,6 +118,18 @@ export class OntologiesService extends OntologyBaseService {
                 }
             );
         }
+
+        if (groups.length > 0) {
+            try {
+                await this.notifications.notifyOntologyAccessGranted({
+                    actorIri: requesterIri,
+                    ontologyIri: iri,
+                    groupIris: groups,
+                });
+            } catch (error) {
+                console.error("Failed to notify ontology access", error);
+            }
+        }
     }
 
     async updateProject(
@@ -131,6 +145,7 @@ export class OntologiesService extends OntologyBaseService {
         }
 
         const operations: string[] = [];
+        const targetGroups = Array.isArray(visibleToGroups) ? visibleToGroups : undefined;
 
         if (labels !== undefined || newLabel !== undefined) {
             const normalizedLabels = this.normalizeLabels(labels, newLabel ?? this.iriLocalName(projectIri));
@@ -168,6 +183,17 @@ export class OntologiesService extends OntologyBaseService {
         `;
 
         await this.runUpdate(update);
+        if (targetGroups && targetGroups.length > 0) {
+            try {
+                await this.notifications.notifyOntologyAccessGranted({
+                    actorIri: requesterIri,
+                    ontologyIri: projectIri,
+                    groupIris: targetGroups,
+                });
+            } catch (error) {
+                console.error("Failed to notify ontology visibility change", error);
+            }
+        }
     }
 
     async deleteProject(requesterIri: string, projectIri: string): Promise<void> {

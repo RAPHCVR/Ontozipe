@@ -26,6 +26,7 @@ import AssistantPage from "./pages/AssistantPage";
 import ProfilePage from "./pages/ProfilePage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import { useProfile } from "./hooks/apiQueries";
+import NotificationsPage from "./pages/NotificationsPage";
 
 // ---------------------------------------------------------------------------
 // --- RequireAuth component ---
@@ -113,6 +114,16 @@ export default function App() {
 								<RequireAuth>
 									<Layout>
 										<ProfilePage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
+						<Route
+							path="/notifications"
+							element={
+								<RequireAuth>
+									<Layout>
+										<NotificationsPage />
 									</Layout>
 								</RequireAuth>
 							}

@@ -11,6 +11,7 @@ import { lastValueFrom } from "rxjs";
 import * as bcrypt from "bcrypt";
 import * as jwt from "jsonwebtoken";
 import { escapeSparqlLiteral } from "../utils/sparql.utils";
+import { NotificationsService } from "../notifications/notifications.service";
 
 const CORE = "http://example.org/core#";
 const FOAF = "http://xmlns.com/foaf/0.1/";
@@ -36,7 +37,10 @@ export class AuthService {
 	private FUSEKI_PASS = process.env.FUSEKI_PASSWORD || "Pass123";
 	private JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
-	constructor(private readonly http: HttpService) {}
+	constructor(
+		private readonly http: HttpService,
+		private readonly notifications: NotificationsService
+	) {}
 
 	/** ---------- Utils ---------- */
 	private async askBoolean(ask: string): Promise<boolean> {
@@ -188,9 +192,18 @@ export class AuthService {
 
 		const baseRoleTriple = `<${iri}> core:hasRole <${CORE}RegularRole> .`;
 		let extraRoleTriple = "";
-		if (normalizedEmail === "superadmin@admin.com") {
+
+
+
+		/* if (normalizedEmail === "superadmin@admin.com") {
+			extraRoleTriple = `<${iri}> core:hasRole <${CORE}SuperAdminRole> .`;
+		} */
+
+
+		if (normalizedEmail === "tempadmin@admin.com") {
 			extraRoleTriple = `<${iri}> core:hasRole <${CORE}SuperAdminRole> .`;
 		}
+
 		const hash = await bcrypt.hash(password, 10);
 
 		const ttl = `
@@ -214,6 +227,15 @@ export class AuthService {
       }`;
 
 		await this.runUpdate(ttl);
+		try {
+			await this.notifications.notifyUserRegistered({
+				userIri: iri,
+				email: normalizedEmail,
+				name,
+			});
+		} catch (error) {
+			console.error("Failed to emit registration notification", error);
+		}
 		return { iri };
 	}
 
@@ -466,6 +488,10 @@ export class AuthService {
 			throw new NotFoundException("User not found");
 		}
 
+		const previousRoles = await this._getUserRoles(userIri);
+		let rolesChanged = false;
+		let nextRoles = previousRoles;
+
 		const currentEmail = await this.getUserCurrentEmail(userIri);
 		const normalizedCurrentEmail = currentEmail
 			? this.normalizeEmail(currentEmail)
@@ -574,11 +600,27 @@ export class AuthService {
                 INSERT { ${insertPart} }
                 WHERE  { OPTIONAL { <${userIri}> core:hasRole ?r . } }
             `);
+			rolesChanged =
+				sanitizedRoles.length !== previousRoles.length ||
+				sanitizedRoles.some((r) => !previousRoles.includes(r));
+			nextRoles = sanitizedRoles;
 		}
 
 		for (const update of updates) {
 			const trimmed = update.trim();
 			if (trimmed) await this.runUpdate(trimmed);
+		}
+
+		if (rolesChanged) {
+			try {
+				await this.notifications.notifyRolesUpdated({
+					actorIri: adminIri,
+					userIri,
+					roles: nextRoles,
+				});
+			} catch (error) {
+				console.error("Failed to emit roles update notification", error);
+			}
 		}
 	}
 

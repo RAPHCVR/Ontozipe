@@ -4,10 +4,11 @@ import { HttpService } from "@nestjs/axios";
 import { OntologyBaseService } from "../common/base-ontology.service";
 import { OrganizationInfo } from "../common/types";
 import { escapeSparqlLiteral } from "../../utils/sparql.utils";
+import { NotificationsService } from "../../notifications/notifications.service";
 
 @Injectable()
 export class OrganizationsService extends OntologyBaseService {
-    constructor(httpService: HttpService) {
+    constructor(httpService: HttpService, private readonly notifications: NotificationsService) {
         super(httpService);
     }
 
@@ -132,6 +133,18 @@ export class OrganizationsService extends OntologyBaseService {
         await this.runUpdate(update);
         this.invalidateOrganizationOwnership();
         this.invalidateUserGroups(ownerIri);
+        if (ownerIri !== requesterIri) {
+            try {
+                await this.notifications.notifyOrganizationMembershipChange({
+                    actorIri: requesterIri,
+                    memberIri: ownerIri,
+                    organizationIri: iri,
+                    action: "add",
+                });
+            } catch (error) {
+                console.error("Failed to notify organization owner assignment", error);
+            }
+        }
         return iri;
     }
 
@@ -198,6 +211,16 @@ export class OrganizationsService extends OntologyBaseService {
         await this.runUpdate(update);
         this.invalidateOrganizationOwnership(orgIri);
         this.invalidateUserGroups(userIri);
+        try {
+            await this.notifications.notifyOrganizationMembershipChange({
+                actorIri: requesterIri,
+                memberIri: userIri,
+                organizationIri: orgIri,
+                action: "add",
+            });
+        } catch (error) {
+            console.error("Failed to notify organization add", error);
+        }
     }
 
     async removeOrganizationMember(requesterIri: string, orgIri: string, userIri: string): Promise<void> {
@@ -238,5 +261,15 @@ export class OrganizationsService extends OntologyBaseService {
         await this.runUpdate(update);
         this.invalidateOrganizationOwnership(orgIri);
         this.invalidateUserGroups(userIri);
+        try {
+            await this.notifications.notifyOrganizationMembershipChange({
+                actorIri: requesterIri,
+                memberIri: userIri,
+                organizationIri: orgIri,
+                action: "remove",
+            });
+        } catch (error) {
+            console.error("Failed to notify organization removal", error);
+        }
     }
 }

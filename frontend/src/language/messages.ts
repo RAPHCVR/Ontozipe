@@ -66,11 +66,16 @@ const definitions = {
 		en: "Organizations",
 		es: "Organizaciones",
 	},
+	"navbar.notifications": {
+		fr: "Notifications",
+		en: "Notifications",
+		es: "Notificaciones",
+	},
 	"navbar.profile": { fr: "Profil", en: "Profile", es: "Perfil" },
 	"footer.copyright": {
-		fr: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA — Tous droits réservés",
-		en: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA — All rights reserved",
-		es: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA — Todos los derechos reservados",
+		fr: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA  Tous droits réservés",
+		en: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA  All rights reserved",
+		es: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA  Todos los derechos reservados",
 	},
 	"auth.login.title": { fr: "Connexion", en: "Sign in", es: "Iniciar sesión" },
 	"auth.login.error": {
@@ -92,7 +97,7 @@ const definitions = {
 	},
 	"auth.login.noAccount": {
 		fr: "Pas encore de compte ?",
-		en: "Don’t have an account yet?",
+		en: "Dont have an account yet?",
 		es: "¿Aún no tienes cuenta?",
 	},
 	"auth.login.createAccount": {
@@ -132,11 +137,11 @@ const definitions = {
 	},
 	"auth.name": { fr: "Nom", en: "Name", es: "Nombre" },
 	"common.user": { fr: "Utilisateur", en: "User", es: "Usuario" },
-	"common.loading": { fr: "Chargement…", en: "Loading…", es: "Cargando…" },
+	"common.loading": { fr: "Chargement", en: "Loading", es: "Cargando" },
 	"home.loading": {
-		fr: "Chargement de vos ontologies…",
-		en: "Loading your ontologies…",
-		es: "Cargando tus ontologías…",
+		fr: "Chargement de vos ontologies",
+		en: "Loading your ontologies",
+		es: "Cargando tus ontologías",
 	},
 	"home.loadError": {
 		fr: "Impossible de charger les ontologies.",
@@ -174,7 +179,7 @@ const definitions = {
 		es: "Nueva ontología",
 	},
 	"home.actions.launchAssistant": {
-		fr: "Lancer l’assistant",
+		fr: "Lancer lassistant",
 		en: "Launch assistant",
 		es: "Lanzar asistente",
 	},
@@ -184,7 +189,7 @@ const definitions = {
 		es: "Tus ontologías",
 	},
 	"home.section.subtitle": {
-		fr: "Sélectionnez une ontologie pour l’ouvrir ou démarrez un espace de travail collaboratif instantané.",
+		fr: "Sélectionnez une ontologie pour louvrir ou démarrez un espace de travail collaboratif instantané.",
 		en: "Select an ontology to open it or start an instant collaborative workspace.",
 		es: "Selecciona una ontología para abrirla o inicia un espacio colaborativo al instante.",
 	},
@@ -230,7 +235,7 @@ const definitions = {
 		es: "Nombre legible",
 	},
 	"home.modal.label": {
-		fr: "Label de l’ontologie",
+		fr: "Label de lontologie",
 		en: "Ontology label",
 		es: "Etiqueta de la ontología",
 	},
@@ -261,7 +266,7 @@ const definitions = {
 		es: "Archivo seleccionado: {{file}} ({{size}} KB)",
 	},
 	"home.modal.submit": {
-		fr: "Importer l’ontologie",
+		fr: "Importer lontologie",
 		en: "Import ontology",
 		es: "Importar la ontología",
 	},
@@ -301,9 +306,9 @@ const definitions = {
 		es: "Seleccionados",
 	},
 	"memberSelector.searchPlaceholder": {
-		fr: "Rechercher un utilisateur…",
-		en: "Search a user…",
-		es: "Buscar un usuario…",
+		fr: "Rechercher un utilisateur",
+		en: "Search a user",
+		es: "Buscar un usuario",
 	},
 	"memberSelector.emptyAvailable": {
 		fr: "Aucun résultat",
@@ -337,7 +342,7 @@ const definitions = {
 	},
 	"groups.header.title": { fr: "Groupes", en: "Groups", es: "Grupos" },
 	"groups.header.subtitle": {
-		fr: "Organisez vos collaborateurs et contrôlez l’accès aux ontologies partagées.",
+		fr: "Organisez vos collaborateurs et contrôlez laccès aux ontologies partagées.",
 		en: "Organise your collaborators and control access to shared ontologies.",
 		es: "Organiza a tus colaboradores y controla el acceso a las ontologías compartidas.",
 	},
@@ -347,12 +352,12 @@ const definitions = {
 		es: "{{count}} grupo(s)",
 	},
 	"groups.state.loading": {
-		fr: "Chargement des groupes…",
-		en: "Loading groups…",
-		es: "Cargando grupos…",
+		fr: "Chargement des groupes",
+		en: "Loading groups",
+		es: "Cargando grupos",
 	},
 	"groups.empty.title": {
-		fr: "Aucun groupe n’a encore été créé.",
+		fr: "Aucun groupe na encore été créé.",
 		en: "No groups have been created yet.",
 		es: "Todavía no se ha creado ningún grupo.",
 	},
@@ -402,9 +407,9 @@ const definitions = {
 		es: "No se pudo eliminar el grupo.",
 	},
 	"groups.search.placeholder": {
-		fr: "Rechercher un groupe…",
-		en: "Search a group…",
-		es: "Buscar un grupo…",
+		fr: "Rechercher un groupe",
+		en: "Search a group",
+		es: "Buscar un grupo",
 	},
 	"groups.summary": {
 		fr: "{{count}} groupe(s)",
@@ -442,7 +447,7 @@ const definitions = {
 		es: "Arrastra y suelta o haz clic para seleccionar colaboradores para el grupo.",
 	},
 	"groups.members.selectOrganization": {
-		fr: "Sélectionnez d’abord une organisation pour choisir ses membres.",
+		fr: "Sélectionnez dabord une organisation pour choisir ses membres.",
 		en: "Select an organization first to choose its members.",
 		es: "Selecciona primero una organización para elegir a sus miembros.",
 	},
@@ -452,14 +457,14 @@ const definitions = {
 		es: "Nombre del grupo",
 	},
 	"groups.form.submitting": {
-		fr: "Création…",
-		en: "Creating…",
-		es: "Creando…",
+		fr: "Création",
+		en: "Creating",
+		es: "Creando",
 	},
 	"groups.details.saving": {
-		fr: "Enregistrement…",
-		en: "Saving…",
-		es: "Guardando…",
+		fr: "Enregistrement",
+		en: "Saving",
+		es: "Guardando",
 	},
 	"organizations.header.title": {
 		fr: "Organisations",
@@ -477,12 +482,12 @@ const definitions = {
 		es: "{{count}} organización(es)",
 	},
 	"organizations.state.loading": {
-		fr: "Chargement des organisations…",
-		en: "Loading organizations…",
-		es: "Cargando organizaciones…",
+		fr: "Chargement des organisations",
+		en: "Loading organizations",
+		es: "Cargando organizaciones",
 	},
 	"organizations.empty.title": {
-		fr: "Aucune organisation n’est enregistrée pour le moment.",
+		fr: "Aucune organisation nest enregistrée pour le moment.",
 		en: "No organizations are registered yet.",
 		es: "Aún no hay organizaciones registradas.",
 	},
@@ -512,7 +517,7 @@ const definitions = {
 		es: "Organización creada con éxito.",
 	},
 	"organizations.toast.createError": {
-		fr: "Impossible de créer l’organisation.",
+		fr: "Impossible de créer lorganisation.",
 		en: "Unable to create the organization.",
 		es: "No se pudo crear la organización.",
 	},
@@ -522,14 +527,14 @@ const definitions = {
 		es: "Organización eliminada.",
 	},
 	"organizations.toast.deleteError": {
-		fr: "Suppression de l’organisation impossible.",
+		fr: "Suppression de lorganisation impossible.",
 		en: "Unable to delete the organization.",
 		es: "No se pudo eliminar la organización.",
 	},
 	"organizations.search.placeholder": {
-		fr: "Rechercher une organisation…",
-		en: "Search an organization…",
-		es: "Buscar una organización…",
+		fr: "Rechercher une organisation",
+		en: "Search an organization",
+		es: "Buscar una organización",
 	},
 	"organizations.summary": {
 		fr: "{{count}} organisation(s)",
@@ -557,7 +562,7 @@ const definitions = {
 		es: "Organización actualizada.",
 	},
 	"organizations.toast.updateError": {
-		fr: "Impossible de mettre à jour l’organisation.",
+		fr: "Impossible de mettre à jour lorganisation.",
 		en: "Unable to update the organization.",
 		es: "No se pudo actualizar la organización.",
 	},
@@ -567,7 +572,7 @@ const definitions = {
 		es: "Administrador principal",
 	},
 	"organizations.form.nameLabel": {
-		fr: "Nom de l’organisation",
+		fr: "Nom de lorganisation",
 		en: "Organization name",
 		es: "Nombre de la organización",
 	},
@@ -577,18 +582,18 @@ const definitions = {
 		es: "Selecciona un usuario",
 	},
 	"organizations.form.submitting": {
-		fr: "Création…",
-		en: "Creating…",
-		es: "Creando…",
+		fr: "Création",
+		en: "Creating",
+		es: "Creando",
 	},
 	"organizations.members.helper": {
-		fr: "Glissez-déposez pour gérer les membres de l’organisation.",
+		fr: "Glissez-déposez pour gérer les membres de lorganisation.",
 		en: "Drag and drop to manage organization members.",
 		es: "Arrastra y suelta para gestionar los miembros de la organización.",
 	},
 	"organizations.members.readonly": {
-		fr: "Vous n’avez pas les droits pour modifier les membres de cette organisation.",
-		en: "You don’t have permission to modify this organization’s members.",
+		fr: "Vous navez pas les droits pour modifier les membres de cette organisation.",
+		en: "You dont have permission to modify this organizations members.",
 		es: "No tienes permiso para modificar los miembros de esta organización.",
 	},
 	"organizations.members.emptyAvailable": {
@@ -615,9 +620,9 @@ const definitions = {
 		es: "Nuevo grupo",
 	},
 	"groups.form.organizationPlaceholder": {
-		fr: "— Choisir une organisation —",
-		en: "— Select an organization —",
-		es: "— Elegir una organización —",
+		fr: " Choisir une organisation ",
+		en: " Select an organization ",
+		es: " Elegir una organización ",
 	},
 	"groups.form.namePlaceholder": {
 		fr: "Nom du groupe",
@@ -625,9 +630,9 @@ const definitions = {
 		es: "Nombre del grupo",
 	},
 	"groups.form.loadingMembers": {
-		fr: "Chargement des membres…",
-		en: "Loading members…",
-		es: "Cargando miembros…",
+		fr: "Chargement des membres",
+		en: "Loading members",
+		es: "Cargando miembros",
 	},
 	"groups.form.noMembers": {
 		fr: "Aucun membre disponible pour cette organisation.",
@@ -646,9 +651,9 @@ const definitions = {
 		es: "Organización",
 	},
 	"common.selectPlaceholder": {
-		fr: "— choisir —",
-		en: "— choose —",
-		es: "— elegir —",
+		fr: " choisir ",
+		en: " choose ",
+		es: " elegir ",
 	},
 	"common.name": { fr: "Nom", en: "Name", es: "Nombre" },
 	"groups.details.members": { fr: "Membres", en: "Members", es: "Miembros" },
@@ -680,9 +685,9 @@ const definitions = {
 		es: "¿Eliminar este comentario?",
 	},
 	"comment.replyPlaceholder": {
-		fr: "Votre réponse…",
-		en: "Your reply…",
-		es: "Tu respuesta…",
+		fr: "Votre réponse",
+		en: "Your reply",
+		es: "Tu respuesta",
 	},
 	"comment.showReplies": {
 		fr: "Afficher les réponses",
@@ -710,9 +715,9 @@ const definitions = {
 		es: "Nuevo comentario",
 	},
 	"comment.form.placeholder": {
-		fr: "Saisissez votre commentaire…",
-		en: "Write your comment…",
-		es: "Escribe tu comentario…",
+		fr: "Saisissez votre commentaire",
+		en: "Write your comment",
+		es: "Escribe tu comentario",
 	},
 	"comment.form.submit": { fr: "Publier", en: "Post", es: "Publicar" },
 	"organizations.title": {
@@ -738,9 +743,9 @@ const definitions = {
 		es: "Nombre de la organización",
 	},
 	"organizations.form.ownerPlaceholder": {
-		fr: "— Choisir un admin —",
-		en: "— Select an admin —",
-		es: "— Elegir un administrador —",
+		fr: " Choisir un admin ",
+		en: " Select an admin ",
+		es: " Elegir un administrador ",
 	},
 	"organizations.form.submit": { fr: "Créer", en: "Create", es: "Crear" },
 	"organizations.details.title": {
@@ -759,24 +764,24 @@ const definitions = {
 		es: "Miembros",
 	},
 	"organizations.details.noMembers": {
-		fr: "Aucun membre pour l’instant.",
+		fr: "Aucun membre pour linstant.",
 		en: "No members yet.",
 		es: "Aún no hay miembros.",
 	},
 	"organizations.details.delete": {
-		fr: "Supprimer l’organisation",
+		fr: "Supprimer lorganisation",
 		en: "Delete organization",
 		es: "Eliminar la organización",
 	},
 	"organizations.details.deleting": {
-		fr: "Suppression…",
-		en: "Deleting…",
-		es: "Eliminando…",
+		fr: "Suppression",
+		en: "Deleting",
+		es: "Eliminando",
 	},
 	"organizations.details.saving": {
-		fr: "Enregistrement…",
-		en: "Saving…",
-		es: "Guardando…",
+		fr: "Enregistrement",
+		en: "Saving",
+		es: "Guardando",
 	},
 	"common.remove": { fr: "Retirer", en: "Remove", es: "Quitar" },
 	"common.addMember": {
@@ -788,7 +793,7 @@ const definitions = {
 	"common.copy": { fr: "Copier", en: "Copy", es: "Copiar" },
 	"common.close": { fr: "Fermer", en: "Close", es: "Cerrar" },
 	"assistant.initialMessage": {
-		fr: "Bonjour, je suis l’assistant OntoZIPE. Posez-moi une question sur votre ontologie.",
+		fr: "Bonjour, je suis lassistant OntoZIPE. Posez-moi une question sur votre ontologie.",
 		en: "Hello, I am the OntoZIPE assistant. Ask me a question about your ontology.",
 		es: "Hola, soy el asistente de OntoZIPE. Hazme una pregunta sobre tu ontología.",
 	},
@@ -945,9 +950,9 @@ const definitions = {
 		es: "Estado en vivo",
 	},
 	"assistant.input.placeholder": {
-		fr: "Posez votre question (Maj+Entrée pour nouvelle ligne)…",
-		en: "Ask your question (Shift+Enter for a new line)…",
-		es: "Haz tu pregunta (Mayús+Enter para una nueva línea)…",
+		fr: "Posez votre question (Maj+Entrée pour nouvelle ligne)",
+		en: "Ask your question (Shift+Enter for a new line)",
+		es: "Haz tu pregunta (Mayús+Enter para una nueva línea)",
 	},
 	"assistant.input.ariaSend": {
 		fr: "Envoyer",
@@ -985,9 +990,9 @@ const definitions = {
 		es: "Comentarios",
 	},
 	"individual.comments.placeholder": {
-		fr: "Ajouter un commentaire…",
-		en: "Add a comment…",
-		es: "Añadir un comentario…",
+		fr: "Ajouter un commentaire",
+		en: "Add a comment",
+		es: "Añadir un comentario",
 	},
 	"individual.noData": {
 		fr: "Aucune donnée disponible",
@@ -1031,9 +1036,9 @@ const definitions = {
 		es: "-- Seleccionar individuo --",
 	},
 	"individual.form.visibilityTitle": {
-		fr: "Visibilité – Groupes autorisés",
-		en: "Visibility – Allowed groups",
-		es: "Visibilidad – Grupos autorizados",
+		fr: "Visibilité  Groupes autorisés",
+		en: "Visibility  Allowed groups",
+		es: "Visibilidad  Grupos autorizados",
 	},
 	"individual.form.noGroups": {
 		fr: "Aucun groupe disponible",
@@ -1087,9 +1092,9 @@ const definitions = {
 		es: "{{count}} individuo(s)",
 	},
 	"ontology.loading": {
-		fr: "Chargement des données…",
-		en: "Loading data…",
-		es: "Cargando datos…",
+		fr: "Chargement des données",
+		en: "Loading data",
+		es: "Cargando datos",
 	},
 	"ontology.allClasses": {
 		fr: "Toutes les classes",
@@ -1112,7 +1117,7 @@ const definitions = {
 		es: "Individuos visibles",
 	},
 	"ontology.summary.total": {
-		fr: "Total d’individus",
+		fr: "Total dindividus",
 		en: "Total individuals",
 		es: "Total de individuos",
 	},
@@ -1137,7 +1142,7 @@ const definitions = {
 	"adminUsers.pagination.label": { fr: "Page {{page}} sur {{totalPages}}", en: "Page {{page}} of {{totalPages}}", es: "Página {{page}} de {{totalPages}}" },
 	"adminUsers.pagination.previous": { fr: "Précédent", en: "Previous", es: "Anterior" },
 	"adminUsers.pagination.next": { fr: "Suivant", en: "Next", es: "Siguiente" },
-	"adminUsers.refreshing": { fr: "Actualisation…", en: "Refreshing…", es: "Actualizando…" },
+	"adminUsers.refreshing": { fr: "Actualisation", en: "Refreshing", es: "Actualizando" },
 	"adminUsers.table.name": { fr: "Nom", en: "Name", es: "Nombre" },
 	"adminUsers.table.email": { fr: "Email", en: "Email", es: "Correo" },
 	"adminUsers.table.verified": { fr: "Vérifié", en: "Verified", es: "Verificado" },
@@ -1149,14 +1154,14 @@ const definitions = {
 	"adminUsers.modal.verified": { fr: "Utilisateur vérifié", en: "Verified user", es: "Usuario verificado" },
 	"adminUsers.modal.roles": { fr: "Rôles", en: "Roles", es: "Roles" },
 	"adminUsers.messages.updateSuccess": { fr: "Utilisateur mis à jour.", en: "User updated.", es: "Usuario actualizado." },
-	"adminUsers.messages.updateError": { fr: "Échec de la mise à jour.", en: "Update failed.", es: "Error al actualizar." },
+	"adminUsers.messages.updateError": { fr: "chec de la mise à jour.", en: "Update failed.", es: "Error al actualizar." },
 	"adminUsers.messages.saveError": { fr: "Impossible d'enregistrer.", en: "Unable to save.", es: "No se pudo guardar." },
 	"adminUsers.messages.deleteConfirm": { fr: "Supprimer définitivement {{target}} ?", en: "Permanently delete {{target}}?", es: "¿Eliminar permanentemente a {{target}}?" },
 	"adminUsers.messages.deleteDefaultTarget": { fr: "cet utilisateur", en: "this user", es: "este usuario" },
-	"adminUsers.messages.deleteError": { fr: "Échec de la suppression.", en: "Deletion failed.", es: "Error al eliminar." },
+	"adminUsers.messages.deleteError": { fr: "chec de la suppression.", en: "Deletion failed.", es: "Error al eliminar." },
 	"adminUsers.messages.deleteSuccess": { fr: "Utilisateur supprimé.", en: "User deleted.", es: "Usuario eliminado." },
 	"adminUsers.messages.removeError": { fr: "Impossible de supprimer l'utilisateur.", en: "Unable to delete the user.", es: "No se pudo eliminar al usuario." },
-	"profile.loading": { fr: "Chargement du profil…", en: "Loading profile…", es: "Cargando el perfil…" },
+	"profile.loading": { fr: "Chargement du profil", en: "Loading profile", es: "Cargando el perfil" },
 	"profile.error.load": { fr: "Impossible de charger le profil.", en: "Unable to load profile.", es: "No se puede cargar el perfil." },
 	"profile.title": { fr: "Votre profil", en: "Your profile", es: "Tu perfil" },
 	"profile.subtitle": { fr: "Gérez vos informations personnelles et sécurisez votre compte en quelques clics.", en: "Manage your personal details and secure your account in just a few clicks.", es: "Gestiona tu información personal y asegura tu cuenta en unos pocos clics." },
@@ -1170,7 +1175,7 @@ const definitions = {
 	"profile.fields.avatar.label": { fr: "Avatar (URL)", en: "Avatar (URL)", es: "Avatar (URL)" },
 	"profile.fields.avatar.placeholder": { fr: "https://exemple.com/avatar.png", en: "https://example.com/avatar.png", es: "https://ejemplo.com/avatar.png" },
 	"profile.actions.save": { fr: "Enregistrer", en: "Save", es: "Guardar" },
-	"profile.actions.saving": { fr: "Enregistrement…", en: "Saving…", es: "Guardando…" },
+	"profile.actions.saving": { fr: "Enregistrement", en: "Saving", es: "Guardando" },
 	"profile.success.info": { fr: "Informations mises à jour.", en: "Information updated.", es: "Información actualizada." },
 	"profile.error.infoEmptyName": { fr: "Le nom ne peut pas être vide.", en: "Name cannot be empty.", es: "El nombre no puede estar vacío." },
 	"profile.error.infoUpdate": { fr: "Mise à jour impossible.", en: "Unable to update.", es: "No se pudo actualizar." },
@@ -1188,7 +1193,7 @@ const definitions = {
 	"profile.password.rule.special": { fr: "1 caractère spécial (&, ', -, _, ?, ., ;, /, :, !)", en: "1 special character (&, ', -, _, ?, ., ;, /, :, !)", es: "1 carácter especial (&, ', -, _, ?, ., ;, /, :, !)" },
 	"profile.password.rule.digit": { fr: "1 chiffre minimum", en: "At least 1 digit", es: "Al menos 1 dígito" },
 	"profile.actions.changePassword": { fr: "Changer le mot de passe", en: "Change password", es: "Cambiar la contraseña" },
-	"profile.actions.updatingPassword": { fr: "Mise à jour…", en: "Updating…", es: "Actualizando…" },
+	"profile.actions.updatingPassword": { fr: "Mise à jour", en: "Updating", es: "Actualizando" },
 	"profile.error.password.minLength": { fr: "Le nouveau mot de passe doit comporter au moins 8 caractères.", en: "The new password must be at least 8 characters long.", es: "La nueva contraseña debe tener al menos 8 caracteres." },
 	"profile.error.password.special": { fr: "Ajoutez au moins un caractère spécial (&, ', -, _, ?, ., ;, /, :, !).", en: "Add at least one special character (&, ', -, _, ?, ., ;, /, :, !).", es: "Añade al menos un carácter especial (&, ', -, _, ?, ., ;, /, :, !)." },
 	"profile.error.password.digit": { fr: "Ajoutez au moins un chiffre dans votre mot de passe.", en: "Add at least one digit to your password.", es: "Añade al menos un número a tu contraseña." },
@@ -1202,6 +1207,24 @@ const definitions = {
 	},
 	"profile.success.password": { fr: "Mot de passe mis à jour.", en: "Password updated.", es: "Contraseña actualizada." },
 
+    "notifications.title": { fr: "Notifications", en: "Notifications", es: "Notificaciones" },
+    "notifications.subtitle": { fr: "{{count}} non lues", en: "{{count}} unread", es: "{{count}} sin leer" },
+    "notifications.filters.all": { fr: "Toutes", en: "All", es: "Todas" },
+    "notifications.filters.unread": { fr: "Non lues", en: "Unread", es: "Sin leer" },
+    "notifications.loading": { fr: "Chargement des notifications...", en: "Loading notifications...", es: "Cargando notificaciones..." },
+    "notifications.empty": { fr: "Aucune notification pour le moment.", en: "No notifications yet.", es: "Sin notificaciones por ahora." },
+    "notifications.actions.markAllRead": { fr: "Tout marquer comme lu", en: "Mark all as read", es: "Marcar todo como le\u00eddo" },
+    "notifications.actions.markingAll": { fr: "Marquage...", en: "Marking...", es: "Marcando..." },
+    "notifications.actions.view": { fr: "Ouvrir", en: "Open", es: "Abrir" },
+    "notifications.actions.markRead": { fr: "Marquer comme lue", en: "Mark as read", es: "Marcar como le\u00edda" },
+    "notifications.actions.delete": { fr: "Supprimer", en: "Delete", es: "Eliminar" },
+    "notifications.actions.confirmDelete": { fr: "Voulez-vous supprimer cette notification ?", en: "Delete this notification?", es: "\u00bfEliminar esta notificaci\u00f3n?" },
+    "notifications.status.unread": { fr: "Non lue", en: "Unread", es: "Sin leer" },
+    "notifications.status.read": { fr: "Lue", en: "Read", es: "Le\u00edda" },
+    "notifications.preview.title": { fr: "Aper\u00e7u", en: "Preview", es: "Vista previa" },
+    "notifications.preview.viewAll": { fr: "Tout voir", en: "See all", es: "Ver todo" },
+    "notifications.target": { fr: "sur", en: "on", es: "en" },
+    "notifications.pagination": { fr: "Page {{page}} / {{totalPages}}", en: "Page {{page}} / {{totalPages}}", es: "P\u00e1gina {{page}} / {{totalPages}}" },
 } as const satisfies MessageDefinitions;
 
 export type TranslationKey = keyof typeof definitions;
