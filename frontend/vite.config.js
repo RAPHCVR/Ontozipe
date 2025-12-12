@@ -13,4 +13,10 @@ export default defineConfig({
 	plugins: [react(), tailwindcss()],
 	server: { open: true },
 	resolve: { alias: { "@": resolve(__dirname, "src") } },
+	server: {
+    host: true,
+    allowedHosts: [
+      'ontology.hugopereira.fr'
+    ]
+  }
 });
