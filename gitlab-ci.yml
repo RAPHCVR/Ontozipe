@@ -1,0 +1,58 @@
+
+
+variables:
+  IMAGE_TAG: "$CI_COMMIT_REF_NAME"
+  REGISTRY_IMAGE: "$CI_REGISTRY_IMAGE"
+  DOCKER_HOST: "unix:///var/run/docker.sock"
+
+stages:
+  - test
+  - build
+  - publish
+
+maven-test:
+  stage: test
+  image: maven:3.9.8-eclipse-temurin-21
+  tags:
+    - docker
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+    MAVEN_CLI_OPTS: "-B -ntp"
+  cache:
+    key: "$CI_JOB_NAME"
+    paths:
+      - backend/.m2/repository
+  script:
+    - cd backend
+    - mvn $MAVEN_CLI_OPTS clean test
+
+docker-build:
+  stage: build
+  image: docker:25.0.3
+  tags:
+    - docker-perso
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+
+    - docker build -t "$REGISTRY_IMAGE/frontend:$IMAGE_TAG" frontend
+    - docker build -t "$REGISTRY_IMAGE/backend:$IMAGE_TAG" backend
+  only:
+    - main
+    - dev
+
+docker-publish:
+  stage: publish
+  image: docker:25.0.3
+  tags:
+    - docker-perso
+  needs:
+    - docker-build
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+
+    - docker push "$REGISTRY_IMAGE/frontend:$IMAGE_TAG"
+    - docker push "$REGISTRY_IMAGE/backend:$IMAGE_TAG"
+    - echo "$REGISTRY_IMAGE/backend:$IMAGE_TAG" and "$REGISTRY_IMAGE/frontend:$IMAGE_TAG" are availaibles
+  only:
+    - main
+    - dev
