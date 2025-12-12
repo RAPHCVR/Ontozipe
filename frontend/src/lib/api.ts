@@ -2,7 +2,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useLanguage } from "../language/LanguageContext";
 import { useCallback } from "react";
 
-const API_BASE_URL = ("https://ontozipe.hugopereira.fr").replace(/\/$/, "");
+const API_BASE_URL = ("https://ontozipe.hugopereira.fr/api").replace(/\/$/, "");
 
 /**
  * hook retournant un fetch préconfiguré.

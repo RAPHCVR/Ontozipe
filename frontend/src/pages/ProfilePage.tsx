@@ -129,7 +129,7 @@ export default function ProfilePage() {
 
 	const apiBaseUrl = useMemo(
 		() =>
-			("https://ontozipe.hugopereira.fr").replace(
+			("https://ontozipe.hugopereira.fr/api").replace(
 				/\/$/,
 				""
 			),
