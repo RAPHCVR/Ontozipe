@@ -27,7 +27,7 @@ docker-build:
     - docker build -t "$REGISTRY_IMAGE/frontend:$IMAGE_TAG" frontend
     - docker build -t "$REGISTRY_IMAGE/backend:$IMAGE_TAG" backend
   only:
-    - comments-llm
+    - prod
 
 docker-publish:
   stage: publish
@@ -43,4 +43,4 @@ docker-publish:
     - docker push "$REGISTRY_IMAGE/backend:$IMAGE_TAG"
     - echo "$REGISTRY_IMAGE/backend:$IMAGE_TAG" and "$REGISTRY_IMAGE/frontend:$IMAGE_TAG" are availaibles
   only:
-    - comments-llm
+    - prod

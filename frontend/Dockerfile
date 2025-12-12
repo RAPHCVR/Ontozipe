@@ -1,8 +1,13 @@
-FROM node:22-alpine
+# Build
+FROM node:22-alpine AS build
 WORKDIR /app
+
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 COPY . .
 RUN yarn build
-EXPOSE 5173
-CMD ["yarn", "preview", "--host", "0.0.0.0", "--port", "5173"]
+
+# Runtime (Caddy)
+FROM caddy:alpine
+COPY --from=build /app/dist /usr/share/caddy
+EXPOSE 80
