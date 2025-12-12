@@ -1,13 +1,20 @@
-
-
 variables:
   IMAGE_TAG: "$CI_COMMIT_REF_NAME"
   REGISTRY_IMAGE: "$CI_REGISTRY_IMAGE"
-  DOCKER_HOST: "unix:///var/run/docker.sock"
 
 stages:
   - build
   - publish
+
+test-docker:
+  stage: build
+  tags:
+    - docker-perso
+  image: docker:25.0.3
+  script:
+    - docker version
+    - docker info
+    - docker ps
 
 docker-build:
   stage: build
@@ -37,4 +44,3 @@ docker-publish:
     - echo "$REGISTRY_IMAGE/backend:$IMAGE_TAG" and "$REGISTRY_IMAGE/frontend:$IMAGE_TAG" are availaibles
   only:
     - comments-llm
-    
