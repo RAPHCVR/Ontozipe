@@ -27,7 +27,7 @@ export class LlmService {
 	private readonly CORE = "http://example.org/core#";
 	private readonly FUSEKI_SPARQL = `${(process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(/\/$/, "")}/sparql`;
 	private readonly FRONTEND_BASE_URL = (
-		"https://ontozipe.hugopereira.fr/api"
+		process.env.FRONTEND_BASE_URL || "http://localhost:5173"
 	).replace(/\/$/, "");
 
 	private readonly sseRuns = new Map<string, Set<Response>>();

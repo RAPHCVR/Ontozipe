@@ -2,7 +2,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useLanguage } from "../language/LanguageContext";
 import { useCallback } from "react";
 
-const API_BASE_URL = ("https://ontozipe.hugopereira.fr/api").replace(/\/$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, "");
 
 /**
  * hook retournant un fetch préconfiguré.
