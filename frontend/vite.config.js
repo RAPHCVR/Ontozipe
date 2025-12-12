@@ -16,7 +16,7 @@ export default defineConfig({
 	server: {
     host: true,
     allowedHosts: [
-      'ontology.hugopereira.fr'
+      'ontozipe.hugopereira.fr'
     ]
   }
 });
