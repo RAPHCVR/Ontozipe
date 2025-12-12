@@ -10,4 +10,4 @@ RUN yarn build
 # Runtime (Caddy)
 FROM caddy:alpine
 COPY --from=build /app/dist /usr/share/caddy
-EXPOSE 80
+EXPOSE 5173
