@@ -5,7 +5,6 @@ variables:
 stages:
   - build
   - publish
-  - deploy
 
 test-docker:
   stage: build
@@ -45,33 +44,3 @@ docker-publish:
     - echo "$REGISTRY_IMAGE/backend:$IMAGE_TAG" and "$REGISTRY_IMAGE/frontend:$IMAGE_TAG" are availaibles
   only:
     - prod-hugo
-
-deploy-prod:
-  stage: deploy
-  image: alpine:3.20
-  tags:
-    - docker-perso
-  needs:
-    - docker-publish
-  before_script:
-    - apk add --no-cache openssh-client
-    - mkdir -p ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
-    - chmod 600 ~/.ssh/id_ed25519
-    - |
-      if [ -z "$DEPLOY_HOST" ]; then
-        echo "❌ DEPLOY_HOST est vide (variable CI/CD manquante ou non exposée à cette branche)."
-        exit 1
-      fi
-    - ssh-keyscan -T 5 -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-  script:
-    - >
-      ssh -p "$DEPLOY_PORT" -o StrictHostKeyChecking=no "$DEPLOY_USER@$DEPLOY_HOST" "
-        set -e;
-        cd /opt/ontozipe;
-        echo '$CI_REGISTRY_PASSWORD' | docker login '$CI_REGISTRY' -u '$CI_REGISTRY_USER' --password-stdin;
-        docker compose pull;
-        docker compose up -d --remove-orphans;
-      "
-  only:
-    - prod-hugo  
