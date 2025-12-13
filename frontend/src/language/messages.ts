@@ -68,9 +68,9 @@ const definitions = {
 	},
 	"navbar.profile": { fr: "Profil", en: "Profile", es: "Perfil" },
 	"footer.copyright": {
-		fr: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA — Tous droits réservés",
-		en: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA — All rights reserved",
-		es: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA — Todos los derechos reservados",
+		fr: "Maher ZIZOUNI & Hugo PEREIRA — Tous droits réservés",
+		en: "Maher ZIZOUNI & Hugo PEREIRA — All rights reserved",
+		es: "Maher ZIZOUNI & Hugo PEREIRA — Todos los derechos reservados",
 	},
 	"auth.login.title": { fr: "Connexion", en: "Sign in", es: "Iniciar sesión" },
 	"auth.login.error": {
