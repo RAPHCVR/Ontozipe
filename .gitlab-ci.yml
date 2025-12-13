@@ -58,16 +58,20 @@ deploy-prod:
     - mkdir -p ~/.ssh
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
-    - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+    - |
+      if [ -z "$DEPLOY_HOST" ]; then
+        echo "❌ DEPLOY_HOST est vide (variable CI/CD manquante ou non exposée à cette branche)."
+        exit 1
+      fi
+    - ssh-keyscan -T 5 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
   script:
     - >
-      ssh "$DEPLOY_USER@$DEPLOY_HOST" "
+      ssh -o StrictHostKeyChecking=no "$DEPLOY_USER@$DEPLOY_HOST" "
         set -e;
         cd /opt/ontozipe;
         echo '$CI_REGISTRY_PASSWORD' | docker login '$CI_REGISTRY' -u '$CI_REGISTRY_USER' --password-stdin;
         docker compose pull;
         docker compose up -d --remove-orphans;
-        docker image prune -f
       "
   only:
     - prod-hugo  
