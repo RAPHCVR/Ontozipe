@@ -63,10 +63,10 @@ deploy-prod:
         echo "❌ DEPLOY_HOST est vide (variable CI/CD manquante ou non exposée à cette branche)."
         exit 1
       fi
-    - ssh-keyscan -T 5 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+    - ssh-keyscan -T 5 -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
   script:
     - >
-      ssh -o StrictHostKeyChecking=no "$DEPLOY_USER@$DEPLOY_HOST" "
+      ssh -p "$DEPLOY_PORT" -o StrictHostKeyChecking=no "$DEPLOY_USER@$DEPLOY_HOST" "
         set -e;
         cd /opt/ontozipe;
         echo '$CI_REGISTRY_PASSWORD' | docker login '$CI_REGISTRY' -u '$CI_REGISTRY_USER' --password-stdin;
