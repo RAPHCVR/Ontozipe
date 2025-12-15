@@ -25,6 +25,7 @@ import OntologyPage from "./pages/OntologyPage";
 import AssistantPage from "./pages/AssistantPage";
 import ProfilePage from "./pages/ProfilePage";
 import AdminUsersPage from "./pages/AdminUsersPage";
+import DashboardPage from "./pages/DashboardPage";
 import { useProfile } from "./hooks/apiQueries";
 import NotificationsPage from "./pages/NotificationsPage";
 
@@ -63,6 +64,16 @@ export default function App() {
 								<RequireAuth>
 									<Layout>
 										<AssistantPage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
+						<Route
+							path="/dashboard"
+							element={
+								<RequireAuth>
+									<Layout>
+										<DashboardPage />
 									</Layout>
 								</RequireAuth>
 							}

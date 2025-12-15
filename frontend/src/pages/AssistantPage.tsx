@@ -46,6 +46,12 @@ const formatObservation = (obs: unknown): string => {
     }
 };
 
+
+const truncateText = (text: string, maxLength: number = 45) => {
+	if (!text) return "";
+	return text.length > maxLength ? `${text.slice(0, maxLength).trim()}...` : text;
+};
+
 export default function AssistantPage() {
     const api = useApi();
     const { token } = useAuth();
@@ -613,18 +619,18 @@ export default function AssistantPage() {
     const disableInputs = sending || messagesLoading || !activeSessionId;
 
     return (
-        <div className="container mx-auto max-w-5xl w-full flex flex-col gap-4">
+        <div className="assistant-page container mx-auto max-w-5xl w-full flex flex-col gap-4">
             <header className="flex flex-col gap-3 mt-4 md:flex-row md:items-end md:justify-between">
                 <h1 className="text-2xl font-semibold">{t("assistant.title")}</h1>
                 <div className="flex flex-col gap-2 md:items-end">
-                    <div className="flex items-center gap-2">
-                        <label className="text-sm">{t("assistant.ontologyLabel")}</label>
-                        <select
-                            disabled={ontologiesQuery.isLoading}
-                            className="input min-w-[20rem]"
-                            value={activeIri}
-                            onChange={(e) => setActiveIri(e.target.value)}
-                        >
+					<div className="flex items-center gap-2">
+						<label className="text-sm">{t("assistant.ontologyLabel")}</label>
+						<select
+							disabled={ontologiesQuery.isLoading}
+							className="input w-full md:w-64 max-w-xs"
+							value={activeIri}
+							onChange={(e) => setActiveIri(e.target.value)}
+						>
                             {ontos.map((o) => (
                                 <option key={o.iri} value={o.iri}>
                                     {o.label || formatLabel(o.iri.split(/[#/]/).pop() || o.iri)}
@@ -632,22 +638,22 @@ export default function AssistantPage() {
                             ))}
                         </select>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <label className="text-sm">{t("assistant.sessions.current")}</label>
-                        <select
-                            className="input min-w-[14rem]"
-                            value={activeSessionId ?? ""}
-                            onChange={(e) => handleSelectSession(e.target.value)}
-                            disabled={sessionsLoading || sessions.length === 0}
-                        >
+					<div className="flex flex-wrap items-center gap-2">
+						<label className="text-sm">{t("assistant.sessions.current")}</label>
+						<select
+							className="input w-full md:w-56 max-w-xs"
+							value={activeSessionId ?? ""}
+							onChange={(e) => handleSelectSession(e.target.value)}
+							disabled={sessionsLoading || sessions.length === 0}
+						>
                             {sessions.length === 0 ? (
                                 <option value="">{t("assistant.sessions.emptyState")}</option>
                             ) : (
-                                sessions.map((session) => (
-                                    <option key={session.id} value={session.id}>
-                                        {session.title}
-                                    </option>
-                                ))
+								sessions.map((session) => (
+									<option key={session.id} value={session.id}>
+										{truncateText(session.title, 45)}
+									</option>
+								))
                             )}
                         </select>
                         <button
@@ -697,7 +703,7 @@ export default function AssistantPage() {
                         </button>
                     </div>
                 </div>
-                <pre className="whitespace-pre-wrap break-words text-xs bg-gray-50 dark:bg-slate-800 p-2 rounded max-h-48 overflow-auto">
+				<pre className="assistant-system whitespace-pre-wrap break-words text-xs bg-white border border-gray-300 text-gray-900 dark:text-gray-200 dark:bg-slate-900 dark:border-slate-700 p-2 rounded max-h-48 overflow-auto">
                     {systemPromptLoading
                         ? t("common.loading")
                         : systemPrompt || t("assistant.systemPrompt.empty")}
@@ -743,26 +749,25 @@ export default function AssistantPage() {
 
 							{m.role === "assistant" && m.agentSteps && m.agentSteps.length > 0 && (
 								<div className="mb-2 w-full max-w-[80%]">
-									<details className="rounded-lg bg-gray-100 dark:bg-slate-800 p-2">
-										<summary className="cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-400">
+									<details className="assistant-agent-details rounded-lg bg-white border border-gray-300 dark:bg-slate-800 dark:border-slate-700 p-2 shadow-sm">
+										<summary className="cursor-pointer text-xs font-semibold text-gray-700 dark:text-gray-300">
 											{t("assistant.agentReasoning.summary")}
 										</summary>
                                         <div className="mt-2 space-y-2">
                                             {m.agentSteps.map((step, stepIdx) => (
                                                 <div
-                                                    key={`${step.id}-${stepIdx}`}
-                                                    className="text-xs p-2 rounded bg-white dark:bg-slate-700"
+                                                    className="assistant-agent-step text-xs p-2 rounded bg-gray-50 border border-gray-200 dark:bg-slate-700 dark:border-slate-600"
                                                 >
-                                                    <p className="font-bold text-indigo-500 flex items-center gap-1">
+                                                    <p className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
                                                         <Cog6ToothIcon className="h-4 w-4" />
                                                         {t("assistant.agentReasoning.toolCall", { name: step.name })}
                                                     </p>
-                                                    <pre className="whitespace-pre-wrap break-words bg-gray-50 dark:bg-slate-800 p-1 rounded mt-1 text-gray-700 dark:text-gray-300">
+                                                    <pre className="assistant-agent-step__args whitespace-pre-wrap break-words bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700 p-1 rounded mt-1 text-gray-800 dark:text-gray-200">
                                                         <code>{formatObservation(step.args)}</code>
                                                     </pre>
                                                     {step.result ? (
-                                                        <div className="mt-1 border-t border-gray-200 dark:border-slate-600 pt-1">
-                                                            <p className="font-semibold">{t("assistant.agentReasoning.result")}</p>
+                                                        <div className="assistant-agent-step__result mt-1 border-t border-gray-200 dark:border-slate-600 pt-1">
+                                                            <p className="font-semibold text-gray-700 dark:text-gray-300">{t("assistant.agentReasoning.result")}</p>
                                                             <pre className="whitespace-pre-wrap break-words text-gray-600 dark:text-gray-400">
                                                                 <code>{formatObservation(step.result)}</code>
                                                             </pre>
@@ -779,14 +784,14 @@ export default function AssistantPage() {
                                 </div>
                             )}
 
-                            <div
-                                className={
-                                    "prose dark:prose-invert rounded-lg px-3 py-2 max-w-[80%] " +
-                                    (m.role === "user"
-                                        ? "bg-indigo-600 text-white prose-p:text-white prose-strong:text-white self-end"
-                                        : "bg-gray-100 dark:bg-slate-800")
-                                }
-                            >
+							<div
+								className={
+									"assistant-message prose dark:prose-invert rounded-lg px-4 py-3 max-w-[85%] shadow-sm text-sm " +
+									(m.role === "user"
+										? "assistant-message--user bg-indigo-600 text-white prose-p:text-white prose-strong:text-white self-end shadow-md"
+										: "assistant-message--assistant bg-white border border-gray-300 text-gray-900 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-100")
+								}
+							>
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                     {m.content || "..."}
                                 </ReactMarkdown>
@@ -798,19 +803,19 @@ export default function AssistantPage() {
 
             <form onSubmit={handleSend} className="flex items-end gap-2">
                 <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={t("assistant.input.placeholder")}
-                    rows={2}
-                    className="flex-1 text-sm border rounded-md px-3 py-2 dark:bg-slate-800 dark:border-slate-600 resize-none"
-                    disabled={disableInputs}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSend();
-                        }
-                    }}
-                />
+                    className="assistant-input flex-1 text-sm border rounded-md px-3 py-2 bg-white text-gray-900 border-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100"
+					value={input}
+					onChange={(e) => setInput(e.target.value)}
+					placeholder={t("assistant.input.placeholder")}
+					rows={2}
+					disabled={disableInputs}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" && !e.shiftKey) {
+							e.preventDefault();
+							handleSend();
+						}
+					}}
+				/>
                 <button
                     type="submit"
                     disabled={disableInputs || !input.trim()}

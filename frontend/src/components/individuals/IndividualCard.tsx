@@ -6,6 +6,9 @@ import CommentBlock from "../comment/CommentComponent";
 import { v4 as uuidv4 } from "uuid";
 import { useApi } from "../../lib/api";
 import { useTranslation } from "../../language/useTranslation";
+import { useCommentSummary } from "../../hooks/useCommentSummary";
+import SimpleModal from "../SimpleModal";
+import { SparklesIcon } from "@heroicons/react/24/solid";
 
 const IndividualCard: React.FC<{
 	ind: IndividualNode;
@@ -29,7 +32,7 @@ const IndividualCard: React.FC<{
 	// Utilisateur courant depuis le contexte d’authentification
 	const { user } = useAuth();
 	const api = useApi();
-    const { t } = useTranslation();
+	const { t } = useTranslation();
 	const currentUserIri: string | undefined = user?.sub;
 
 	// Get ontology IRI from querystring
@@ -50,33 +53,38 @@ const IndividualCard: React.FC<{
 	const commonGroups =
 		userGroups.filter((g) => (ind.visibleTo || []).includes(g.iri)) || [];
 
-    const uniqueProps = useMemo(() => {
-        const m = new Map<string, typeof ind.properties[number]>();
-        for (const p of ind.properties || []) {
-            const key = `${p.predicate}||${p.isLiteral ? "L" : "R"}||${p.value}`;
-            const prev = m.get(key);
-            if (!prev) m.set(key, p);
-            else {
-                // conserve la variante la plus "riche" en libellés
-                if ((!prev.valueLabel && p.valueLabel) || (!prev.predicateLabel && p.predicateLabel)) {
-                    m.set(key, p);
-                }
-            }
-        }
-        return Array.from(m.values());
-    }, [ind.properties]);
+	const uniqueProps = useMemo(() => {
+		const m = new Map<string, (typeof ind.properties)[number]>();
+		for (const p of ind.properties || []) {
+			const key = `${p.predicate}||${p.isLiteral ? "L" : "R"}||${p.value}`;
+			const prev = m.get(key);
+			if (!prev) m.set(key, p);
+			else {
+				// conserve la variante la plus "riche" en libellés
+				if (
+					(!prev.valueLabel && p.valueLabel) ||
+					(!prev.predicateLabel && p.predicateLabel)
+				) {
+					m.set(key, p);
+				}
+			}
+		}
+		return Array.from(m.values());
+	}, [ind.properties]);
 
-    // Puis utilise uniqueProps à la place de ind.properties
-    const filteredProps =
-        (uniqueProps || []).filter((prop) => !prop.predicate.endsWith("label")) || [];
+	// Puis utilise uniqueProps à la place de ind.properties
+	const filteredProps =
+		(uniqueProps || []).filter((prop) => !prop.predicate.endsWith("label")) ||
+		[];
 
-    const dataProps = filteredProps.filter((p) => p.isLiteral);
-    const relProps  = filteredProps.filter((p) => !p.isLiteral);
+	const dataProps = filteredProps.filter((p) => p.isLiteral);
+	const relProps = filteredProps.filter((p) => !p.isLiteral);
 
 	const hasData = dataProps.length > 0 || relProps.length > 0;
 
 	// ---- COMMENTS (stateful) ----
 	const [comments, setComments] = useState<CommentNode[]>([]);
+	const [summaryOpen, setSummaryOpen] = useState(false);
 
 	// état d’ouverture de la carte
 	const [open, setOpen] = useState(defaultOpen);
@@ -102,6 +110,27 @@ const IndividualCard: React.FC<{
 
 	// saisie rapide d'un nouveau commentaire
 	const [draftComment, setDraftComment] = useState("");
+
+	const summaryInput = useMemo(() => {
+		if (!open) return null;
+		const properties = (filteredProps || []).slice(0, 12).map((p) => ({
+			predicate: p.predicateLabel || p.predicate,
+			value: p.valueLabel || p.value,
+		}));
+		return {
+			individual: {
+				id: ind.id,
+				label: ind.label,
+				properties,
+			},
+			comments: comments.map((c) => ({
+				body: c.body,
+				replyTo: c.replyTo,
+			})),
+		};
+	}, [open, ind, filteredProps, comments]);
+
+	const summaryQuery = useCommentSummary(summaryInput);
 
 	// helper: refresh from API after mutation
 	const fetchComments = async () => {
@@ -134,19 +163,14 @@ const IndividualCard: React.FC<{
 
 	// UPDATE
 	const handleEditComment = async (comment: CommentNode, body: string) => {
-		await api(
-			`/comments/${encodeURIComponent(
-				comment.id
-			)}`,
-			{
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					newBody: body,
-					ontologyIri: ontologyIri,
-				}),
-			}
-		);
+		await api(`/comments/${encodeURIComponent(comment.id)}`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				newBody: body,
+				ontologyIri: ontologyIri,
+			}),
+		});
 		await fetchComments();
 	};
 
@@ -169,9 +193,15 @@ const IndividualCard: React.FC<{
 					idx % 2 === 0
 						? "bg-white dark:bg-slate-700"
 						: "bg-slate-50 dark:bg-slate-800"
-				} ${highlighted ? "ring-2 ring-offset-2 ring-indigo-300 dark:ring-indigo-500" : ""}`}>
+				} ${
+					highlighted
+						? "ring-2 ring-offset-2 ring-indigo-300 dark:ring-indigo-500"
+						: ""
+				}`}>
 				<span className="font-medium">{formatLabel(ind.label)}</span>
-				<span className="text-gray-400 text-xs ml-2">({t("individual.noDataShort")})</span>
+				<span className="text-gray-400 text-xs ml-2">
+					({t("individual.noDataShort")})
+				</span>
 			</div>
 		);
 	} else {
@@ -182,7 +212,11 @@ const IndividualCard: React.FC<{
 					idx % 2 === 0
 						? "bg-white dark:bg-slate-700"
 						: "bg-slate-50 dark:bg-slate-800"
-				} ${highlighted ? "ring-2 ring-offset-2 ring-indigo-300 dark:ring-indigo-500" : ""}`}>
+				} ${
+					highlighted
+						? "ring-2 ring-offset-2 ring-indigo-300 dark:ring-indigo-500"
+						: ""
+				}`}>
 				<div
 					className="flex items-center justify-between cursor-pointer"
 					onClick={() => setOpen((v: any) => !v)}>
@@ -194,7 +228,8 @@ const IndividualCard: React.FC<{
 									title={t("common.delete")}
 									onClick={(e) => {
 										e.stopPropagation();
-										if (!window.confirm(t("individual.form.confirmDelete"))) return;
+										if (!window.confirm(t("individual.form.confirmDelete")))
+											return;
 										onDelete(ind);
 									}}
 									className="text-red-500 hover:text-red-700 text-sm">
@@ -265,52 +300,54 @@ const IndividualCard: React.FC<{
 
 						{/* ---- RELATIONS SECTION ---- */}
 						{relProps.length > 0 && (
-						<div>
-							<h4 className="text-xs font-semibold text-emerald-600 mb-1">
-								{t("individual.relations.title")}
-							</h4>
+							<div>
+								<h4 className="text-xs font-semibold text-emerald-600 mb-1">
+									{t("individual.relations.title")}
+								</h4>
 								<div className="flex flex-wrap gap-1">
-                                    {relProps.map((prop, idx) => {
-                                        const target =
-                                            snapshot.individuals.find((t) => t.id === prop.value) ||
-                                            snapshot.persons.find((t) => t.id === prop.value);
+									{relProps.map((prop, idx) => {
+										const target =
+											snapshot.individuals.find((t) => t.id === prop.value) ||
+											snapshot.persons.find((t) => t.id === prop.value);
 
-                                        const hasData = !!target && (target.properties?.length ?? 0) > 0;
+										const hasData =
+											!!target && (target.properties?.length ?? 0) > 0;
 
-                                        const label = formatLabel(
-                                            target?.label ||
-                                            prop.valueLabel ||
-                                            (prop.value.startsWith("http")
-                                                ? prop.value.split(/[#/]/).pop() || prop.value
-                                                : prop.value)
-                                        );
+										const label = formatLabel(
+											target?.label ||
+												prop.valueLabel ||
+												(prop.value.startsWith("http")
+													? prop.value.split(/[#/]/).pop() || prop.value
+													: prop.value)
+										);
 
-                                        const chipClass = hasData
-                                            ? "bg-emerald-700/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300 hover:bg-emerald-700/20"
-                                            : "bg-slate-400/10 text-slate-600 dark:bg-slate-400/10 dark:text-slate-300 border border-dashed border-slate-400/50 hover:bg-slate-400/20";
+										const chipClass = hasData
+											? "bg-emerald-700/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300 hover:bg-emerald-700/20"
+											: "bg-slate-400/10 text-slate-600 dark:bg-slate-400/10 dark:text-slate-300 border border-dashed border-slate-400/50 hover:bg-slate-400/20";
 
-                                        const title = hasData
-                                            ? t("individual.relations.openWithData")
-                                            : t("individual.relations.openWithoutData");
+										const title = hasData
+											? t("individual.relations.openWithData")
+											: t("individual.relations.openWithoutData");
 
-                                        return (
-                                            <span key={idx} className="relative group">
-                                              <button
-                                                  onClick={() => target && onShow(target)}
-                                                  className={`${chipClass} text-xs px-2 py-0.5 rounded-full transition-colors cursor-pointer`}
-                                                  title={title}
-                                              >
-                                                {hasData ? "● " : "○ "}
-                                                  {label}
-                                              </button>
-                                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 invisible group-hover:visible opacity-100 text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap z-20 bg-gray-800 text-white">
-                                                {formatLabel(
-                                                    prop.predicateLabel || prop.predicate.split(/[#/]/).pop() || ""
-                                                )}
-                                              </span>
-                                            </span>
-                                        );
-                                    })}
+										return (
+											<span key={idx} className="relative group">
+												<button
+													onClick={() => target && onShow(target)}
+													className={`${chipClass} text-xs px-2 py-0.5 rounded-full transition-colors cursor-pointer`}
+													title={title}>
+													{hasData ? "● " : "○ "}
+													{label}
+												</button>
+												<span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 invisible group-hover:visible opacity-100 text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap z-20 bg-gray-800 text-white">
+													{formatLabel(
+														prop.predicateLabel ||
+															prop.predicate.split(/[#/]/).pop() ||
+															""
+													)}
+												</span>
+											</span>
+										);
+									})}
 								</div>
 							</div>
 						)}
@@ -340,6 +377,15 @@ const IndividualCard: React.FC<{
 							<h4 className="text-xs font-semibold text-yellow-600 mb-1">
 								{t("individual.comments.title")}
 							</h4>
+							<div className="flex items-center gap-2 mb-2">
+								<button
+									type="button"
+									className="dashboard-summary__button"
+									onClick={() => setSummaryOpen(true)}>
+									<SparklesIcon className="h-4 w-4" aria-hidden="true" />
+									{t("dashboard.section.summary")}
+								</button>
+							</div>
 							{/* zone de saisie */}
 							<div className="flex items-start gap-2 mb-2">
 								<textarea
@@ -380,6 +426,27 @@ const IndividualCard: React.FC<{
 									))}
 							</div>
 						</div>
+
+						{summaryOpen && (
+							<SimpleModal
+								title={t("dashboard.section.summary")}
+								onClose={() => setSummaryOpen(false)}
+								onSubmit={() => setSummaryOpen(false)}>
+								{summaryQuery.isLoading && (
+									<div className="flex items-center gap-2 text-sm text-gray-500">
+										<div className="page-state__spinner" aria-hidden />
+									</div>
+								)}
+								{summaryQuery.isError && (
+									<p className="text-sm text-gray-500">
+										{t("dashboard.state.error")}
+									</p>
+								)}
+								{summaryQuery.data && (
+									<p className="text-sm leading-relaxed">{summaryQuery.data}</p>
+								)}
+							</SimpleModal>
+						)}
 
 						{dataProps.length === 0 && relProps.length === 0 && (
 							<p className="text-xs italic text-gray-500">
