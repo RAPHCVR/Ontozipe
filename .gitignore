@@ -6,3 +6,10 @@ dist/
 coverage/
 fuseki_data/*
 ontologies/pizza.ttl
+
+.yarn/
+yarn.lock
+.vscode/
+.idea/
+*.log
+

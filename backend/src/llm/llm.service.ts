@@ -25,7 +25,7 @@ export class LlmService {
 	constructor(private readonly http: HttpService) {}
 
 	private readonly CORE = "http://example.org/core#";
-	private readonly FUSEKI_SPARQL = `${(process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(/\/$/, "")}/sparql`;
+	private readonly FUSEKI_SPARQL = `${(process.env.FUSEKI_URL ?? "http://localhost:3030/autonomy").replace(/\/$/, "")}/sparql`;
 	private readonly FRONTEND_BASE_URL = (
 		process.env.FRONTEND_BASE_URL || "http://localhost:5173"
 	).replace(/\/$/, "");
@@ -98,13 +98,15 @@ export class LlmService {
 		const modelName =
 			mode === "decision"
 				? process.env.OPENAI_DECISION_MODEL ||
-				  process.env.OPENAI_MODEL ||
-				  "gpt-4o-mini"
+					process.env.OPENAI_MODEL ||
+					"gpt-4o-mini"
 				: process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 		const lower = modelName.toLowerCase();
 		const isReasoningModel =
-			lower.includes("gpt-5") || lower.startsWith("o1") || lower.startsWith("o3");
+			lower.includes("gpt-5") ||
+			lower.startsWith("o1") ||
+			lower.startsWith("o3");
 
 		if (isReasoningModel) {
 			return new ChatOpenAI({
@@ -289,7 +291,6 @@ export class LlmService {
 		ontologyIri?: string,
 		sessionId?: string
 	): StructuredTool[] {
-
 		const getMostConnectedNodesTool = tool(
 			async ({ ontologyIri: onto }: { ontologyIri?: string }) => {
 				const ontoEff = onto || ontologyIri || "";
@@ -373,7 +374,7 @@ export class LlmService {
 					Boolean(typeNames?.length) ||
 					Boolean(relationNameFilters?.length);
 
-                let usedFallbackMostConnected = false;
+				let usedFallbackMostConnected = false;
 
 				try {
 					let nodes: Node[] = [];
@@ -400,66 +401,68 @@ export class LlmService {
 							await request.fetch(this.http, this.FUSEKI_SPARQL, onto)
 						).filter((node) => this.isLikelyIri(node?.uri));
 					} else {
-                        if (!keywords || keywords.length === 0) {
-                            return "Erreur : au moins un mot-clé est requis pour la recherche.";
-                        }
+						if (!keywords || keywords.length === 0) {
+							return "Erreur : au moins un mot-clé est requis pour la recherche.";
+						}
 
-                        // 1. Recherche par mots-clés
-                        const results = await searchNodesByKeywords(
-                            this.http,
-                            this.FUSEKI_SPARQL,
-                            onto,
-                            keywords
-                        );
+						// 1. Recherche par mots-clés
+						const results = await searchNodesByKeywords(
+							this.http,
+							this.FUSEKI_SPARQL,
+							onto,
+							keywords
+						);
 
-                        let urisToBuild: string[] = [];
+						let urisToBuild: string[] = [];
 
-                        if (results.length === 0) {
-                            // 2. Fallback : 10 noeuds les plus connectés du graph
-                            const mostConnected = await getMostConnectedNodes(
-                            this.http,
-                            this.FUSEKI_SPARQL,
-                            onto
-                            );
+						if (results.length === 0) {
+							// 2. Fallback : 10 noeuds les plus connectés du graph
+							const mostConnected = await getMostConnectedNodes(
+								this.http,
+								this.FUSEKI_SPARQL,
+								onto
+							);
 
-                            if (mostConnected.length === 0) {
-                            return `Aucune entité trouvée avec les mots-clés fournis, et aucun noeud très connecté n'a pu être récupéré dans l'ontologie <${onto}>.`;
-                            }
+							if (mostConnected.length === 0) {
+								return `Aucune entité trouvée avec les mots-clés fournis, et aucun noeud très connecté n'a pu être récupéré dans l'ontologie <${onto}>.`;
+							}
 
-                            usedFallbackMostConnected = true;
-                            urisToBuild = mostConnected.slice(0, sanitizedMax).map((n) => n.uri);
-                        } else {
-                            const firstHits = results.slice(0, sanitizedMax);
-                            urisToBuild = firstHits.map((hit) => hit.uri);
-                        }
+							usedFallbackMostConnected = true;
+							urisToBuild = mostConnected
+								.slice(0, sanitizedMax)
+								.map((n) => n.uri);
+						} else {
+							const firstHits = results.slice(0, sanitizedMax);
+							urisToBuild = firstHits.map((hit) => hit.uri);
+						}
 
-                        const covered = new Set<string>();
-                        for (const uri of urisToBuild) {
-                            if (!this.isLikelyIri(uri)) {
-                            continue;
-                            }
-                            try {
-                            const node = await buildNodeFromUri(
-                                this.http,
-                                this.FUSEKI_SPARQL,
-                                onto,
-                                uri
-                            );
-                            if (covered.has(node.uri)) continue;
-                            nodes.push(node);
-                            covered.add(node.uri);
+						const covered = new Set<string>();
+						for (const uri of urisToBuild) {
+							if (!this.isLikelyIri(uri)) {
+								continue;
+							}
+							try {
+								const node = await buildNodeFromUri(
+									this.http,
+									this.FUSEKI_SPARQL,
+									onto,
+									uri
+								);
+								if (covered.has(node.uri)) continue;
+								nodes.push(node);
+								covered.add(node.uri);
 
-                            for (const relation of node.relationships) {
-                                covered.add(relation.target_uri);
-                            }
-                            for (const attribute of node.attributes) {
-                                covered.add(attribute.property_uri);
-                            }
-                            } catch (error) {
-                            console.warn("Failed to build node for URI", uri, error);
-                            }
-                        }
-                    }
+								for (const relation of node.relationships) {
+									covered.add(relation.target_uri);
+								}
+								for (const attribute of node.attributes) {
+									covered.add(attribute.property_uri);
+								}
+							} catch (error) {
+								console.warn("Failed to build node for URI", uri, error);
+							}
+						}
+					}
 
 					this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
 
@@ -469,18 +472,17 @@ export class LlmService {
 						.join(", ");
 
 					if (entityLabels) {
-                        if (usedFallbackMostConnected) {
-                            return `Aucune entité ne correspondait directement aux mots-clés, mais les entités très connectées ${entityLabels} ont été proposées pour explorer le graphe. Leurs relations ont été ajoutées aux résultats de recherche.`;
-                        }
-                        return `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
-                    }
+						if (usedFallbackMostConnected) {
+							return `Aucune entité ne correspondait directement aux mots-clés, mais les entités très connectées ${entityLabels} ont été proposées pour explorer le graphe. Leurs relations ont été ajoutées aux résultats de recherche.`;
+						}
+						return `Les entités ${entityLabels} ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
+					}
 
-                    if (usedFallbackMostConnected) {
-                        return `${nodes.length} entité(s) très connectée(s) ont été proposées pour explorer le graphe. Leurs relations ont été ajoutées aux résultats de recherche.`;
-                    }
+					if (usedFallbackMostConnected) {
+						return `${nodes.length} entité(s) très connectée(s) ont été proposées pour explorer le graphe. Leurs relations ont été ajoutées aux résultats de recherche.`;
+					}
 
-                    return `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
-                    
+					return `${nodes.length} entité(s) ont été trouvées par la recherche. Leurs relations ont été ajoutées aux résultats de recherche.`;
 				} catch (error) {
 					const errorMessage =
 						error instanceof Error ? error.message : "Erreur inconnue";
@@ -757,15 +759,15 @@ Instructions :
 				new HumanMessage(`Données JSON :\n${serializedPayload}`),
 			];
 
-			const response = await llm.pipe(new StringOutputParser()).invoke(messages);
+			const response = await llm
+				.pipe(new StringOutputParser())
+				.invoke(messages);
 			return this.cleanThinking(response);
 		} catch (error) {
 			console.error("Erreur lors du résumé dashboard:", error);
 			return "Résumé indisponible pour le moment.";
 		}
 	}
-
-
 
 	public async summarizeIndividualComments(params: {
 		individual: {
@@ -809,7 +811,9 @@ Règles strictes :
 				new HumanMessage(`Voici les données à analyser :\n${contextData}`),
 			];
 
-			const response = await llm.pipe(new StringOutputParser()).invoke(messages);
+			const response = await llm
+				.pipe(new StringOutputParser())
+				.invoke(messages);
 			return this.cleanThinking(response);
 		} catch (error) {
 			console.error("Erreur lors du résumé des commentaires:", error);

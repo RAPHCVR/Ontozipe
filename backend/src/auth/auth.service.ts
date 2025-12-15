@@ -29,7 +29,7 @@ interface UserAccountRow {
 @Injectable()
 export class AuthService {
 	private readonly fusekiBase = (
-		process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy"
+		process.env.FUSEKI_URL ?? "http://localhost:3030/autonomy"
 	).replace(/\/$/, "");
 	private readonly fusekiUrl = `${this.fusekiBase}/sparql`;
 	private readonly fusekiUpdate = `${this.fusekiBase}/update`;
@@ -193,14 +193,7 @@ export class AuthService {
 		const baseRoleTriple = `<${iri}> core:hasRole <${CORE}RegularRole> .`;
 		let extraRoleTriple = "";
 
-
-
-		/* if (normalizedEmail === "superadmin@admin.com") {
-			extraRoleTriple = `<${iri}> core:hasRole <${CORE}SuperAdminRole> .`;
-		} */
-
-
-		if (normalizedEmail === "tempadmin@admin.com") {
+		if (normalizedEmail === "superadmin@admin.com") {
 			extraRoleTriple = `<${iri}> core:hasRole <${CORE}SuperAdminRole> .`;
 		}
 

@@ -73,9 +73,9 @@ const definitions = {
 	},
 	"navbar.profile": { fr: "Profil", en: "Profile", es: "Perfil" },
 	"footer.copyright": {
-		fr: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA  Tous droits réservés",
-		en: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA  All rights reserved",
-		es: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA  Todos los derechos reservados",
+		fr: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA · Tous droits réservés",
+		en: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA · All rights reserved",
+		es: "© {{year}} · Maher ZIZOUNI & Hugo PEREIRA · Todos los derechos reservados",
 	},
 	"auth.login.title": { fr: "Connexion", en: "Sign in", es: "Iniciar sesión" },
 	"auth.login.error": {
@@ -97,7 +97,7 @@ const definitions = {
 	},
 	"auth.login.noAccount": {
 		fr: "Pas encore de compte ?",
-		en: "Dont have an account yet?",
+		en: "Don't have an account yet?",
 		es: "¿Aún no tienes cuenta?",
 	},
 	"auth.login.createAccount": {
@@ -179,7 +179,7 @@ const definitions = {
 		es: "Nueva ontología",
 	},
 	"home.actions.launchAssistant": {
-		fr: "Lancer lassistant",
+		fr: "Lancer l'assistant",
 		en: "Launch assistant",
 		es: "Lanzar asistente",
 	},
@@ -189,7 +189,7 @@ const definitions = {
 		es: "Tus ontologías",
 	},
 	"home.section.subtitle": {
-		fr: "Sélectionnez une ontologie pour louvrir ou démarrez un espace de travail collaboratif instantané.",
+		fr: "Sélectionnez une ontologie pour l'ouvrir ou démarrez un espace de travail collaboratif instantané.",
 		en: "Select an ontology to open it or start an instant collaborative workspace.",
 		es: "Selecciona una ontología para abrirla o inicia un espacio colaborativo al instante.",
 	},
@@ -202,6 +202,26 @@ const definitions = {
 		fr: "Tri alphabétique",
 		en: "Alphabetical sort",
 		es: "Orden alfabético",
+	},
+	"home.actions.deleteOntology": {
+		fr: "Supprimer",
+		en: "Delete",
+		es: "Eliminar",
+	},
+	"home.delete.title": {
+		fr: "Supprimer l'ontologie",
+		en: "Delete ontology",
+		es: "Eliminar ontología",
+	},
+	"home.delete.confirm": {
+		fr: "Êtes-vous sûr de vouloir supprimer « {{label}} » ? Cette action est irréversible et supprime tout ce qui est associé.",
+		en: "Are you sure you want to delete “{{label}}”? This action is irreversible and removes everything associated.",
+		es: "¿Seguro que quieres eliminar «{{label}}»? Esta acción es irreversible y elimina todo lo asociado.",
+	},
+	"home.delete.submit": {
+		fr: "Oui, supprimer",
+		en: "Yes, delete",
+		es: "Sí, eliminar",
 	},
 	"navbar.dashboard": { fr: "Tableau de bord", en: "Dashboard", es: "Panel" },
 	"dashboard.tabs.platform": {
@@ -295,7 +315,7 @@ const definitions = {
 		es: "Nombre legible",
 	},
 	"home.modal.label": {
-		fr: "Label de lontologie",
+		fr: "Label de l'ontologie",
 		en: "Ontology label",
 		es: "Etiqueta de la ontología",
 	},
@@ -321,12 +341,12 @@ const definitions = {
 		es: "Carga un archivo RDF/TTL válido (obligatorio).",
 	},
 	"home.modal.fileSelected": {
-		fr: "Fichier sélectionné : {{file}} ({{size}} kio)",
+		fr: "Fichier sélectionné : {{file}} ({{size}} Kio)",
 		en: "Selected file: {{file}} ({{size}} KB)",
 		es: "Archivo seleccionado: {{file}} ({{size}} KB)",
 	},
 	"home.modal.submit": {
-		fr: "Importer lontologie",
+		fr: "Importer l'ontologie",
 		en: "Import ontology",
 		es: "Importar la ontología",
 	},
@@ -402,7 +422,7 @@ const definitions = {
 	},
 	"groups.header.title": { fr: "Groupes", en: "Groups", es: "Grupos" },
 	"groups.header.subtitle": {
-		fr: "Organisez vos collaborateurs et contrôlez laccès aux ontologies partagées.",
+		fr: "Organisez vos collaborateurs et contrôlez l'accès aux ontologies partagées.",
 		en: "Organise your collaborators and control access to shared ontologies.",
 		es: "Organiza a tus colaboradores y controla el acceso a las ontologías compartidas.",
 	},
@@ -417,7 +437,7 @@ const definitions = {
 		es: "Cargando grupos",
 	},
 	"groups.empty.title": {
-		fr: "Aucun groupe na encore été créé.",
+		fr: "Aucun groupe n'a encore été créé.",
 		en: "No groups have been created yet.",
 		es: "Todavía no se ha creado ningún grupo.",
 	},
@@ -577,7 +597,7 @@ const definitions = {
 		es: "Organización creada con éxito.",
 	},
 	"organizations.toast.createError": {
-		fr: "Impossible de créer lorganisation.",
+		fr: "Impossible de créer l'organisation.",
 		en: "Unable to create the organization.",
 		es: "No se pudo crear la organización.",
 	},
@@ -587,7 +607,7 @@ const definitions = {
 		es: "Organización eliminada.",
 	},
 	"organizations.toast.deleteError": {
-		fr: "Suppression de lorganisation impossible.",
+		fr: "Suppression de l'organisation impossible.",
 		en: "Unable to delete the organization.",
 		es: "No se pudo eliminar la organización.",
 	},
@@ -622,7 +642,7 @@ const definitions = {
 		es: "Organización actualizada.",
 	},
 	"organizations.toast.updateError": {
-		fr: "Impossible de mettre à jour lorganisation.",
+		fr: "Impossible de mettre à jour l'organisation.",
 		en: "Unable to update the organization.",
 		es: "No se pudo actualizar la organización.",
 	},
@@ -632,7 +652,7 @@ const definitions = {
 		es: "Administrador principal",
 	},
 	"organizations.form.nameLabel": {
-		fr: "Nom de lorganisation",
+		fr: "Nom de l'organisation",
 		en: "Organization name",
 		es: "Nombre de la organización",
 	},
@@ -647,13 +667,13 @@ const definitions = {
 		es: "Creando",
 	},
 	"organizations.members.helper": {
-		fr: "Glissez-déposez pour gérer les membres de lorganisation.",
+		fr: "Glissez-déposez pour gérer les membres de l'organisation.",
 		en: "Drag and drop to manage organization members.",
 		es: "Arrastra y suelta para gestionar los miembros de la organización.",
 	},
 	"organizations.members.readonly": {
-		fr: "Vous navez pas les droits pour modifier les membres de cette organisation.",
-		en: "You dont have permission to modify this organizations members.",
+		fr: "Vous n'avez pas les droits pour modifier les membres de cette organisation.",
+		en: "You don't have permission to modify this organization's members.",
 		es: "No tienes permiso para modificar los miembros de esta organización.",
 	},
 	"organizations.members.emptyAvailable": {
@@ -824,12 +844,12 @@ const definitions = {
 		es: "Miembros",
 	},
 	"organizations.details.noMembers": {
-		fr: "Aucun membre pour linstant.",
+		fr: "Aucun membre pour l'instant.",
 		en: "No members yet.",
 		es: "Aún no hay miembros.",
 	},
 	"organizations.details.delete": {
-		fr: "Supprimer lorganisation",
+		fr: "Supprimer l'organisation",
 		en: "Delete organization",
 		es: "Eliminar la organización",
 	},
@@ -853,7 +873,7 @@ const definitions = {
 	"common.copy": { fr: "Copier", en: "Copy", es: "Copiar" },
 	"common.close": { fr: "Fermer", en: "Close", es: "Cerrar" },
 	"assistant.initialMessage": {
-		fr: "Bonjour, je suis lassistant OntoZIPE. Posez-moi une question sur votre ontologie.",
+		fr: "Bonjour, je suis l'assistant OntoZIPE. Posez-moi une question sur votre ontologie.",
 		en: "Hello, I am the OntoZIPE assistant. Ask me a question about your ontology.",
 		es: "Hola, soy el asistente de OntoZIPE. Hazme una pregunta sobre tu ontología.",
 	},

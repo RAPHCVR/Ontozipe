@@ -5,93 +5,98 @@ import { randomUUID } from "crypto";
 import { escapeSparqlLiteral } from "../utils/sparql.utils";
 
 export interface ChatSessionSummary {
-    id: string;
-    iri: string;
-    title: string;
-    ontologyIri?: string;
-    createdAt?: string;
-    updatedAt?: string;
+	id: string;
+	iri: string;
+	title: string;
+	ontologyIri?: string;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export interface ChatMessageRecord {
-    id: string;
-    role: "user" | "assistant" | "system";
-    content: string;
-    agentSteps?: string;
-    createdAt?: string;
-    index: number;
+	id: string;
+	role: "user" | "assistant" | "system";
+	content: string;
+	agentSteps?: string;
+	createdAt?: string;
+	index: number;
 }
 
 export interface AppendMessageInput {
-    role: "user" | "assistant" | "system";
-    content: string;
-    agentSteps?: string;
+	role: "user" | "assistant" | "system";
+	content: string;
+	agentSteps?: string;
 }
 
 interface SessionLookupResult {
-    iri: string;
-    title: string;
-    ontologyIri?: string;
-    createdAt?: string;
-    updatedAt?: string;
-    exists: boolean;
+	iri: string;
+	title: string;
+	ontologyIri?: string;
+	createdAt?: string;
+	updatedAt?: string;
+	exists: boolean;
 }
 
 @Injectable()
 export class ChatHistoryService {
-    private readonly fusekiBase = (process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy").replace(/\/$/, "");
-    private readonly sparqlEndpoint = `${this.fusekiBase}/sparql`;
-    private readonly updateEndpoint = `${this.fusekiBase}/update`;
-    private readonly CORE = "http://example.org/core#";
-    private readonly XSD = "http://www.w3.org/2001/XMLSchema#";
-    private readonly CHAT_NAMESPACE = "http://example.org/chat/";
-    private readonly CHAT_GRAPH = `${this.fusekiBase}#chat-history`;
-    private readonly DEFAULT_TITLE = "Nouvelle conversation";
-    private readonly adminAuth = {
-        username: process.env.FUSEKI_USER || "admin",
-        password: process.env.FUSEKI_PASSWORD || "Pass123",
-    };
+	private readonly fusekiBase = (
+		process.env.FUSEKI_URL ?? "http://localhost:3030/autonomy"
+	).replace(/\/$/, "");
+	private readonly sparqlEndpoint = `${this.fusekiBase}/sparql`;
+	private readonly updateEndpoint = `${this.fusekiBase}/update`;
+	private readonly CORE = "http://example.org/core#";
+	private readonly XSD = "http://www.w3.org/2001/XMLSchema#";
+	private readonly CHAT_NAMESPACE = "http://example.org/chat/";
+	private readonly CHAT_GRAPH = `${this.fusekiBase}#chat-history`;
+	private readonly DEFAULT_TITLE = "Nouvelle conversation";
+	private readonly adminAuth = {
+		username: process.env.FUSEKI_USER || "admin",
+		password: process.env.FUSEKI_PASSWORD || "Pass123",
+	};
 
-    constructor(private readonly http: HttpService) {}
+	constructor(private readonly http: HttpService) {}
 
-    private sanitizeSessionId(sessionId: string): string {
-        const trimmed = sessionId.trim();
-        if (!/^[A-Za-z0-9\-_]+$/.test(trimmed)) {
-            throw new NotFoundException("Invalid session identifier");
-        }
-        return trimmed;
-    }
+	private sanitizeSessionId(sessionId: string): string {
+		const trimmed = sessionId.trim();
+		if (!/^[A-Za-z0-9\-_]+$/.test(trimmed)) {
+			throw new NotFoundException("Invalid session identifier");
+		}
+		return trimmed;
+	}
 
-    private buildSessionIri(sessionId: string): string {
-        return `${this.CHAT_NAMESPACE}s/${sessionId}`;
-    }
+	private buildSessionIri(sessionId: string): string {
+		return `${this.CHAT_NAMESPACE}s/${sessionId}`;
+	}
 
-    private buildMessageIri(): string {
-        return `${this.CHAT_NAMESPACE}m/${randomUUID()}`;
-    }
+	private buildMessageIri(): string {
+		return `${this.CHAT_NAMESPACE}m/${randomUUID()}`;
+	}
 
-    private async runSelect(query: string): Promise<any> {
-        const params = new URLSearchParams({
-            query,
-            format: "application/sparql-results+json",
-        });
-        const { data } = await lastValueFrom(this.http.get(this.sparqlEndpoint, { params }));
-        return data;
-    }
+	private async runSelect(query: string): Promise<any> {
+		const params = new URLSearchParams({
+			query,
+			format: "application/sparql-results+json",
+		});
+		const { data } = await lastValueFrom(
+			this.http.get(this.sparqlEndpoint, { params })
+		);
+		return data;
+	}
 
-    private async runUpdate(update: string): Promise<void> {
-        await lastValueFrom(
-            this.http.post(
-                this.updateEndpoint,
-                new URLSearchParams({ update }),
-                { auth: this.adminAuth }
-            )
-        );
-    }
+	private async runUpdate(update: string): Promise<void> {
+		await lastValueFrom(
+			this.http.post(this.updateEndpoint, new URLSearchParams({ update }), {
+				auth: this.adminAuth,
+			})
+		);
+	}
 
-    private async lookupSession(userIri: string, sessionId: string): Promise<SessionLookupResult | null> {
-        const safeId = this.sanitizeSessionId(sessionId);
-        const data = await this.runSelect(`
+	private async lookupSession(
+		userIri: string,
+		sessionId: string
+	): Promise<SessionLookupResult | null> {
+		const safeId = this.sanitizeSessionId(sessionId);
+		const data = await this.runSelect(`
             PREFIX core: <${this.CORE}>
             SELECT ?session ?title ?onto ?created ?updated WHERE {
               GRAPH <${this.CHAT_GRAPH}> {
@@ -106,75 +111,110 @@ export class ChatHistoryService {
             }
             LIMIT 1
         `);
-        const binding = data.results?.bindings?.[0];
-        if (!binding) {
-            return null;
-        }
-        return {
-            iri: binding.session.value,
-            title: binding.title?.value ?? this.DEFAULT_TITLE,
-            ontologyIri: binding.onto?.value,
-            createdAt: binding.created?.value,
-            updatedAt: binding.updated?.value,
-            exists: true,
-        };
-    }
+		const binding = data.results?.bindings?.[0];
+		if (!binding) {
+			return null;
+		}
+		return {
+			iri: binding.session.value,
+			title: binding.title?.value ?? this.DEFAULT_TITLE,
+			ontologyIri: binding.onto?.value,
+			createdAt: binding.created?.value,
+			updatedAt: binding.updated?.value,
+			exists: true,
+		};
+	}
 
-    private async createSessionInternal(userIri: string, sessionId: string, title?: string, ontologyIri?: string): Promise<SessionLookupResult> {
-        const safeId = this.sanitizeSessionId(sessionId);
-        const now = new Date().toISOString();
-        const iri = this.buildSessionIri(safeId);
-        const finalTitle = (title ?? this.DEFAULT_TITLE).trim() || this.DEFAULT_TITLE;
+	private async createSessionInternal(
+		userIri: string,
+		sessionId: string,
+		title?: string,
+		ontologyIri?: string
+	): Promise<SessionLookupResult> {
+		const safeId = this.sanitizeSessionId(sessionId);
+		const now = new Date().toISOString();
+		const iri = this.buildSessionIri(safeId);
+		const finalTitle =
+			(title ?? this.DEFAULT_TITLE).trim() || this.DEFAULT_TITLE;
 
-        let triples = `<${iri}> a core:ChatSession ;
+		let triples = `<${iri}> a core:ChatSession ;
             core:sessionId "${escapeSparqlLiteral(safeId)}" ;
             core:sessionTitle "${escapeSparqlLiteral(finalTitle)}" ;
             core:createdBy <${userIri}> ;
             core:updatedBy <${userIri}> ;
             core:createdAt "${now}"^^xsd:dateTime ;
             core:updatedAt "${now}"^^xsd:dateTime .\n`;
-        if (ontologyIri) {
-            triples += `<${iri}> core:sessionForOntology <${ontologyIri}> .\n`;
-        }
-        triples += `<${userIri}> core:hasChatSession <${iri}> .\n`;
+		if (ontologyIri) {
+			triples += `<${iri}> core:sessionForOntology <${ontologyIri}> .\n`;
+		}
+		triples += `<${userIri}> core:hasChatSession <${iri}> .\n`;
 
-        const update = `
+		const update = `
             PREFIX core: <${this.CORE}>
             PREFIX xsd:  <${this.XSD}>
             INSERT DATA { GRAPH <${this.CHAT_GRAPH}> { ${triples} } }
         `;
-        await this.runUpdate(update);
-        return { iri, title: finalTitle, ontologyIri, createdAt: now, updatedAt: now, exists: true };
-    }
+		await this.runUpdate(update);
+		return {
+			iri,
+			title: finalTitle,
+			ontologyIri,
+			createdAt: now,
+			updatedAt: now,
+			exists: true,
+		};
+	}
 
-    public async ensureSession(userIri: string, sessionId: string, params?: { title?: string; ontologyIri?: string }): Promise<SessionLookupResult> {
-        const existing = await this.lookupSession(userIri, sessionId);
-        if (existing) {
-            if (params?.ontologyIri && params.ontologyIri !== existing.ontologyIri) {
-                await this.setSessionOntology(existing.iri, params.ontologyIri);
-                existing.ontologyIri = params.ontologyIri;
-            }
-            return existing;
-        }
-        return this.createSessionInternal(userIri, sessionId, params?.title, params?.ontologyIri);
-    }
+	public async ensureSession(
+		userIri: string,
+		sessionId: string,
+		params?: { title?: string; ontologyIri?: string }
+	): Promise<SessionLookupResult> {
+		const existing = await this.lookupSession(userIri, sessionId);
+		if (existing) {
+			if (params?.ontologyIri && params.ontologyIri !== existing.ontologyIri) {
+				await this.setSessionOntology(existing.iri, params.ontologyIri);
+				existing.ontologyIri = params.ontologyIri;
+			}
+			return existing;
+		}
+		return this.createSessionInternal(
+			userIri,
+			sessionId,
+			params?.title,
+			params?.ontologyIri
+		);
+	}
 
-    public async createSession(userIri: string, params?: { title?: string; ontologyIri?: string }): Promise<ChatSessionSummary> {
-        const newId = randomUUID();
-        const session = await this.createSessionInternal(userIri, newId, params?.title, params?.ontologyIri);
-        return {
-            id: newId,
-            iri: session.iri,
-            title: session.title,
-            ontologyIri: session.ontologyIri,
-            createdAt: session.createdAt,
-            updatedAt: session.updatedAt,
-        };
-    }
+	public async createSession(
+		userIri: string,
+		params?: { title?: string; ontologyIri?: string }
+	): Promise<ChatSessionSummary> {
+		const newId = randomUUID();
+		const session = await this.createSessionInternal(
+			userIri,
+			newId,
+			params?.title,
+			params?.ontologyIri
+		);
+		return {
+			id: newId,
+			iri: session.iri,
+			title: session.title,
+			ontologyIri: session.ontologyIri,
+			createdAt: session.createdAt,
+			updatedAt: session.updatedAt,
+		};
+	}
 
-    public async listSessions(userIri: string, ontologyIri?: string): Promise<ChatSessionSummary[]> {
-        const filterClause = ontologyIri ? `FILTER EXISTS { ?session core:sessionForOntology <${ontologyIri}> }` : "";
-        const data = await this.runSelect(`
+	public async listSessions(
+		userIri: string,
+		ontologyIri?: string
+	): Promise<ChatSessionSummary[]> {
+		const filterClause = ontologyIri
+			? `FILTER EXISTS { ?session core:sessionForOntology <${ontologyIri}> }`
+			: "";
+		const data = await this.runSelect(`
             PREFIX core: <${this.CORE}>
             SELECT ?session ?sid ?title ?onto ?created ?updated WHERE {
               GRAPH <${this.CHAT_GRAPH}> {
@@ -192,31 +232,35 @@ export class ChatHistoryService {
             ORDER BY DESC(?updated) DESC(?created)
         `);
 
-        return (data.results?.bindings ?? []).map((binding: any) => ({
-            id: binding.sid.value,
-            iri: binding.session.value,
-            title: binding.title?.value ?? this.DEFAULT_TITLE,
-            ontologyIri: binding.onto?.value ?? undefined,
-            createdAt: binding.created?.value,
-            updatedAt: binding.updated?.value,
-        }));
-    }
+		return (data.results?.bindings ?? []).map((binding: any) => ({
+			id: binding.sid.value,
+			iri: binding.session.value,
+			title: binding.title?.value ?? this.DEFAULT_TITLE,
+			ontologyIri: binding.onto?.value ?? undefined,
+			createdAt: binding.created?.value,
+			updatedAt: binding.updated?.value,
+		}));
+	}
 
-    public async renameSession(userIri: string, sessionId: string, title: string): Promise<void> {
-        const session = await this.lookupSession(userIri, sessionId);
-        if (!session) {
-            throw new NotFoundException("Session not found");
-        }
-        const cleanTitle = title.trim() || this.DEFAULT_TITLE;
-        const now = new Date().toISOString();
-        const update = `
+	public async renameSession(
+		userIri: string,
+		sessionId: string,
+		title: string
+	): Promise<void> {
+		const session = await this.lookupSession(userIri, sessionId);
+		if (!session) {
+			throw new NotFoundException("Session not found");
+		}
+		const cleanTitle = title.trim() || this.DEFAULT_TITLE;
+		const now = new Date().toISOString();
+		const update = `
             PREFIX core: <${this.CORE}>
             DELETE { GRAPH <${this.CHAT_GRAPH}> { <${session.iri}> core:sessionTitle ?t . } }
             INSERT { GRAPH <${this.CHAT_GRAPH}> { <${session.iri}> core:sessionTitle "${escapeSparqlLiteral(cleanTitle)}" . } }
             WHERE  { OPTIONAL { GRAPH <${this.CHAT_GRAPH}> { <${session.iri}> core:sessionTitle ?t . } } }
         `;
-        await this.runUpdate(update);
-        const metadataUpdate = `
+		await this.runUpdate(update);
+		const metadataUpdate = `
             PREFIX core: <${this.CORE}>
             PREFIX xsd:  <${this.XSD}>
             DELETE {
@@ -238,15 +282,18 @@ export class ChatHistoryService {
               }
             }
         `;
-        await this.runUpdate(metadataUpdate);
-    }
+		await this.runUpdate(metadataUpdate);
+	}
 
-    public async deleteSession(userIri: string, sessionId: string): Promise<void> {
-        const session = await this.lookupSession(userIri, sessionId);
-        if (!session) {
-            throw new NotFoundException("Session not found");
-        }
-        const update = `
+	public async deleteSession(
+		userIri: string,
+		sessionId: string
+	): Promise<void> {
+		const session = await this.lookupSession(userIri, sessionId);
+		if (!session) {
+			throw new NotFoundException("Session not found");
+		}
+		const update = `
             PREFIX core: <${this.CORE}>
             DELETE {
               GRAPH <${this.CHAT_GRAPH}> {
@@ -266,15 +313,18 @@ export class ChatHistoryService {
               }
             }
         `;
-        await this.runUpdate(update);
-    }
+		await this.runUpdate(update);
+	}
 
-    public async getMessages(userIri: string, sessionId: string): Promise<ChatMessageRecord[]> {
-        const session = await this.lookupSession(userIri, sessionId);
-        if (!session) {
-            throw new NotFoundException("Session not found");
-        }
-        const data = await this.runSelect(`
+	public async getMessages(
+		userIri: string,
+		sessionId: string
+	): Promise<ChatMessageRecord[]> {
+		const session = await this.lookupSession(userIri, sessionId);
+		if (!session) {
+			throw new NotFoundException("Session not found");
+		}
+		const data = await this.runSelect(`
             PREFIX core: <${this.CORE}>
             PREFIX xsd:  <${this.XSD}>
             SELECT ?msg ?role ?content ?idx ?created ?agent WHERE {
@@ -291,18 +341,18 @@ export class ChatHistoryService {
             ORDER BY ASC(xsd:integer(?idx))
         `);
 
-        return (data.results?.bindings ?? []).map((binding: any) => ({
-            id: binding.msg.value,
-            role: binding.role.value as ChatMessageRecord["role"],
-            content: binding.content.value,
-            agentSteps: binding.agent?.value,
-            createdAt: binding.created?.value,
-            index: Number(binding.idx.value),
-        }));
-    }
+		return (data.results?.bindings ?? []).map((binding: any) => ({
+			id: binding.msg.value,
+			role: binding.role.value as ChatMessageRecord["role"],
+			content: binding.content.value,
+			agentSteps: binding.agent?.value,
+			createdAt: binding.created?.value,
+			index: Number(binding.idx.value),
+		}));
+	}
 
-    private async getNextMessageIndex(sessionIri: string): Promise<number> {
-        const data = await this.runSelect(`
+	private async getNextMessageIndex(sessionIri: string): Promise<number> {
+		const data = await this.runSelect(`
             PREFIX core: <${this.CORE}>
             SELECT (MAX(?idx) AS ?maxIdx) WHERE {
               GRAPH <${this.CHAT_GRAPH}> {
@@ -311,75 +361,83 @@ export class ChatHistoryService {
               }
             }
         `);
-        const raw = data.results?.bindings?.[0]?.maxIdx?.value;
-        if (raw === undefined) return 0;
-        const parsed = Number(raw);
-        return Number.isFinite(parsed) ? parsed + 1 : 0;
-    }
+		const raw = data.results?.bindings?.[0]?.maxIdx?.value;
+		if (raw === undefined) return 0;
+		const parsed = Number(raw);
+		return Number.isFinite(parsed) ? parsed + 1 : 0;
+	}
 
-    private truncateTitleFromMessage(content: string): string {
-        const normalized = content.replace(/\s+/g, " ").trim();
-        if (!normalized) return this.DEFAULT_TITLE;
-        return normalized.length > 80 ? `${normalized.slice(0, 77)}…` : normalized;
-    }
+	private truncateTitleFromMessage(content: string): string {
+		const normalized = content.replace(/\s+/g, " ").trim();
+		if (!normalized) return this.DEFAULT_TITLE;
+		return normalized.length > 80 ? `${normalized.slice(0, 77)}…` : normalized;
+	}
 
-    private async setSessionOntology(sessionIri: string, ontologyIri: string): Promise<void> {
-        const update = `
+	private async setSessionOntology(
+		sessionIri: string,
+		ontologyIri: string
+	): Promise<void> {
+		const update = `
             PREFIX core: <${this.CORE}>
             DELETE { GRAPH <${this.CHAT_GRAPH}> { <${sessionIri}> core:sessionForOntology ?onto . } }
             INSERT { GRAPH <${this.CHAT_GRAPH}> { <${sessionIri}> core:sessionForOntology <${ontologyIri}> . } }
             WHERE  { OPTIONAL { GRAPH <${this.CHAT_GRAPH}> { <${sessionIri}> core:sessionForOntology ?onto . } } }
         `;
-        await this.runUpdate(update);
-    }
+		await this.runUpdate(update);
+	}
 
-    public async appendMessages(
-        userIri: string,
-        sessionId: string,
-        messages: AppendMessageInput[],
-        options?: { ontologyIri?: string }
-    ): Promise<void> {
-        if (!messages.length) return;
-        const session = await this.ensureSession(userIri, sessionId, { ontologyIri: options?.ontologyIri });
-        const nextIndex = await this.getNextMessageIndex(session.iri);
-        const now = new Date().toISOString();
+	public async appendMessages(
+		userIri: string,
+		sessionId: string,
+		messages: AppendMessageInput[],
+		options?: { ontologyIri?: string }
+	): Promise<void> {
+		if (!messages.length) return;
+		const session = await this.ensureSession(userIri, sessionId, {
+			ontologyIri: options?.ontologyIri,
+		});
+		const nextIndex = await this.getNextMessageIndex(session.iri);
+		const now = new Date().toISOString();
 
-        const triples: string[] = [];
-        let offset = 0;
-        let shouldUpdateTitle = false;
-        let newTitleCandidate: string | null = null;
+		const triples: string[] = [];
+		let offset = 0;
+		let shouldUpdateTitle = false;
+		let newTitleCandidate: string | null = null;
 
-        for (const entry of messages) {
-            const messageIri = this.buildMessageIri();
-            const currentIndex = nextIndex + offset;
-            offset += 1;
-            let messageTriples = `<${messageIri}> a core:ChatMessage ;
+		for (const entry of messages) {
+			const messageIri = this.buildMessageIri();
+			const currentIndex = nextIndex + offset;
+			offset += 1;
+			let messageTriples = `<${messageIri}> a core:ChatMessage ;
                 core:belongsToSession <${session.iri}> ;
                 core:messageRole "${entry.role}" ;
                 core:messageIndex "${currentIndex}"^^xsd:integer ;
                 core:messageContent """${escapeSparqlLiteral(entry.content)}""" ;
                 core:createdAt "${now}"^^xsd:dateTime ;
                 core:createdBy <${userIri}> .\n`;
-            if (entry.agentSteps) {
-                messageTriples += `<${messageIri}> core:agentSteps """${escapeSparqlLiteral(entry.agentSteps)}""" .\n`;
-            }
-            messageTriples += `<${session.iri}> core:hasChatMessage <${messageIri}> .\n`;
-            triples.push(messageTriples);
+			if (entry.agentSteps) {
+				messageTriples += `<${messageIri}> core:agentSteps """${escapeSparqlLiteral(entry.agentSteps)}""" .\n`;
+			}
+			messageTriples += `<${session.iri}> core:hasChatMessage <${messageIri}> .\n`;
+			triples.push(messageTriples);
 
-            if (entry.role === "user" && (!session.title || session.title === this.DEFAULT_TITLE)) {
-                shouldUpdateTitle = true;
-                newTitleCandidate ??= this.truncateTitleFromMessage(entry.content);
-            }
-        }
+			if (
+				entry.role === "user" &&
+				(!session.title || session.title === this.DEFAULT_TITLE)
+			) {
+				shouldUpdateTitle = true;
+				newTitleCandidate ??= this.truncateTitleFromMessage(entry.content);
+			}
+		}
 
-        const insertUpdate = `
+		const insertUpdate = `
             PREFIX core: <${this.CORE}>
             PREFIX xsd:  <${this.XSD}>
             INSERT DATA { GRAPH <${this.CHAT_GRAPH}> { ${triples.join("\n")} } }
         `;
-        await this.runUpdate(insertUpdate);
+		await this.runUpdate(insertUpdate);
 
-        const metadataUpdate = `
+		const metadataUpdate = `
             PREFIX core: <${this.CORE}>
             PREFIX xsd:  <${this.XSD}>
             DELETE {
@@ -401,10 +459,10 @@ export class ChatHistoryService {
               }
             }
         `;
-        await this.runUpdate(metadataUpdate);
+		await this.runUpdate(metadataUpdate);
 
-        if (shouldUpdateTitle && newTitleCandidate) {
-            await this.renameSession(userIri, sessionId, newTitleCandidate);
-        }
-    }
+		if (shouldUpdateTitle && newTitleCandidate) {
+			await this.renameSession(userIri, sessionId, newTitleCandidate);
+		}
+	}
 }
