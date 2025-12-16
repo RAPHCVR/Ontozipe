@@ -835,12 +835,15 @@ hr {
 
 .chip.is-active {
 	border-color: var(--button-primary-bg);
-	color: var(--button-primary-bg);
-	background: rgba(79, 70, 229, 0.16);
+	color: var(--button-primary-text);
+	background: var(--button-primary-bg);
+	box-shadow: 0 10px 30px -18px var(--button-primary-bg);
 }
 
 .dark .chip.is-active {
-	background: rgba(99, 102, 241, 0.2);
+	background: color-mix(in srgb, var(--button-primary-bg) 80%, #0b1120);
+	color: var(--button-primary-text);
+	border-color: color-mix(in srgb, var(--button-primary-bg) 70%, transparent);
 }
 
 .navbar {
@@ -2856,7 +2859,6 @@ select:hover {
 	padding: 0.75rem 0.75rem 0.85rem;
 	margin-bottom: 0.75rem;
 	border-left: 2px solid var(--border-color);
-	border-bottom: 1px solid var(--border-color);
 	max-width: 70ch;
 	font-size: 0.95rem;
 	transition: border-color var(--transition-base), background-color var(--transition-base);
@@ -2871,9 +2873,20 @@ select:hover {
 .comment-block__meta {
 	display: flex;
 	align-items: center;
-	gap: 0.6rem;
+	gap: 0.55rem;
 	color: var(--color-muted);
 	font-size: 0.85rem;
+}
+
+.comment-block__avatar {
+	width: 2rem;
+	height: 2rem;
+	border-radius: 999px;
+	background: var(--surface-muted);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-muted);
 }
 
 .comment-block__author {
@@ -2894,7 +2907,7 @@ select:hover {
 .comment-block__actions {
 	display: flex;
 	align-items: center;
-	gap: 0.8rem;
+	gap: 0.9rem;
 	font-size: 0.85rem;
 	color: var(--color-muted);
 }
@@ -2921,6 +2934,10 @@ select:hover {
 	color: #ef4444;
 }
 
+.individual-comments__send {
+	margin-bottom: 0.6rem;
+}
+
 .comment-block__textarea {
 	width: 100%;
 	border: 1px solid var(--border-color);
@@ -2942,6 +2959,8 @@ select:hover {
 .comment-block__reply {
 	margin-top: 0.35rem;
 	position: relative;
+	padding-left: 0.35rem;
+	border-left: 2px solid var(--border-color);
 }
 
 .comment-suggestions {
@@ -2983,6 +3002,10 @@ select:hover {
 	border: none;
 	cursor: pointer;
 	padding: 0;
+}
+
+.comment-block__toggle-wrap {
+	margin-top: 0.2rem;
 }
 
 .pdf-viewer-frame {
@@ -3315,4 +3338,358 @@ select:hover {
 	display: flex;
 	gap: 0.75rem;
 	margin-left: auto;
+}
+
+/* ---------------------------------------------------------------------
+   Individual cards
+   -------------------------------------------------------------------*/
+.individual-card {
+	border-left: 4px solid var(--button-primary-bg);
+	background: var(--surface-card);
+	border: 1px solid var(--border-color);
+	border-radius: 0.9rem;
+	padding: 1rem 1.1rem;
+	transition: background-color var(--transition-base), box-shadow var(--transition-base),
+		border-color var(--transition-base);
+}
+
+.individual-card.is-alt {
+	background: var(--surface-muted);
+}
+
+.individual-card.has-data:hover {
+	box-shadow: 0 18px 35px -28px rgba(15, 23, 42, 0.6);
+}
+
+.individual-card.is-highlighted {
+	box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.individual-card__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+}
+
+.individual-card__title {
+	font-weight: 700;
+	color: var(--color-text);
+}
+
+.individual-card__actions {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.individual-card__action--danger {
+	color: #ef4444;
+}
+
+.individual-card__caret {
+	color: var(--color-muted);
+	font-size: 0.9rem;
+}
+
+.individual-card__body {
+	display: grid;
+	gap: 1rem;
+	margin-top: 0.5rem;
+}
+
+.individual-card__section {
+	display: grid;
+	gap: 0.4rem;
+}
+
+.individual-card__section--data,
+.individual-card__section--relations,
+.individual-card__section--comments {
+	position: relative;
+	overflow: hidden;
+}
+
+.individual-card__section--data::before,
+.individual-card__section--relations::before,
+.individual-card__section--comments::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	opacity: 0.35;
+	background: radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.35), transparent 32%);
+}
+
+.individual-card__section--data {
+	background: linear-gradient(
+		135deg,
+		color-mix(in srgb, var(--button-primary-bg) 6%, transparent),
+		transparent 60%
+	);
+	border: 1px solid color-mix(in srgb, var(--button-primary-bg) 20%, var(--border-color));
+	border-radius: 0.9rem;
+	padding: 0.8rem 0.9rem;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.individual-card__section--relations {
+	background: linear-gradient(
+		135deg,
+		color-mix(in srgb, #10b981 10%, transparent),
+		transparent 60%
+	);
+	border: 1px solid color-mix(in srgb, #10b981 22%, var(--border-color));
+	border-radius: 0.9rem;
+	padding: 0.8rem 0.9rem;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.individual-card__section--comments {
+	background: linear-gradient(
+		135deg,
+		color-mix(in srgb, #f59e0b 12%, transparent),
+		transparent 60%
+	);
+	border: 1px solid color-mix(in srgb, #f59e0b 24%, var(--border-color));
+	border-radius: 0.9rem;
+	padding: 0.9rem 1rem;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.individual-card__section-title {
+	font-size: 0.85rem;
+	font-weight: 700;
+	color: var(--color-text);
+}
+
+.individual-card__list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: grid;
+	gap: 0.25rem;
+}
+
+.individual-card__muted {
+	color: var(--color-muted);
+	font-size: 0.85rem;
+	margin-left: 0.35rem;
+}
+
+.individual-card__hint {
+	margin-left: 0.35rem;
+}
+
+.individual-card__table-wrapper {
+	overflow-x: auto;
+}
+
+.individual-card__table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.9rem;
+}
+
+.individual-card__table th,
+.individual-card__table td {
+	padding: 0.4rem 0.35rem;
+	vertical-align: top;
+	text-align: left;
+	position: relative;
+}
+
+.individual-card__table th {
+	white-space: nowrap;
+	color: var(--color-text);
+	font-weight: 700;
+}
+
+.individual-card__table tr + tr td,
+.individual-card__table tr + tr th {
+	border-top: 1px solid var(--border-color);
+}
+
+.individual-card__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.relation-chip__wrapper {
+	position: relative;
+	display: inline-flex;
+}
+
+.relation-chip {
+	border-radius: 999px;
+	border: 1px dashed var(--border-color);
+	padding: 0.35rem 0.75rem;
+	font-size: 0.85rem;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	cursor: pointer;
+	background: var(--surface-card);
+	color: var(--color-text);
+	transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base);
+}
+
+.relation-chip.has-data {
+	background: color-mix(in srgb, var(--button-primary-bg) 10%, transparent);
+	border-color: color-mix(in srgb, var(--button-primary-bg) 45%, var(--border-color));
+	color: color-mix(in srgb, var(--button-primary-bg) 60%, var(--color-text));
+}
+
+.relation-chip.no-data {
+	border-style: dashed;
+}
+
+.relation-chip__bullet {
+	font-size: 0.9rem;
+}
+
+.relation-chip__tooltip {
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	margin-bottom: 0.35rem;
+	background: #111827;
+	color: #f8fafc;
+	padding: 0.3rem 0.6rem;
+	border-radius: 0.5rem;
+	font-size: 0.7rem;
+	white-space: nowrap;
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity var(--transition-base), visibility var(--transition-base);
+	z-index: 5;
+}
+
+.relation-chip__wrapper:hover .relation-chip__tooltip {
+	opacity: 1;
+	visibility: visible;
+}
+
+.group-chip {
+	border-radius: 999px;
+	padding: 0.3rem 0.7rem;
+	font-size: 0.85rem;
+	background: color-mix(in srgb, #a855f7 16%, transparent);
+	color: color-mix(in srgb, #6b21a8 80%, var(--color-text));
+}
+
+.pdf-link,
+.pdf-mention-btn {
+	color: color-mix(in srgb, var(--button-primary-bg) 70%, var(--color-text));
+	text-decoration: none;
+	cursor: pointer;
+	transition: color var(--transition-base);
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+}
+
+.pdf-link:hover,
+.pdf-mention-btn:hover {
+	color: var(--button-primary-bg);
+	text-decoration: underline;
+}
+
+.pdf-link--button {
+	padding: 0;
+	border: none;
+	background: none;
+	font: inherit;
+}
+
+.icon--sm {
+	width: 1rem;
+	height: 1rem;
+}
+
+/* ---------------------------------------------------------------------
+   Individuals panel
+   -------------------------------------------------------------------*/
+.individuals-panel {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+}
+
+.individuals-panel__card {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.individuals-panel__card--empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-muted);
+	text-align: center;
+}
+
+.individuals-panel__filters {
+	position: sticky;
+	top: 0;
+	background: var(--surface-card);
+	padding: 0.75rem 0.9rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+	border-bottom: 1px solid var(--border-color);
+	z-index: 1;
+}
+
+.individuals-panel__filter-group {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.individuals-panel__filter-title {
+	font-weight: 700;
+	font-size: 0.95rem;
+	color: var(--color-text);
+}
+
+.individuals-panel__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.individuals-panel__chip {
+	font-weight: 600;
+	min-width: 120px;
+	justify-content: center;
+}
+
+.individuals-panel__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.85rem 0.9rem;
+}
+
+.individuals-panel__title {
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--color-text);
+}
+
+.individuals-panel__list {
+	flex: 1;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+	padding: 0.85rem 0.9rem;
 }

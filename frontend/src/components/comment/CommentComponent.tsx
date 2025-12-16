@@ -161,12 +161,17 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 			onClick={handleCommentClick}>
 			<div className="comment-block__content">
 				<div className="comment-block__meta">
-					<span className="comment-block__author">
-						{formatLabel(authorName)}
-					</span>
-					<span className="comment-block__time">
-						{dayjs(comment.createdAt).fromNow()}
-					</span>
+					<div className="comment-block__avatar" aria-hidden>
+						<i className="fas fa-user" />
+					</div>
+					<div>
+						<div className="comment-block__author">
+							{formatLabel(authorName)}
+						</div>
+						<div className="comment-block__time">
+							{dayjs(comment.createdAt).fromNow()}
+						</div>
+					</div>
 				</div>
 				{editing ? (
 					<div className="comment-block__editor">
@@ -186,7 +191,7 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 								}}
 								title={t("common.send")}
 								className="button button--primary button--sm">
-								{t("common.save")}
+								<i className="fas fa-check" aria-hidden /> {t("common.save")}
 							</button>
 							<button
 								onClick={() => {
@@ -195,7 +200,7 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 								}}
 								title={t("common.cancel")}
 								className="button button--ghost button--sm">
-								{t("common.cancel")}
+								<i className="fas fa-times" aria-hidden /> {t("common.cancel")}
 							</button>
 						</div>
 					</div>
@@ -206,12 +211,12 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 					<button
 						onClick={() => setReplying((v) => !v)}
 						title={t("comment.replyAction")}>
-						{t("comment.reply")}
+						<i className="fas fa-reply" aria-hidden /> {t("comment.reply")}
 					</button>
 					{isAuthor && !editing && (
 						<>
 							<button onClick={() => setEditing(true)} title={t("common.edit")}>
-								📝
+								<i className="fas fa-edit" aria-hidden /> {t("common.edit")}
 							</button>
 							<button
 								onClick={() => {
@@ -220,7 +225,7 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 								}}
 								title={t("common.delete")}
 								className="comment-block__action--danger">
-								🗑️
+								<i className="fas fa-trash" aria-hidden /> {t("common.delete")}
 							</button>
 						</>
 					)}
@@ -236,7 +241,6 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 							placeholder={t("comment.replyPlaceholder")}
 						/>
 
-						{/* Suggestions @pdf */}
 						{showPdfSuggestions && pdfSuggestions.length > 0 && (
 							<ul className="comment-suggestions">
 								{pdfSuggestions.map((pdf, index) => (
@@ -254,7 +258,6 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 						)}
 						<div className="comment-block__actions comment-block__actions--end">
 							<button
-								disabled={!replyDraft.trim()}
 								onClick={() => {
 									if (replyDraft.trim()) {
 										onAddReply(comment, replyDraft.trim());
@@ -267,7 +270,7 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 								title={t("common.send")}
 								className="button button--primary button--sm"
 								disabled={!replyDraft.trim()}>
-								{t("common.send")}
+								<i className="fas fa-paper-plane" aria-hidden /> {t("common.send")}
 							</button>
 							<button
 								onClick={() => {
@@ -278,14 +281,12 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 								}}
 								title={t("common.cancel")}
 								className="button button--ghost button--sm">
-								{t("common.cancel")}
+								<i className="fas fa-times" aria-hidden /> {t("common.cancel")}
 							</button>
 						</div>
 					</div>
 				)}
 			</div>
-
-			{/* Modal PDF unifiée (uniquement pour mentions [PDF:...]) */}
 
 			<PdfModal
 				isOpen={showPdfModal}
@@ -296,15 +297,14 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 				snapshot={snapshot}
 			/>
 
-			{/* ----- link to show/hide replies ----- */}
 			{replies.length > 0 && (
-				<div className="mt-1">
+				<div className="comment-block__toggle-wrap">
 					{!showReplies ? (
 						<button
 							onClick={() => setShowReplies(true)}
 							className="comment-block__toggle"
 							title={t("comment.showReplies")}>
-							↳
+							<i className="fas fa-chevron-down" aria-hidden />
 							<span>
 								{replies.length === 1
 									? t("comment.replyCount.one")
@@ -316,7 +316,7 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 							onClick={() => setShowReplies(false)}
 							className="comment-block__toggle"
 							title={t("comment.hideReplies")}>
-							↩︎
+							<i className="fas fa-chevron-up" aria-hidden />
 							<span>{t("comment.hideReplies")}</span>
 						</button>
 					)}

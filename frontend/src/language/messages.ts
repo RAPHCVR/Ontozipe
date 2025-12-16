@@ -475,7 +475,11 @@ const definitions = {
 		en: "RDF / TTL file",
 		es: "Archivo RDF / TTL",
 	},
-	"pdf.upload.label": { fr: "Ajouter des PDF", en: "Add PDFs", es: "Agregar PDF" },
+	"pdf.upload.label": {
+		fr: "Ajouter des PDF",
+		en: "Add PDFs",
+		es: "Agregar PDF",
+	},
 	"home.modal.fileRequired": {
 		fr: "Veuillez importer un fichier RDF/TTL valide (obligatoire).",
 		en: "Please upload a valid RDF/TTL file (required).",
@@ -1253,6 +1257,11 @@ const definitions = {
 		en: "Open details (no specific data)",
 		es: "Abrir detalles (sin datos específicos)",
 	},
+	"individual.relations.empty": {
+		fr: "Aucune relation pour le moment.",
+		en: "No relations yet.",
+		es: "Aún no hay relaciones.",
+	},
 	"individual.commonGroups": {
 		fr: "Groupes communs",
 		en: "Shared groups",
@@ -1268,10 +1277,35 @@ const definitions = {
 		en: "Add a comment",
 		es: "Añadir un comentario",
 	},
+	"individual.pdf.associated": {
+		fr: "Documents PDF associés",
+		en: "Associated PDF documents",
+		es: "Documentos PDF asociados",
+	},
+	"individual.pdf.hint": {
+		fr: "(cliquer pour prévisualiser)",
+		en: "(click to preview)",
+		es: "(haz clic para previsualizar)",
+	},
+	"individual.data.title": {
+		fr: "Données",
+		en: "Data",
+		es: "Datos",
+	},
 	"individual.noData": {
 		fr: "Aucune donnée disponible",
 		en: "No data available",
 		es: "No hay datos disponibles",
+	},
+	"individual.data.empty": {
+		fr: "Aucune donnée pour cet individu.",
+		en: "No data for this individual.",
+		es: "No hay datos para este individuo.",
+	},
+	"individual.comments.empty": {
+		fr: "Aucun commentaire pour le moment.",
+		en: "No comments yet.",
+		es: "Aún no hay comentarios.",
 	},
 	"individual.noDataShort": {
 		fr: "Aucune donnée",
@@ -1355,6 +1389,11 @@ const definitions = {
 		en: "Search...",
 		es: "Buscar...",
 	},
+	"individual.panel.groupFilterTitle": {
+		fr: "Visibilité par groupe",
+		en: "Group visibility",
+		es: "Visibilidad por grupo",
+	},
 	"individual.panel.createTooltip": {
 		fr: "Nouvel individu",
 		en: "New individual",
@@ -1391,7 +1430,7 @@ const definitions = {
 		es: "Individuos visibles",
 	},
 	"ontology.summary.total": {
-		fr: "Total dindividus",
+		fr: "Total d'individus",
 		en: "Total individuals",
 		es: "Total de individuos",
 	},

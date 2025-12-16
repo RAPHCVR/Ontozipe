@@ -103,8 +103,8 @@ const IndividualsPanel: React.FC<{
 
 	if (!snapshot || !classId) {
 		return (
-			<aside className="h-full shrink-0" style={{ width }}>
-				<div className="card h-full flex items-center justify-center text-gray-500">
+			<aside className="individuals-panel" style={{ width }}>
+				<div className="card individuals-panel__card individuals-panel__card--empty">
 					{t("individual.panel.selectClass")}
 				</div>
 			</aside>
@@ -116,32 +116,46 @@ const IndividualsPanel: React.FC<{
 		: "";
 
 	return (
-		<aside className="h-full flex flex-col shrink-0" style={{ width }}>
-			<div className="card flex-1 min-h-0 flex flex-col divide-y divide-gray-200 dark:divide-slate-700 overflow-y-auto">
+		<aside className="individuals-panel" style={{ width }}>
+			<div className="card individuals-panel__card">
 				{/* ---- FILTRES ---- */}
-				<div className="sticky top-0 bg-inherit pt-2 pb-3 space-y-2">
-					<select
-						value={groupFilter}
-						onChange={(e) => setGroupFilter(e.target.value)}
-						className="select-control">
-						<option value="all">{t("individual.panel.allGroups")}</option>
-						{userGroups.map((g) => (
-							<option key={g.iri} value={g.iri}>
-								{formatLabel(g.label || g.iri.split(/[#/]/).pop() || g.iri)}
-							</option>
-						))}
-					</select>
+				<div className="individuals-panel__filters">
+					<div className="individuals-panel__filter-group">
+						<div className="individuals-panel__filter-title">
+							{t("individual.panel.groupFilterTitle")}
+						</div>
+						<div className="individuals-panel__chips">
+							{[
+								{ iri: "all", label: t("individual.panel.allGroups") },
+								...userGroups,
+							].map((g) => {
+								const value = g.iri;
+								const active = groupFilter === value;
+								return (
+									<button
+										key={value}
+										type="button"
+										onClick={() => setGroupFilter(value)}
+										className={`chip individuals-panel__chip${
+											active ? " is-active" : ""
+										}`}>
+										{formatLabel(g.label || g.iri.split(/[#/]/).pop() || g.iri)}
+									</button>
+								);
+							})}
+						</div>
+					</div>
 
 					<input
 						type="text"
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
 						placeholder={t("individual.panel.searchPlaceholder")}
-						className="flex-1 w-full border rounded px-2 py-1 text-sm dark:bg-slate-800 dark:border-slate-600"
+						className="form-input"
 					/>
 				</div>
-				<div className="flex items-center justify-between top-0 bg-inherit py-2">
-					<h2 className="text-lg font-semibold">
+				<div className="individuals-panel__header">
+					<h2 className="individuals-panel__title">
 						{classLabel} —{" "}
 						{t("individual.panel.count", { count: searchedIndividuals.length })}
 					</h2>
@@ -149,23 +163,25 @@ const IndividualsPanel: React.FC<{
 						title={t("individual.panel.createTooltip")}
 						onClick={() => onCreate(classId)}
 						style={{ cursor: "pointer" }}
-						className="text-indigo-600 hover:text-indigo-800 text-xl leading-none px-2">
+						className="button button--primary button--sm">
 						+
 					</button>
 				</div>
-				{searchedIndividuals.map((ind, index) => (
-					<IndividualCard
-						key={ind.id}
-						ind={ind}
-						snapshot={snapshot}
-						onShow={onShow}
-						onEdit={onEdit}
-						onDelete={onDelete}
-						idx={index}
-						defaultOpen={ind.id === focusedIndividualId}
-						highlighted={ind.id === focusedIndividualId}
-					/>
-				))}
+				<div className="individuals-panel__list">
+					{searchedIndividuals.map((ind, index) => (
+						<IndividualCard
+							key={ind.id}
+							ind={ind}
+							snapshot={snapshot}
+							onShow={onShow}
+							onEdit={onEdit}
+							onDelete={onDelete}
+							idx={index}
+							defaultOpen={ind.id === focusedIndividualId}
+							highlighted={ind.id === focusedIndividualId}
+						/>
+					))}
+				</div>
 			</div>
 		</aside>
 	);
