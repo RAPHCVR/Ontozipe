@@ -518,28 +518,28 @@ const IndividualCard: React.FC<{
 							<h4 className="text-xs font-semibold text-yellow-600 mb-1">
 								{t("individual.comments.title")}
 							</h4>
-							<div className="flex items-center gap-2 mb-2">
-								<button
-									type="button"
-									className="dashboard-summary__button"
-									onClick={() => setSummaryOpen(true)}>
-									<SparklesIcon className="h-4 w-4" aria-hidden="true" />
-									{t("dashboard.section.summary")}
-								</button>
-							</div>
-							{/* zone de saisie */}
-							<div className="flex items-start gap-2 mb-2">
-								<textarea
-									value={draftComment}
-									onChange={(e) => setDraftComment(e.target.value)}
-									placeholder={t("individual.comments.placeholder")}
-									rows={2}
-									className="flex-1 text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none w-full"
-									onKeyDown={(e) => {
-										if (
-											showPdfAutocomplete &&
-											pdfAutocompleteOptions.length > 0
-										) {
+			<div className="flex items-center gap-2 mb-2">
+				<button
+					type="button"
+					className="button button--ghost dashboard-summary__button"
+					onClick={() => setSummaryOpen(true)}>
+					<SparklesIcon className="h-4 w-4" aria-hidden="true" />
+					{t("dashboard.section.summary")}
+				</button>
+			</div>
+			{/* zone de saisie */}
+			<div className="individual-comments__composer">
+				<textarea
+					value={draftComment}
+					onChange={(e) => setDraftComment(e.target.value)}
+					placeholder={t("individual.comments.placeholder")}
+					rows={2}
+					className="comment-block__textarea"
+					onKeyDown={(e) => {
+						if (
+							showPdfAutocomplete &&
+							pdfAutocompleteOptions.length > 0
+						) {
 											if (e.key === "ArrowDown") {
 												e.preventDefault();
 												setPdfAutocompleteIndex(
@@ -559,39 +559,38 @@ const IndividualCard: React.FC<{
 												);
 											} else if (e.key === "Escape") {
 												setShowPdfAutocomplete(false);
-											}
-										}
-									}}
-								/>
-								{showPdfAutocomplete && pdfAutocompleteOptions.length > 0 && (
-									<ul className="absolute left-0 top-full z-50 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded shadow w-64 max-h-40 overflow-auto text-xs mt-1">
-										{pdfAutocompleteOptions.map((pdf, idx) => (
-											<li
-												key={pdf.url}
-												className={
-													"px-2 py-1 cursor-pointer " +
-													(idx === pdfAutocompleteIndex
-														? "bg-indigo-600 text-white"
-														: "hover:bg-indigo-100 dark:hover:bg-slate-700")
-												}
-												onMouseDown={() => insertPdfMention(pdf)}>
-												{pdf.originalName}
-											</li>
-										))}
-									</ul>
-								)}
-							</div>
-							<button
-								disabled={!draftComment.trim()}
-								onClick={() => {
-									if (draftComment.trim()) {
-										handleCreateComment(draftComment.trim());
-										setDraftComment("");
-									}
-								}}
-								className="self-stretch px-3 py-1 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs rounded">
-								{t("common.send")}
-							</button>
+							}
+						}
+					}}
+				/>
+				{showPdfAutocomplete && pdfAutocompleteOptions.length > 0 && (
+					<ul className="comment-suggestions">
+						{pdfAutocompleteOptions.map((pdf, idx) => (
+							<li
+								key={pdf.url}
+								className={
+									"comment-suggestions__item" +
+									(idx === pdfAutocompleteIndex ? " is-active" : "")
+								}
+								onMouseDown={() => insertPdfMention(pdf)}>
+								{pdf.originalName}
+							</li>
+						))}
+					</ul>
+				)}
+			</div>
+			<button
+				disabled={!draftComment.trim()}
+				onClick={() => {
+					if (draftComment.trim()) {
+						handleCreateComment(draftComment.trim());
+						setDraftComment("");
+					}
+				}}
+				className="button button--primary button--sm individual-comments__send"
+			>
+				{t("common.send")}
+			</button>
 						</div>
 						<div>
 							{comments

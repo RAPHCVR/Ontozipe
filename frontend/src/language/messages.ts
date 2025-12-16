@@ -208,6 +208,26 @@ const definitions = {
 		en: "Delete",
 		es: "Eliminar",
 	},
+	"pdf.viewer.title": {
+		fr: "Aperçu PDF",
+		en: "PDF preview",
+		es: "Vista previa PDF",
+	},
+	"pdf.modal.defaultTitle": {
+		fr: "Document PDF",
+		en: "PDF document",
+		es: "Documento PDF",
+	},
+	"pdf.modal.close": {
+		fr: "Fermer la fenêtre",
+		en: "Close dialog",
+		es: "Cerrar la ventana",
+	},
+	"pdf.modal.closeHint": {
+		fr: "Fermer (Échap)",
+		en: "Close (Esc)",
+		es: "Cerrar (Esc)",
+	},
 	"home.delete.title": {
 		fr: "Supprimer l'ontologie",
 		en: "Delete ontology",
@@ -455,6 +475,7 @@ const definitions = {
 		en: "RDF / TTL file",
 		es: "Archivo RDF / TTL",
 	},
+	"pdf.upload.label": { fr: "Ajouter des PDF", en: "Add PDFs", es: "Agregar PDF" },
 	"home.modal.fileRequired": {
 		fr: "Veuillez importer un fichier RDF/TTL valide (obligatoire).",
 		en: "Please upload a valid RDF/TTL file (required).",
@@ -1106,6 +1127,51 @@ const definitions = {
 		fr: "Impossible de charger l'historique de la conversation.",
 		en: "Unable to load conversation history.",
 		es: "No se pudo cargar el historial de la conversación.",
+	},
+	"pdf.comments.header": {
+		fr: "Discussion PDF",
+		en: "PDF discussion",
+		es: "Discusión PDF",
+	},
+	"pdf.comments.loading": {
+		fr: "Chargement...",
+		en: "Loading...",
+		es: "Cargando...",
+	},
+	"pdf.comments.meta": {
+		fr: "{{comments}} commentaire(s) • {{participants}} participant(s)",
+		en: "{{comments}} comment(s) • {{participants}} participant(s)",
+		es: "{{comments}} comentario(s) • {{participants}} participante(s)",
+	},
+	"pdf.comments.placeholder": {
+		fr: "Commenter ce document... (tapez @pdf pour suggérer des documents)",
+		en: "Comment on this document... (type @pdf to suggest documents)",
+		es: "Comenta este documento... (escribe @pdf para sugerir documentos)",
+	},
+	"pdf.comments.shortcut": {
+		fr: "Ctrl+Entrée pour envoyer",
+		en: "Ctrl+Enter to send",
+		es: "Ctrl+Enter para enviar",
+	},
+	"pdf.comments.emptyTitle": {
+		fr: "Aucun commentaire",
+		en: "No comments yet",
+		es: "Sin comentarios",
+	},
+	"pdf.comments.emptySubtitle": {
+		fr: "Soyez le premier à commenter !",
+		en: "Be the first to comment!",
+		es: "¡Sé el primero en comentar!",
+	},
+	"pdf.comments.count": {
+		fr: "{{count}} commentaire(s)",
+		en: "{{count}} comment(s)",
+		es: "{{count}} comentario(s)",
+	},
+	"pdf.comments.participants": {
+		fr: "{{count}} participant(s)",
+		en: "{{count}} participant(s)",
+		es: "{{count}} participante(s)",
 	},
 	"assistant.systemPrompt.title": {
 		fr: "Prompt système",

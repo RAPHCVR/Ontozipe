@@ -2839,3 +2839,480 @@ select:hover {
 .modal-backdrop.is-leaving .modal {
 	animation: modal-exit 200ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+
+/* ---------------------------------------------------------------------
+   Small buttons
+   -------------------------------------------------------------------*/
+.button--sm {
+	padding: 0.4rem 0.8rem;
+	font-size: 0.85rem;
+	border-radius: calc(var(--radius-base) - 2px);
+}
+
+/* ---------------------------------------------------------------------
+   Comment blocks & PDF helpers
+   -------------------------------------------------------------------*/
+.comment-block {
+	padding: 0.75rem 0.75rem 0.85rem;
+	margin-bottom: 0.75rem;
+	border-left: 2px solid var(--border-color);
+	border-bottom: 1px solid var(--border-color);
+	max-width: 70ch;
+	font-size: 0.95rem;
+	transition: border-color var(--transition-base), background-color var(--transition-base);
+}
+
+.comment-block__content {
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+}
+
+.comment-block__meta {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	color: var(--color-muted);
+	font-size: 0.85rem;
+}
+
+.comment-block__author {
+	color: var(--color-text);
+	font-weight: 600;
+}
+
+.comment-block__time {
+	font-size: 0.8rem;
+	color: var(--color-muted);
+}
+
+.comment-block__body {
+	white-space: pre-wrap;
+	color: var(--color-text);
+}
+
+.comment-block__actions {
+	display: flex;
+	align-items: center;
+	gap: 0.8rem;
+	font-size: 0.85rem;
+	color: var(--color-muted);
+}
+
+.comment-block__actions button {
+	background: none;
+	border: none;
+	padding: 0;
+	color: inherit;
+	cursor: pointer;
+	transition: color var(--transition-base);
+}
+
+.comment-block__actions button:hover {
+	color: var(--button-primary-bg);
+}
+
+.comment-block__actions--end {
+	justify-content: flex-end;
+	gap: 0.5rem;
+}
+
+.comment-block__action--danger {
+	color: #ef4444;
+}
+
+.comment-block__textarea {
+	width: 100%;
+	border: 1px solid var(--border-color);
+	border-radius: 0.75rem;
+	padding: 0.65rem 0.85rem;
+	background: var(--form-bg);
+	color: var(--color-text);
+	font-size: 0.9rem;
+	resize: none;
+	transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.comment-block__textarea:focus {
+	outline: none;
+	border-color: var(--button-primary-bg);
+	box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.comment-block__reply {
+	margin-top: 0.35rem;
+	position: relative;
+}
+
+.comment-suggestions {
+	position: absolute;
+	left: 0;
+	top: 100%;
+	z-index: 50;
+	background: var(--surface-card);
+	border: 1px solid var(--border-color);
+	border-radius: 0.75rem;
+	box-shadow: 0 20px 45px -30px rgba(15, 23, 42, 0.4);
+	width: 16rem;
+	max-height: 11rem;
+	overflow: auto;
+	margin-top: 0.25rem;
+	padding: 0.25rem 0;
+	font-size: 0.85rem;
+}
+
+.comment-suggestions__item {
+	padding: 0.35rem 0.75rem;
+	cursor: pointer;
+	transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+.comment-suggestions__item:hover,
+.comment-suggestions__item.is-active {
+	background: var(--button-primary-bg);
+	color: var(--button-primary-text);
+}
+
+.comment-block__toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-size: 0.85rem;
+	color: var(--button-primary-bg);
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 0;
+}
+
+.pdf-viewer-frame {
+	border: 1px solid var(--border-color);
+	border-radius: 0.75rem;
+	box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+	background: var(--surface-card);
+}
+
+/* ---------------------------------------------------------------------
+   PDF Modal & comments
+   -------------------------------------------------------------------*/
+.pdf-modal__backdrop {
+	padding: 2rem;
+}
+
+.pdf-modal {
+	width: min(1100px, 96vw);
+	max-height: 92vh;
+	gap: 0;
+	padding: 0;
+	overflow: hidden;
+}
+
+.pdf-modal--split {
+	display: flex;
+	flex-direction: column;
+	min-height: 70vh;
+}
+
+.pdf-modal--stacked {
+	display: flex;
+	flex-direction: column;
+}
+
+.pdf-modal__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1rem 1.25rem;
+	border-bottom: 1px solid var(--border-color);
+}
+
+.pdf-modal__title {
+	font-size: 1.1rem;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	color: var(--color-text);
+}
+
+.pdf-modal__close {
+	background: none;
+	border: none;
+	font-size: 1.4rem;
+	color: var(--color-muted);
+	cursor: pointer;
+	transition: color var(--transition-base), transform var(--transition-base);
+}
+
+.pdf-modal__close:hover {
+	color: var(--button-primary-bg);
+	transform: scale(1.05);
+}
+
+.pdf-modal__body {
+	display: flex;
+	flex: 1;
+}
+
+.pdf-modal__body--split {
+	overflow: hidden;
+}
+
+.pdf-modal__body--stacked {
+	flex-direction: column;
+	gap: 1rem;
+	padding: 1.2rem;
+}
+
+.pdf-modal__viewer {
+	flex: 1;
+	padding: 1rem;
+	background: var(--surface-muted);
+}
+
+.pdf-modal__comments {
+	width: 360px;
+	border-left: 1px solid var(--border-color);
+}
+
+.pdf-modal__extras {
+	margin-top: 0.75rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid var(--border-color);
+}
+
+.pdf-comments {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	background: var(--surface-card);
+}
+
+.pdf-comments__header {
+	padding: 0.9rem 1rem;
+	border-bottom: 1px solid var(--border-color);
+}
+
+.pdf-comments__title {
+	font-size: 0.95rem;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--color-text);
+}
+
+.pdf-comments__loading {
+	font-size: 0.8rem;
+	color: var(--color-muted);
+}
+
+.pdf-comments__meta {
+	margin-top: 0.25rem;
+	font-size: 0.8rem;
+	color: var(--color-muted);
+}
+
+.pdf-comments__composer {
+	padding: 0.9rem 1rem;
+	border-bottom: 1px solid var(--border-color);
+	background: var(--surface-muted);
+}
+
+.pdf-comments__input {
+	position: relative;
+}
+
+.pdf-comments__actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 0.6rem;
+	font-size: 0.85rem;
+	color: var(--color-muted);
+}
+
+.pdf-comments__shortcut {
+	font-size: 0.8rem;
+}
+
+.pdf-comments__list {
+	flex: 1;
+	overflow-y: auto;
+}
+
+.pdf-comments__empty {
+	padding: 1.5rem;
+	text-align: center;
+	color: var(--color-muted);
+}
+
+.pdf-comments__empty-emoji {
+	font-size: 1.8rem;
+	margin-bottom: 0.25rem;
+}
+
+.pdf-comments__empty-text {
+	font-size: 0.95rem;
+	color: var(--color-text);
+}
+
+.pdf-comments__empty-subtext {
+	font-size: 0.8rem;
+	color: var(--color-muted);
+	margin-top: 0.25rem;
+}
+
+.pdf-comments__threads {
+	padding: 0.75rem;
+	display: grid;
+	gap: 0.5rem;
+}
+
+.pdf-comments__footer {
+	padding: 0.65rem 0.9rem;
+	border-top: 1px solid var(--border-color);
+	background: var(--surface-muted);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 0.85rem;
+	color: var(--color-muted);
+}
+
+/* ---------------------------------------------------------------------
+   Individual card comment tweaks
+   -------------------------------------------------------------------*/
+.individual-comments__composer {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	position: relative;
+	margin-bottom: 0.5rem;
+}
+
+.individual-comments__send {
+	align-self: flex-start;
+}
+
+/* ---------------------------------------------------------------------
+   Individual form modal
+   -------------------------------------------------------------------*/
+.individual-form__backdrop {
+	padding: 1rem;
+}
+
+.individual-form {
+	width: min(1100px, 96vw);
+	max-height: 92vh;
+	gap: 1rem;
+}
+
+.individual-form__title {
+	font-size: 1.15rem;
+	font-weight: 700;
+}
+
+.individual-form__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 1rem;
+}
+
+.individual-form__static {
+	padding: 0.65rem 0.85rem;
+	border: 1px dashed var(--border-color);
+	border-radius: var(--radius-base);
+	background: var(--surface-muted);
+	color: var(--color-text);
+}
+
+.individual-form__section {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	border-top: 1px solid var(--border-color);
+	padding-top: 0.75rem;
+}
+
+.individual-form__section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	color: var(--color-text);
+	font-weight: 600;
+}
+
+.individual-form__files {
+	list-style: none;
+	padding: 0;
+	margin: 0.25rem 0 0;
+	display: grid;
+	gap: 0.2rem;
+	font-size: 0.85rem;
+	color: var(--color-muted);
+}
+
+.individual-form__file {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.individual-form__row {
+	display: grid;
+	grid-template-columns: 1fr 1.2fr 1.2fr auto;
+	gap: 0.5rem;
+	align-items: center;
+}
+
+.individual-form__predicate {
+	font-size: 0.85rem;
+	color: var(--color-muted);
+}
+
+.individual-form__remove {
+	color: var(--color-muted);
+}
+
+.individual-form__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.individual-form__chip {
+	cursor: pointer;
+	border: 1px solid var(--border-color);
+	border-radius: 999px;
+	padding: 0.35rem 0.75rem;
+	font-size: 0.85rem;
+	color: var(--color-text);
+	background: var(--surface-card);
+	transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base);
+}
+
+.individual-form__chip.is-selected {
+	background: var(--button-primary-bg);
+	color: var(--button-primary-text);
+	border-color: var(--button-primary-bg);
+}
+
+.individual-form__muted {
+	font-size: 0.9rem;
+	color: var(--color-muted);
+}
+
+.individual-form__footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding-top: 0.5rem;
+}
+
+.individual-form__footer-actions {
+	display: flex;
+	gap: 0.75rem;
+	margin-left: auto;
+}

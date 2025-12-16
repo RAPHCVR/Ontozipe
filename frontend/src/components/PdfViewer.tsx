@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "../language/useTranslation";
 
 interface PdfViewerProps {
   fileUrl: string;
@@ -6,16 +7,16 @@ interface PdfViewerProps {
 }
 
 const PdfViewer: React.FC<PdfViewerProps> = ({ fileUrl, height = 400 }) => {
+  const { t } = useTranslation();
   if (!fileUrl) return null;
   
   return (
     <iframe
       src={fileUrl}
-      title="PDF Preview"
+      title={t("pdf.viewer.title")}
       width="100%"
       height={height}
-      className="border border-gray-300 dark:border-slate-600 rounded"
-      style={{ borderRadius: 4 }}
+      className="pdf-viewer-frame"
       allow="autoplay"
     />
   );

@@ -157,24 +157,26 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 	return (
 		<div
 			style={{ marginLeft: level * 16 }}
-			className="pb-3 mb-3 text-sm max-w-prose border-l-2 pl-3 border-b border-slate-200 dark:border-slate-700"
+			className="comment-block"
 			onClick={handleCommentClick}>
-			<div className="flex-1 space-y-0.5">
-				<div className="flex items-center gap-2">
-					<span className="font-semibold">{formatLabel(authorName)}</span>
-					<span className="text-xs text-gray-500">
+			<div className="comment-block__content">
+				<div className="comment-block__meta">
+					<span className="comment-block__author">
+						{formatLabel(authorName)}
+					</span>
+					<span className="comment-block__time">
 						{dayjs(comment.createdAt).fromNow()}
 					</span>
 				</div>
 				{editing ? (
-					<div>
+					<div className="comment-block__editor">
 						<textarea
 							value={draft}
 							onChange={(e) => setDraft(e.target.value)}
 							rows={3}
-							className="w-full text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none"
+							className="comment-block__textarea"
 						/>
-						<div className="flex gap-2 justify-end mt-1">
+						<div className="comment-block__actions comment-block__actions--end">
 							<button
 								onClick={() => {
 									setEditing(false);
@@ -183,8 +185,8 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 									}
 								}}
 								title={t("common.send")}
-								className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded">
-								📤
+								className="button button--primary button--sm">
+								{t("common.save")}
 							</button>
 							<button
 								onClick={() => {
@@ -192,15 +194,15 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 									setDraft(comment.body);
 								}}
 								title={t("common.cancel")}
-								className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-xs rounded">
-								❌
+								className="button button--ghost button--sm">
+								{t("common.cancel")}
 							</button>
 						</div>
 					</div>
 				) : (
-					<p className="whitespace-pre-wrap">{renderedBody}</p>
+					<p className="comment-block__body">{renderedBody}</p>
 				)}
-				<div className="flex items-center gap-3 text-xs text-sky-600">
+				<div className="comment-block__actions">
 					<button
 						onClick={() => setReplying((v) => !v)}
 						title={t("comment.replyAction")}>
@@ -217,34 +219,32 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 									onDelete(comment);
 								}}
 								title={t("common.delete")}
-								className="text-red-500">
+								className="comment-block__action--danger">
 								🗑️
 							</button>
 						</>
 					)}
 				</div>
 				{replying && (
-					<div className="mt-2 relative">
+					<div className="comment-block__reply">
 						<textarea
 							value={replyDraft}
 							onChange={handleReplyTextChange}
 							onKeyDown={handleReplyKeyDown}
 							rows={3}
-							className="w-full text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none"
+							className="comment-block__textarea"
 							placeholder={t("comment.replyPlaceholder")}
 						/>
 
 						{/* Suggestions @pdf */}
 						{showPdfSuggestions && pdfSuggestions.length > 0 && (
-							<ul className="absolute left-0 top-full z-50 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded shadow w-64 max-h-40 overflow-auto text-xs mt-1">
+							<ul className="comment-suggestions">
 								{pdfSuggestions.map((pdf, index) => (
 									<li
 										key={pdf.url}
 										className={
-											"px-2 py-1 cursor-pointer " +
-											(index === selectedPdfIndex
-												? "bg-indigo-600 text-white"
-												: "hover:bg-indigo-100 dark:hover:bg-slate-700")
+											"comment-suggestions__item" +
+											(index === selectedPdfIndex ? " is-active" : "")
 										}
 										onMouseDown={() => insertPdfMention(pdf)}>
 										{pdf.originalName}
@@ -252,7 +252,7 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 								))}
 							</ul>
 						)}
-						<div className="flex gap-2 justify-end mt-1">
+						<div className="comment-block__actions comment-block__actions--end">
 							<button
 								disabled={!replyDraft.trim()}
 								onClick={() => {
@@ -265,8 +265,9 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 									}
 								}}
 								title={t("common.send")}
-								className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs rounded">
-								📤
+								className="button button--primary button--sm"
+								disabled={!replyDraft.trim()}>
+								{t("common.send")}
 							</button>
 							<button
 								onClick={() => {
@@ -276,8 +277,8 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 									setSelectedPdfIndex(0);
 								}}
 								title={t("common.cancel")}
-								className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-xs rounded">
-								❌
+								className="button button--ghost button--sm">
+								{t("common.cancel")}
 							</button>
 						</div>
 					</div>
@@ -301,7 +302,7 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 					{!showReplies ? (
 						<button
 							onClick={() => setShowReplies(true)}
-							className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+							className="comment-block__toggle"
 							title={t("comment.showReplies")}>
 							↳
 							<span>
@@ -313,7 +314,7 @@ const CommentBlock: React.FC<CommentBlockProps> = ({
 					) : (
 						<button
 							onClick={() => setShowReplies(false)}
-							className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+							className="comment-block__toggle"
 							title={t("comment.hideReplies")}>
 							↩︎
 							<span>{t("comment.hideReplies")}</span>

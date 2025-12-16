@@ -7,6 +7,7 @@ import CommentBlock from "../comment/CommentComponent";
 import { renderCommentWithPdfLinks } from "../individuals/IndividualCard";
 import { usePdfModal } from "../../hooks/usePdfModal";
 import PdfModal from "./PdfModal";
+import { useTranslation } from "../../language/useTranslation";
 
 interface PdfCommentSectionProps {
   pdfUrl: string;
@@ -19,6 +20,7 @@ const PdfCommentSection: React.FC<PdfCommentSectionProps> = ({
   ontologyIri,
   snapshot
 }) => {
+  const { t } = useTranslation();
   const api = useApi();
   const { user } = useAuth();
   const currentUserIri = user?.sub || "";
@@ -141,9 +143,9 @@ const PdfCommentSection: React.FC<PdfCommentSectionProps> = ({
     }
 
     if (!fullPdfUrl || !fullPdfUrl.startsWith('http')) {
-      console.error('PdfCommentSection: Invalid PDF URL for comment creation:', fullPdfUrl);
-      return;
-    }
+          console.error('PdfCommentSection: Invalid PDF URL for comment creation:', fullPdfUrl);
+          return;
+        }
 
     const payload = {
       id: `urn:uuid:${uuidv4()}`,
@@ -210,31 +212,33 @@ const PdfCommentSection: React.FC<PdfCommentSectionProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
+    <div className="pdf-comments">
       {/* En-tête */}
-      <div className="p-3 border-b border-gray-200 dark:border-slate-700">
-        <h4 className="font-medium text-sm text-gray-900 dark:text-white flex items-center gap-2">
-          💬 Discussion PDF
-          {loading && <span className="text-xs text-gray-500 animate-pulse">Chargement...</span>}
+      <div className="pdf-comments__header">
+        <h4 className="pdf-comments__title">
+          💬 {t("pdf.comments.header")}
+          {loading && <span className="pdf-comments__loading">{t("pdf.comments.loading")}</span>}
         </h4>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          {comments.length} commentaire{comments.length !== 1 ? 's' : ''} • {participantCount} participant{participantCount !== 1 ? 's' : ''}
+        <p className="pdf-comments__meta">
+          {t("pdf.comments.meta", {
+            comments: comments.length,
+            participants: participantCount,
+          })}
         </p>
       </div>
 
       {/* Zone de saisie */}
-      <div className="p-3 border-b border-gray-200 dark:border-slate-700">
-        <div className="flex flex-col gap-2">
-          <div className="relative">
-            <textarea
-              value={draftComment}
-              onChange={handleCommentChange}
-              placeholder="Commenter ce document... (tapez @pdf pour suggérer des documents)"
-              rows={2}
-              className="w-full text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-colors"
-              onKeyDown={(e) => {
-                if (showPdfAutocomplete && pdfAutocompleteOptions.length > 0) {
-                  if (e.key === "ArrowDown") {
+      <div className="pdf-comments__composer">
+        <div className="pdf-comments__input">
+          <textarea
+            value={draftComment}
+            onChange={handleCommentChange}
+            placeholder={t("pdf.comments.placeholder")}
+            rows={2}
+            className="comment-block__textarea"
+            onKeyDown={(e) => {
+              if (showPdfAutocomplete && pdfAutocompleteOptions.length > 0) {
+                if (e.key === "ArrowDown") {
                     e.preventDefault();
                     setPdfAutocompleteIndex((i) => (i + 1) % pdfAutocompleteOptions.length);
                   } else if (e.key === "ArrowUp") {
@@ -255,18 +259,16 @@ const PdfCommentSection: React.FC<PdfCommentSectionProps> = ({
                 }
               }}
             />
-            
+
             {/* Suggestions @pdf */}
             {showPdfAutocomplete && pdfAutocompleteOptions.length > 0 && (
-              <ul className="absolute left-0 top-full z-50 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded shadow w-64 max-h-40 overflow-auto text-xs mt-1">
+              <ul className="comment-suggestions">
                 {pdfAutocompleteOptions.map((pdf, idx) => (
                   <li
                     key={pdf.url}
                     className={
-                      "px-2 py-1 cursor-pointer " +
-                      (idx === pdfAutocompleteIndex
-                        ? "bg-indigo-600 text-white"
-                        : "hover:bg-indigo-100 dark:hover:bg-slate-700")
+                      "comment-suggestions__item" +
+                      (idx === pdfAutocompleteIndex ? " is-active" : "")
                     }
                     onMouseDown={() => insertPdfMention(pdf)}
                   >
@@ -276,8 +278,8 @@ const PdfCommentSection: React.FC<PdfCommentSectionProps> = ({
               </ul>
             )}
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-gray-400">Ctrl+Enter pour envoyer</span>
+          <div className="pdf-comments__actions">
+            <span className="pdf-comments__shortcut">{t("pdf.comments.shortcut")}</span>
             <button
               disabled={!draftComment.trim()}
               onClick={() => {
@@ -286,29 +288,29 @@ const PdfCommentSection: React.FC<PdfCommentSectionProps> = ({
                   setDraftComment('');
                 }
               }}
-              className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs rounded transition-colors"
+              className="button button--primary button--sm"
             >
-              Envoyer
+              {t("common.send")}
             </button>
           </div>
         </div>
       </div>
 
       {/* Liste des commentaires */}
-      <div className="flex-1 overflow-y-auto" onClick={handleCommentClick}>
+      <div className="pdf-comments__list" onClick={handleCommentClick}>
         {loading ? (
-          <div className="p-6 text-center">
-            <div className="text-2xl mb-2">⏳</div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Chargement...</p>
+          <div className="pdf-comments__empty">
+            <div className="pdf-comments__empty-emoji">⏳</div>
+            <p className="pdf-comments__empty-text">{t("pdf.comments.loading")}</p>
           </div>
         ) : comments.length === 0 ? (
-          <div className="p-6 text-center">
-            <div className="text-4xl mb-2">📄</div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Aucun commentaire</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Soyez le premier à commenter !</p>
+          <div className="pdf-comments__empty">
+            <div className="pdf-comments__empty-emoji">📄</div>
+            <p className="pdf-comments__empty-text">{t("pdf.comments.emptyTitle")}</p>
+            <p className="pdf-comments__empty-subtext">{t("pdf.comments.emptySubtitle")}</p>
           </div>
         ) : (
-          <div className="p-2 space-y-1">
+          <div className="pdf-comments__threads">
             {rootComments.map((comment) => (
                 <CommentBlock
                   key={comment.id}
@@ -330,11 +332,9 @@ const PdfCommentSection: React.FC<PdfCommentSectionProps> = ({
       </div>
 
       {/* Footer statistiques */}
-      <div className="p-2 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
-        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-          <span>💬 {comments.length}</span>
-          <span>👥 {participantCount}</span>
-        </div>
+      <div className="pdf-comments__footer">
+        <span>💬 {t("pdf.comments.count", { count: comments.length })}</span>
+        <span>👥 {t("pdf.comments.participants", { count: participantCount })}</span>
       </div>
 
       {/* Modal PDF secondaire pour les mentions dans commentaires */}
