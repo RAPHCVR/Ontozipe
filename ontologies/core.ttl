@@ -161,6 +161,10 @@ core:RemovedFromOrganization a core:Resource ; rdfs:label "Retrait de l'organisa
 core:RolesUpdated            a core:Resource ; rdfs:label "R??les mis ?? jour"@fr , "Roles updated"@en .
 core:UserRegistered          a core:Resource ; rdfs:label "Nouvelle inscription"@fr , "User registered"@en .
 core:OntologyAccessGranted   a core:Resource ; rdfs:label "Acc??s ontologie"@fr , "Ontology access granted"@en .
+core:IndividualCreated       a core:Resource ; rdfs:label "Creation individu"@fr , "Individual created"@en .
+core:IndividualDeleted       a core:Resource ; rdfs:label "Suppression individu"@fr , "Individual deleted"@en .
+core:IndividualAccessGranted a core:Resource ; rdfs:label "Acces individu accorde"@fr , "Individual access granted"@en .
+core:IndividualAccessRevoked a core:Resource ; rdfs:label "Acces individu retire"@fr , "Individual access revoked"@en .
 
 ##############################
 # FIN #######################

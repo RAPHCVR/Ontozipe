@@ -1269,8 +1269,21 @@ const definitions = {
 
     "notifications.title": { fr: "Notifications", en: "Notifications", es: "Notificaciones" },
     "notifications.subtitle": { fr: "{{count}} non lues", en: "{{count}} unread", es: "{{count}} sin leer" },
-    "notifications.filters.all": { fr: "Toutes", en: "All", es: "Todas" },
-    "notifications.filters.unread": { fr: "Non lues", en: "Unread", es: "Sin leer" },
+	"notifications.filters.all": { fr: "Toutes", en: "All", es: "Todas" },
+	"notifications.filters.unread": { fr: "Non lues", en: "Unread", es: "Sin leer" },
+	"notifications.categories.all": { fr: "Toutes", en: "All", es: "Todas" },
+	"notifications.categories.groups": { fr: "Groupes", en: "Groups", es: "Grupos" },
+	"notifications.categories.admin": { fr: "Administration", en: "Administration", es: "Administración" },
+	"notifications.categories.organizations": {
+		fr: "Organisations",
+		en: "Organizations",
+		es: "Organizaciones",
+	},
+	"notifications.categories.ontologies": {
+		fr: "Ontologies",
+		en: "Ontologies",
+		es: "Ontologías",
+	},
     "notifications.loading": { fr: "Chargement des notifications...", en: "Loading notifications...", es: "Cargando notificaciones..." },
     "notifications.empty": { fr: "Aucune notification pour le moment.", en: "No notifications yet.", es: "Sin notificaciones por ahora." },
     "notifications.actions.markAllRead": { fr: "Tout marquer comme lu", en: "Mark all as read", es: "Marcar todo como le\u00eddo" },

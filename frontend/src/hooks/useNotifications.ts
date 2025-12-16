@@ -26,6 +26,7 @@ type ListParams = {
 	page?: number;
 	pageSize?: number;
 	verb?: string;
+	category?: string;
 };
 
 export const useNotifications = (params: ListParams) => {
@@ -43,6 +44,9 @@ export const useNotifications = (params: ListParams) => {
 			qs.set("offset", String(offset));
 			if (params.status) qs.set("status", params.status);
 			if (params.verb) qs.set("verb", params.verb);
+			if (params.category && params.category !== "all") {
+				qs.set("category", params.category);
+			}
 			const res = await api(`/notifications?${qs.toString()}`);
 			return (await res.json()) as ListResponse;
 		},

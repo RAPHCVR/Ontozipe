@@ -27,7 +27,8 @@ export class NotificationsController {
 		@Query("status") status?: string,
 		@Query("limit") limit?: string,
 		@Query("offset") offset?: string,
-		@Query("verb") verb?: string
+		@Query("verb") verb?: string,
+		@Query("category") category?: string
 	) {
 		const parsedLimit = Math.max(1, Math.min(100, Number(limit) || 20));
 		const parsedOffset = Math.max(0, Number(offset) || 0);
@@ -37,6 +38,7 @@ export class NotificationsController {
 			limit: parsedLimit,
 			offset: parsedOffset,
 			verb,
+			category,
 		});
 	}
 

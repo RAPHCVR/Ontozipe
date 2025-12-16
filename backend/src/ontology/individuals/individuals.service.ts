@@ -4,6 +4,7 @@ import { HttpService } from "@nestjs/axios";
 import { OntologyBaseService } from "../common/base-ontology.service";
 import { IndividualNode, Property } from "../common/types";
 import { toRdfTerm, rdfLiteral } from "../common/rdf.utils";
+import { NotificationsService } from "../../notifications/notifications.service";
 
 const OWL_THING = "http://www.w3.org/2002/07/owl#Thing";
 const GENERIC_CLASS_IRIS = new Set<string>([
@@ -25,7 +26,7 @@ const mergeClassId = (current?: string, candidate?: string): string => {
 
 @Injectable()
 export class IndividualsService extends OntologyBaseService {
-    constructor(httpService: HttpService) {
+    constructor(httpService: HttpService, private readonly notifications: NotificationsService) {
         super(httpService);
     }
 
@@ -72,6 +73,16 @@ export class IndividualsService extends OntologyBaseService {
         `;
 
         await this.runUpdate(update);
+        try {
+            await this.notifications.notifyIndividualCreated({
+                actorIri: requesterIri,
+                individualIri: node.id,
+                ontologyIri,
+                visibleToGroups,
+            });
+        } catch (error) {
+            console.error("Failed to notify individual creation", error);
+        }
     }
 
     async updateIndividual(
@@ -87,6 +98,10 @@ export class IndividualsService extends OntologyBaseService {
         }
 
         await this.enforceWritePermission(requesterIri, ontologyIri);
+        let previousVisible: string[] | undefined;
+        if (Array.isArray(newVisibleToGroups)) {
+            previousVisible = await this.getVisibleGroups(iri, ontologyIri);
+        }
 
         const now = new Date().toISOString();
 
@@ -139,12 +154,49 @@ export class IndividualsService extends OntologyBaseService {
         if (statements) {
             await this.runUpdate(statements);
         }
+
+        if (Array.isArray(newVisibleToGroups)) {
+            const prev = new Set(previousVisible ?? []);
+            const next = new Set(newVisibleToGroups);
+            const added = Array.from(next).filter((g) => !prev.has(g));
+            const removed = Array.from(prev).filter((g) => !next.has(g));
+            if (added.length > 0 || removed.length > 0) {
+                try {
+                    await this.notifications.notifyIndividualAclChanged({
+                        actorIri: requesterIri,
+                        individualIri: iri,
+                        ontologyIri,
+                        addedGroups: added,
+                        removedGroups: removed,
+                    });
+                } catch (error) {
+                    console.error("Failed to notify individual ACL change", error);
+                }
+            }
+        }
     }
 
     async deleteIndividual(iri: string, ontologyIri: string, requesterIri: string): Promise<void> {
         await this.enforceWritePermission(requesterIri, ontologyIri);
+        try {
+            await this.notifications.notifyIndividualDeleted({
+                actorIri: requesterIri,
+                individualIri: iri,
+                ontologyIri,
+            });
+        } catch (error) {
+            console.error("Failed to notify individual deletion", error);
+        }
         const update = `DELETE WHERE { GRAPH <${ontologyIri}> { <${iri}> ?p ?o . } }`;
         await this.runUpdate(update);
+    }
+
+    private async getVisibleGroups(iri: string, ontologyIri: string): Promise<string[]> {
+        const data = await this.runSelect(`
+            PREFIX core: <${this.CORE}>
+            SELECT ?g WHERE { GRAPH <${ontologyIri}> { <${iri}> core:visibleTo ?g } }
+        `);
+        return (data?.results?.bindings ?? []).map((b: any) => b.g.value);
     }
 
     async getIndividualsForOntology(userIri: string, ontologyIri: string, preferredLang?: string): Promise<IndividualNode[]> {

@@ -9,9 +9,11 @@ import {
 	type NotificationItem,
 } from "../hooks/useNotifications";
 
-const FILTERS = [
-	{ key: "all", labelKey: "notifications.filters.all" },
-	{ key: "unread", labelKey: "notifications.filters.unread" },
+const CATEGORY_FILTERS = [
+	{ key: "groups", labelKey: "notifications.categories.groups" },
+	{ key: "administration", labelKey: "notifications.categories.admin" },
+	{ key: "organizations", labelKey: "notifications.categories.organizations" },
+	{ key: "ontologies", labelKey: "notifications.categories.ontologies" },
 ] as const;
 
 export default function NotificationsPage() {
@@ -20,11 +22,13 @@ export default function NotificationsPage() {
 	const [page, setPage] = useState(1);
 	const [pageSize] = useState(10);
 	const [status, setStatus] = useState<"all" | "unread">("all");
+	const [category, setCategory] = useState<string>("all");
 
 	const notificationsQuery = useNotifications({
 		status,
 		page,
 		pageSize,
+		category,
 	});
 	const unreadCountQuery = useUnreadCount();
 	const { markAllAsRead, deleteNotification } = useNotificationActions();
@@ -34,7 +38,7 @@ export default function NotificationsPage() {
 
 	useEffect(() => {
 		setPage(1);
-	}, [status]);
+	}, [status, category]);
 
 	const data = notificationsQuery.data;
 	const items = data?.items ?? [];
@@ -66,12 +70,28 @@ export default function NotificationsPage() {
 			</header>
 
 			<div className="flex flex-wrap items-center gap-2">
-				{FILTERS.map((filter) => (
+				<button
+					type="button"
+					onClick={() => {
+						setCategory("all");
+						setStatus("all");
+					}}
+					className={`chip ${category === "all" ? "is-active" : ""}`}>
+					{t("notifications.filters.all")}
+				</button>
+				<button
+					type="button"
+					onClick={() => setStatus("unread")}
+					className={`chip ${status === "unread" ? "is-active" : ""}`}>
+					{t("notifications.filters.unread")}
+				</button>
+
+				{CATEGORY_FILTERS.map((filter) => (
 					<button
 						key={filter.key}
 						type="button"
-						onClick={() => setStatus(filter.key)}
-						className={`chip ${status === filter.key ? "is-active" : ""}`}>
+						onClick={() => setCategory(filter.key)}
+						className={`chip ${category === filter.key ? "is-active" : ""}`}>
 						{t(filter.labelKey)}
 					</button>
 				))}
@@ -251,8 +271,8 @@ function NotificationRow({
 						type="button"
 						className={
 							isDarkMode
-								? "text-indigo-300 hover:text-indigo-200"
-								: "text-indigo-600 hover:text-indigo-800"
+								? "text-indigo-300 hover:text-indigo-200 cursor-pointer"
+								: "text-indigo-600 hover:text-indigo-800 cursor-pointer"
 						}
 						onClick={handleOpen}>
 						{item.link
@@ -266,8 +286,8 @@ function NotificationRow({
 					type="button"
 					className={
 						isDarkMode
-							? "text-gray-400 hover:text-gray-200"
-							: "text-gray-400 hover:text-gray-600"
+							? "text-gray-400 hover:text-gray-200 cursor-pointer"
+							: "text-gray-400 hover:text-gray-600 cursor-pointer"
 					}
 					onClick={onAskDelete}
 					title={t("notifications.actions.delete")}>
