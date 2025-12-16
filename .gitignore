@@ -6,6 +6,7 @@ dist/
 coverage/
 fuseki_data/*
 ontologies/pizza.ttl
+backend/uploads/*
 
 .yarn/
 yarn.lock

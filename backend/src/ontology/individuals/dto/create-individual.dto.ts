@@ -1,30 +1,43 @@
 import { Type } from "class-transformer";
-import { IsArray, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateNested } from "class-validator";
+import {
+	IsArray,
+	IsNotEmpty,
+	IsOptional,
+	IsString,
+	IsUrl,
+	ValidateNested,
+} from "class-validator";
 
 import { PropertyDto } from "./property.dto";
-
+import { PdfDto } from "./pdf.dto";
 export class CreateIndividualDto {
-    @IsUrl()
-    id!: string;
+	@IsUrl()
+	id!: string;
 
-    @IsString()
-    @IsNotEmpty()
-    label!: string;
+	@IsString()
+	@IsNotEmpty()
+	label!: string;
 
-    @IsUrl()
-    classId!: string;
+	@IsUrl()
+	classId!: string;
 
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => PropertyDto)
-    properties!: PropertyDto[];
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => PropertyDto)
+	properties!: PropertyDto[];
 
-    @IsUrl()
-    ontologyIri!: string;
+	@IsUrl()
+	ontologyIri!: string;
 
-    @IsOptional()
-    @IsArray()
-    @IsUrl({}, { each: true })
-    visibleToGroups?: string[];
+	@IsOptional()
+	@IsArray()
+	@IsUrl({}, { each: true })
+	visibleToGroups?: string[];
+
+	/** PDFs associés à l'individu */
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => PdfDto)
+	pdfs?: PdfDto[];
 }
-

@@ -1,5 +1,6 @@
 import React from "react";
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { useApi } from "../../lib/api";
 import { IndividualNode, Snapshot } from "../../types";
 import { formatLabel } from "../../utils/formatLabel";
@@ -17,14 +18,14 @@ const IndividualFormModal: React.FC<{
 	initial?: Partial<IndividualNode> & { visibleToGroups?: string[] };
 	activeClassId?: string; // <-- NEW: initial classId if provided
 	onClose: () => void;
-    onSubmit: (payload: {
-        mode: "create" | "update" | "delete";
-        iri?: string;
-        label: string;
-        classId: string;
-        properties: PropertyInput[];
-        visibleToGroups: string[];
-    }) => void;
+	onSubmit: (payload: {
+		mode: "create" | "update" | "delete";
+		iri?: string;
+		label: string;
+		classId: string;
+		properties: PropertyInput[];
+		visibleToGroups: string[];
+	}) => void;
 }> = ({
 	snapshot,
 	ontologyIri,
@@ -33,9 +34,55 @@ const IndividualFormModal: React.FC<{
 	onClose,
 	onSubmit,
 }) => {
+	const { token } = useAuth();
+	// --- PDF Upload State ---
+	type PdfMeta = { url: string; originalName: string };
+	const [pdfs, setPdfs] = useState<PdfMeta[]>(() => {
+		if (initial && initial.properties) {
+			// Récupère toutes les urls et tous les noms originaux
+			const urls = initial.properties.filter(
+				(p) =>
+					p.predicate === "http://example.org/core#pdfUrl" &&
+					typeof p.value === "string" &&
+					p.value.endsWith(".pdf")
+			);
+			const names = initial.properties.filter(
+				(p) =>
+					p.predicate === "http://example.org/core#pdfOriginalName" &&
+					typeof p.value === "string"
+			);
+			// Associe chaque url à son nom original (par index)
+			return urls.map((u, i) => ({
+				url: u.value,
+				originalName: names[i]?.value || u.value.split("/").pop() || u.value,
+			}));
+		}
+		return [];
+	});
+
+	// --- PDF Upload Handler ---
+	const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const files = e.target.files;
+		if (!files || files.length === 0) return;
+		const formData = new FormData();
+		for (let i = 0; i < files.length; i++) {
+			formData.append("files", files[i]);
+		}
+		const res = await fetch("/ontology/upload-pdf", {
+			method: "POST",
+			body: formData,
+			headers: {
+				Authorization: token ? `Bearer ${token}` : "",
+			},
+		});
+		if (res.ok) {
+			const uploaded = await res.json(); // tableau [{url, originalName}]
+			setPdfs((prev) => [...prev, ...uploaded]);
+		}
+	};
 	const isEdit = Boolean(initial.id);
 	const api = useApi();
-    const { t } = useTranslation();
+	const { t } = useTranslation();
 
 	const [label, setLabel] = useState(initial.label || "");
 	const [classId, setClassId] = useState(initial?.classId || activeClassId);
@@ -82,20 +129,24 @@ const IndividualFormModal: React.FC<{
 	}>({ dataProps: [], objectProps: [] });
 
 	// fetch when classId changes
-    useEffect(() => {
-        if (!classId) return;
-        api(`/ontologies/${encodeURIComponent(ontologyIri)}/properties?class=${encodeURIComponent(classId)}`)
-            .then((r) => r.json())
-            .then(setAvailable)
-            .catch(console.error);
-        }, [api, classId, ontologyIri]);
+	useEffect(() => {
+		if (!classId) return;
+		api(
+			`/ontologies/${encodeURIComponent(
+				ontologyIri
+			)}/properties?class=${encodeURIComponent(classId)}`
+		)
+			.then((r) => r.json())
+			.then(setAvailable)
+			.catch(console.error);
+	}, [api, classId, ontologyIri]);
 
-    useEffect(() => {
-        api(`/groups`)
-            .then((r) => r.json())
-            .then((arr: Group[]) => setGroups(arr))
-            .catch(console.error);
-    }, [api]);
+	useEffect(() => {
+		api(`/groups`)
+			.then((r) => r.json())
+			.then((arr: Group[]) => setGroups(arr))
+			.catch(console.error);
+	}, [api]);
 
 	const toggleGroup = (iri: string) =>
 		setSelectedGroups((prev) =>
@@ -130,44 +181,59 @@ const IndividualFormModal: React.FC<{
 	});
 
 	// --- Submit ---
-    const handleSave = () => {
-        if (!label.trim()) {
-            alert(t("individual.form.errors.labelRequired"));
-            return;
-        }
-        onSubmit({
-            mode: isEdit ? "update" : "create",
-            iri: isEdit ? String(initial.id) : undefined,
-            label,
-            classId,
-            properties: [...dataProps, ...objProps],
-            visibleToGroups: selectedGroups,
-        });
-        onClose();
-    };
-    const handleDelete = () => {
-        if (!initial.id) return;
-        if (!confirm(t("individual.form.confirmDelete"))) return;
-        onSubmit({
-            mode: "delete",
-            iri: String(initial.id),
-            label,
-            classId,
-            properties: [],
-            visibleToGroups: [],
-        });
-        onClose();
-    };
+	const handleSave = () => {
+		if (!label.trim()) {
+			alert(t("individual.form.errors.labelRequired"));
+			return;
+		}
+		// Ajoute les PDF comme propriétés core:pdfUrl ET core:pdfOriginalName
+		const pdfProps = pdfs.map((pdf) => ({
+			predicate: "http://example.org/core#pdfUrl",
+			value: pdf.url,
+			isLiteral: true,
+		}));
+		const pdfNameProps = pdfs.map((pdf) => ({
+			predicate: "http://example.org/core#pdfOriginalName",
+			value: pdf.originalName,
+			isLiteral: true,
+		}));
+		onSubmit({
+			mode: isEdit ? "update" : "create",
+			iri: isEdit ? String(initial.id) : undefined,
+			label,
+			classId,
+			properties: [...dataProps, ...objProps, ...pdfProps, ...pdfNameProps],
+			visibleToGroups: selectedGroups,
+		});
+		onClose();
+	};
+	const handleDelete = () => {
+		if (!initial.id) return;
+		if (!confirm(t("individual.form.confirmDelete"))) return;
+		onSubmit({
+			mode: "delete",
+			iri: String(initial.id),
+			label,
+			classId,
+			properties: [],
+			visibleToGroups: [],
+		});
+		onClose();
+	};
 	return (
 		<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
 			<div className="bg-white dark:bg-slate-800 rounded-lg w-4/5 max-w-5xl p-6 shadow-lg space-y-4 overflow-y-auto max-h-[90vh]">
 				<h3 className="text-lg font-semibold mb-2">
-					{isEdit ? t("individual.form.titleEdit") : t("individual.form.titleCreate")}
+					{isEdit
+						? t("individual.form.titleEdit")
+						: t("individual.form.titleCreate")}
 				</h3>
 				{/* ---- Infos de base ---- */}
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
-						<label className="block text-sm font-medium mb-1">{t("common.label")}</label>
+						<label className="block text-sm font-medium mb-1">
+							{t("common.label")}
+						</label>
 						<input
 							className="input w-full"
 							value={label}
@@ -175,11 +241,34 @@ const IndividualFormModal: React.FC<{
 						/>
 					</div>
 					<div>
-						<label className="block text-sm font-medium mb-1">{t("individual.form.class")}</label>
+						<label className="block text-sm font-medium mb-1">
+							{t("individual.form.class")}
+						</label>
 						{formatLabel(classId.split(/[#/]/).pop() || "")}
 					</div>
 				</div>
 
+				{/* ---- PDF Upload ---- */}
+				<section>
+					<label className="block text-xs font-medium mb-1">
+						Ajouter des PDF
+					</label>
+					<input
+						type="file"
+						accept="application/pdf"
+						multiple
+						onChange={handlePdfUpload}
+					/>
+					{pdfs.length > 0 && (
+						<ul className="text-xs mt-1">
+							{pdfs.map((pdf, idx) => (
+								<li key={idx} className="truncate">
+									{pdf.originalName}
+								</li>
+							))}
+						</ul>
+					)}
+				</section>
 				{/* ---- Data properties ---- */}
 				<section>
 					<div className="flex items-center justify-between mb-1">
@@ -253,7 +342,9 @@ const IndividualFormModal: React.FC<{
 								onChange={(e) =>
 									updateRow(i, "predicate", e.target.value, setObjProps)
 								}>
-								<option value="">{t("individual.form.predicatePlaceholder")}</option>
+								<option value="">
+									{t("individual.form.predicatePlaceholder")}
+								</option>
 								{available.objectProps.map((p) => (
 									<option key={p.iri} value={p.iri}>
 										{formatLabel(p.label)}
@@ -266,7 +357,9 @@ const IndividualFormModal: React.FC<{
 								onChange={(e) =>
 									updateRow(i, "value", e.target.value, setObjProps)
 								}>
-								<option value="">{t("individual.form.selectIndividual")}</option>
+								<option value="">
+									{t("individual.form.selectIndividual")}
+								</option>
 								{(() => {
 									const rangeIri = available.objectProps.find(
 										(p) => p.iri === row.predicate
@@ -298,7 +391,9 @@ const IndividualFormModal: React.FC<{
 						{t("individual.form.visibilityTitle")}
 					</h4>
 					{groups.length === 0 ? (
-						<p className="text-xs text-gray-500">{t("individual.form.noGroups")}</p>
+						<p className="text-xs text-gray-500">
+							{t("individual.form.noGroups")}
+						</p>
 					) : (
 						<div className="flex flex-wrap gap-2">
 							{groups.map((g) => {

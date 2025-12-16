@@ -138,6 +138,20 @@ core:isRead         a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdf
 core:content        a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:string .
 core:link           a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:anyURI .
 
+# --- PDF URL ---
+core:pdfUrl a owl:DatatypeProperty ;
+    rdfs:domain core:Resource ;
+    rdfs:range xsd:string ;
+    rdfs:label "URL du fichier PDF"@fr , "PDF file URL"@en ;
+    rdfs:comment "URL du fichier PDF associé à la ressource (stockage ou accès)"@fr .
+
+# --- PDF original file name ---
+core:pdfOriginalName a owl:DatatypeProperty ;
+    rdfs:domain core:Resource ;
+    rdfs:range xsd:string ;
+    rdfs:label "Nom original du fichier PDF"@fr , "Original PDF file name"@en ;
+    rdfs:comment "Nom d'origine du fichier PDF associé à la ressource (pour affichage utilisateur)"@fr .
+
 ##############################
 ## 7. Règles & annotations ###
 ##############################

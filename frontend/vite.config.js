@@ -11,6 +11,12 @@ const rootEnvDir = resolve(__dirname, "..");
 export default defineConfig({
 	envDir: rootEnvDir,
 	plugins: [react(), tailwindcss()],
-	server: { open: true },
+	server: {
+		open: true,
+		proxy: {
+			"/uploads": "http://localhost:4000",
+			"/ontology": "http://localhost:4000", // adapte le port si besoin
+		},
+	},
 	resolve: { alias: { "@": resolve(__dirname, "src") } },
 });

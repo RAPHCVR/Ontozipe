@@ -58,9 +58,9 @@ export class OntologiesController {
 	)
 	async createProject(
 		@Req() req: AuthRequest,
-	@Body() dto: CreateOntologyDto,
-	@UploadedFile() file?: Express.Multer.File
-) {
+		@Body() dto: CreateOntologyDto,
+		@UploadedFile() file?: Express.Multer.File
+	) {
 		if (file && !this.isSupportedRdf(file)) {
 			throw new BadRequestException("Format de fichier RDF non reconnu");
 		}
@@ -166,7 +166,12 @@ export class OntologiesController {
 			"text/plain",
 			"application/octet-stream", // some browsers send this for downloads
 		]);
-		if (mime && (mime.startsWith("text/") || mime.includes("rdf") || allowedMimes.has(mime))) {
+		if (
+			mime &&
+			(mime.startsWith("text/") ||
+				mime.includes("rdf") ||
+				allowedMimes.has(mime))
+		) {
 			return true;
 		}
 

@@ -7,6 +7,7 @@ import { config as loadEnv } from "dotenv";
 import { existsSync } from "fs";
 import { resolve } from "path";
 import { ValidationPipe } from "@nestjs/common";
+import { join } from "path";
 
 const envSources = [
     { path: resolve(__dirname, "../../.env"), override: false },
@@ -30,6 +31,12 @@ async function bootstrap() {
     }));
 
     app.enableCors();
+
+    // Expose le dossier uploads en statique
+    app.useStaticAssets(join(__dirname, "..", "uploads"), {
+        prefix: "/uploads/",
+    });
+
     await app.listen(4000);
 }
 bootstrap().catch((err) => {

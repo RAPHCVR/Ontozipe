@@ -9,6 +9,57 @@ import { useTranslation } from "../../language/useTranslation";
 import { useCommentSummary } from "../../hooks/useCommentSummary";
 import SimpleModal from "../SimpleModal";
 import { SparklesIcon } from "@heroicons/react/24/solid";
+import PdfModal from "../pdf/PdfModal";
+import { usePdfModal } from "../../hooks/usePdfModal";
+
+// Fonction utilitaire pour transformer [PDF:nom.pdf] en bouton cliquable et URLs PDF en liens
+export function renderCommentWithPdfLinks(
+	text: string,
+	pdfs: { url: string; originalName: string }[]
+) {
+	// Regex pour détecter les URLs PDF (http/https avec extension .pdf)
+	const pdfUrlRegex = /(https?:\/\/[^\s]+\.pdf)/gi;
+
+	// Première étape : transformer les mentions [PDF:nom.pdf]
+	let processedText = text.split(/(\[PDF:[^\]]+\])/g).map((part, i) => {
+		const match = part.match(/^\[PDF:(.+)\]$/);
+		if (match) {
+			const pdf = pdfs.find((p) => p.originalName === match[1]);
+			if (pdf) {
+				return (
+					<button
+						key={`mention-${i}`}
+						type="button"
+						data-pdf-url={pdf.url}
+						className="text-blue-700 hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit pdf-mention-btn">
+						📄 {pdf.originalName}
+					</button>
+				);
+			}
+		}
+		// Deuxième étape : transformer les URLs PDF brutes dans cette partie
+		if (typeof part === "string" && pdfUrlRegex.test(part)) {
+			return part.split(pdfUrlRegex).map((segment, j) => {
+				if (segment.match(pdfUrlRegex)) {
+					return (
+						<a
+							key={`url-${i}-${j}`}
+							href={segment}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-blue-700 hover:underline cursor-pointer">
+							{segment}
+						</a>
+					);
+				}
+				return segment;
+			});
+		}
+		return part;
+	});
+
+	return processedText;
+}
 
 const IndividualCard: React.FC<{
 	ind: IndividualNode;
@@ -53,6 +104,32 @@ const IndividualCard: React.FC<{
 	const commonGroups =
 		userGroups.filter((g) => (ind.visibleTo || []).includes(g.iri)) || [];
 
+	// Extraction des PDFs associés à l'individu (url + nom original)
+	const pdfUrls = useMemo(
+		() =>
+			(ind.properties || []).filter(
+				(p) =>
+					p.predicate === "http://example.org/core#pdfUrl" &&
+					typeof p.value === "string" &&
+					p.value.endsWith(".pdf")
+			),
+		[ind.properties]
+	);
+	const pdfNames = useMemo(
+		() =>
+			(ind.properties || []).filter(
+				(p) =>
+					p.predicate === "http://example.org/core#pdfOriginalName" &&
+					typeof p.value === "string"
+			),
+		[ind.properties]
+	);
+	// Associe chaque url à son nom original (par index)
+	const pdfs = pdfUrls.map((u, i) => ({
+		url: u.value,
+		originalName: pdfNames[i]?.value || u.value.split("/").pop() || u.value,
+	}));
+
 	const uniqueProps = useMemo(() => {
 		const m = new Map<string, (typeof ind.properties)[number]>();
 		for (const p of ind.properties || []) {
@@ -77,7 +154,12 @@ const IndividualCard: React.FC<{
 		(uniqueProps || []).filter((prop) => !prop.predicate.endsWith("label")) ||
 		[];
 
-	const dataProps = filteredProps.filter((p) => p.isLiteral);
+	const dataProps = filteredProps.filter(
+		(p) =>
+			p.isLiteral &&
+			p.predicate !== "http://example.org/core#pdfUrl" &&
+			p.predicate !== "http://example.org/core#pdfOriginalName"
+	);
 	const relProps = filteredProps.filter((p) => !p.isLiteral);
 
 	const hasData = dataProps.length > 0 || relProps.length > 0;
@@ -110,6 +192,42 @@ const IndividualCard: React.FC<{
 
 	// saisie rapide d'un nouveau commentaire
 	const [draftComment, setDraftComment] = useState("");
+	const [showPdfAutocomplete, setShowPdfAutocomplete] = useState(false);
+	const [pdfAutocompleteOptions, setPdfAutocompleteOptions] = useState(pdfs);
+	const [pdfAutocompleteIndex, setPdfAutocompleteIndex] = useState(0);
+
+	// Hook pour gérer la modal PDF
+	const {
+		isOpen: showPdfModal,
+		pdfUrl: currentPdfUrl,
+		pdfName: currentPdfName,
+		openModal: openPdfModal,
+		closeModal: closePdfModal,
+	} = usePdfModal();
+
+	// Détecte le déclencheur d'autocomplétion
+	const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+		const val = e.target.value;
+		setDraftComment(val);
+		// Déclenche si @pdf ou [PDF: est tapé
+		const trigger = /(@pdf|\[PDF:?)$/i;
+		if (trigger.test(val)) {
+			setShowPdfAutocomplete(true);
+			setPdfAutocompleteOptions(pdfs);
+			setPdfAutocompleteIndex(0);
+		} else {
+			setShowPdfAutocomplete(false);
+		}
+	};
+
+	// Insertion de la mention PDF dans le commentaire
+	const insertPdfMention = (pdf: (typeof pdfs)[number]) => {
+		// Remplace le dernier @pdf ou [PDF: par la balise
+		setDraftComment((prev) =>
+			prev.replace(/(@pdf|\[PDF:?)$/i, `[PDF:${pdf.originalName}]`)
+		);
+		setShowPdfAutocomplete(false);
+	};
 
 	const summaryInput = useMemo(() => {
 		if (!open) return null;
@@ -253,6 +371,29 @@ const IndividualCard: React.FC<{
 				</div>
 				{open && (
 					<div className="space-y-3">
+						{/* ---- PDFS ASSOCIÉS ---- */}
+						{pdfs.length > 0 && (
+							<div>
+								<h4 className="text-xs font-semibold text-blue-600 mb-1">
+									Documents PDF associés
+								</h4>
+								<ul className="space-y-1">
+									{pdfs.map((pdf, idx) => (
+										<li key={idx}>
+											<button
+												type="button"
+												onClick={() => openPdfModal(pdf.url, pdf.originalName)}
+												className="text-blue-700 hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit">
+												{pdf.originalName}
+											</button>
+											<span className="ml-2 text-xs text-gray-400">
+												(cliquer pour prévisualiser)
+											</span>
+										</li>
+									))}
+								</ul>
+							</div>
+						)}
 						{/* ---- DATA SECTION ---- */}
 						{dataProps.length > 0 && (
 							<div>
@@ -393,40 +534,88 @@ const IndividualCard: React.FC<{
 									onChange={(e) => setDraftComment(e.target.value)}
 									placeholder={t("individual.comments.placeholder")}
 									rows={2}
-									className="flex-1 text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none"
-								/>
-								<button
-									disabled={!draftComment.trim()}
-									onClick={() => {
-										if (draftComment.trim()) {
-											handleCreateComment(draftComment.trim());
-											setDraftComment("");
+									className="flex-1 text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none w-full"
+									onKeyDown={(e) => {
+										if (
+											showPdfAutocomplete &&
+											pdfAutocompleteOptions.length > 0
+										) {
+											if (e.key === "ArrowDown") {
+												e.preventDefault();
+												setPdfAutocompleteIndex(
+													(i) => (i + 1) % pdfAutocompleteOptions.length
+												);
+											} else if (e.key === "ArrowUp") {
+												e.preventDefault();
+												setPdfAutocompleteIndex(
+													(i) =>
+														(i - 1 + pdfAutocompleteOptions.length) %
+														pdfAutocompleteOptions.length
+												);
+											} else if (e.key === "Enter") {
+												e.preventDefault();
+												insertPdfMention(
+													pdfAutocompleteOptions[pdfAutocompleteIndex]
+												);
+											} else if (e.key === "Escape") {
+												setShowPdfAutocomplete(false);
+											}
 										}
 									}}
-									className="self-stretch px-3 py-1 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs rounded">
-									{t("common.send")}
-								</button>
+								/>
+								{showPdfAutocomplete && pdfAutocompleteOptions.length > 0 && (
+									<ul className="absolute left-0 top-full z-50 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded shadow w-64 max-h-40 overflow-auto text-xs mt-1">
+										{pdfAutocompleteOptions.map((pdf, idx) => (
+											<li
+												key={pdf.url}
+												className={
+													"px-2 py-1 cursor-pointer " +
+													(idx === pdfAutocompleteIndex
+														? "bg-indigo-600 text-white"
+														: "hover:bg-indigo-100 dark:hover:bg-slate-700")
+												}
+												onMouseDown={() => insertPdfMention(pdf)}>
+												{pdf.originalName}
+											</li>
+										))}
+									</ul>
+								)}
 							</div>
-							<div>
-								{comments
-									.filter((c) => !c.replyTo)
-									.map((c) => (
-										<CommentBlock
-											key={c.id}
-											comment={c}
-											allComments={comments}
-											snapshot={snapshot}
-											onAddReply={(parent, body) =>
-												handleCreateComment(body, parent)
-											}
-											onEdit={handleEditComment}
-											onDelete={handleDeleteComment}
-											currentUserIri={currentUserIri || ""}
-										/>
-									))}
-							</div>
+							<button
+								disabled={!draftComment.trim()}
+								onClick={() => {
+									if (draftComment.trim()) {
+										handleCreateComment(draftComment.trim());
+										setDraftComment("");
+									}
+								}}
+								className="self-stretch px-3 py-1 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs rounded">
+								{t("common.send")}
+							</button>
 						</div>
-
+						<div>
+							{comments
+								.filter((c) => !c.replyTo)
+								.map((c) => (
+									<CommentBlock
+										key={c.id}
+										comment={c}
+										allComments={comments}
+										snapshot={snapshot}
+										onAddReply={(parent, body) =>
+											handleCreateComment(body, parent)
+										}
+										onEdit={handleEditComment}
+										onDelete={handleDeleteComment}
+										currentUserIri={currentUserIri || ""}
+										ontologyIri={ontologyIri}
+										availablePdfs={pdfs}
+										renderBody={(body: string) =>
+											renderCommentWithPdfLinks(body, pdfs)
+										}
+									/>
+								))}
+						</div>
 						{summaryOpen && (
 							<SimpleModal
 								title={t("dashboard.section.summary")}
@@ -455,6 +644,15 @@ const IndividualCard: React.FC<{
 						)}
 					</div>
 				)}
+				{/* Modal PDF unifiée avec commentaires */}
+				<PdfModal
+					isOpen={showPdfModal}
+					pdfUrl={currentPdfUrl}
+					pdfName={currentPdfName}
+					onClose={closePdfModal}
+					ontologyIri={ontologyIri}
+					snapshot={snapshot}
+				/>
 			</div>
 		);
 	}
