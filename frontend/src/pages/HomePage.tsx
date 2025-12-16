@@ -40,6 +40,8 @@ export default function HomePage() {
 	const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
 	const [prioritizeFavorites, setPrioritizeFavorites] = useState(true);
 	const [sortAlphabetical, setSortAlphabetical] = useState(false);
+	const [deleteTarget, setDeleteTarget] = useState<Ontology | null>(null);
+	const [isDeleting, setIsDeleting] = useState(false);
 
 	const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0] || null;
@@ -244,6 +246,15 @@ export default function HomePage() {
 											<i className="fas fa-external-link-alt" aria-hidden />
 											{t("home.table.open")}
 										</Link>
+										{isSuperAdmin && (
+											<button
+												type="button"
+												className="button button--ghost"
+												onClick={() => setDeleteTarget(o)}>
+												<i className="fas fa-trash-alt" aria-hidden />
+												{t("home.actions.deleteOntology")}
+											</button>
+										)}
 									</div>
 								</article>
 							);
@@ -368,6 +379,36 @@ export default function HomePage() {
 							)}
 						</div>
 					</div>
+				</SimpleModal>
+			)}
+
+			{deleteTarget && isSuperAdmin && (
+				<SimpleModal
+					title={t("home.delete.title")}
+					onClose={() => {
+						if (isDeleting) return;
+						setDeleteTarget(null);
+					}}
+					onSubmit={async () => {
+						if (!deleteTarget) return false;
+						setIsDeleting(true);
+						try {
+							await api(`/ontologies/${encodeURIComponent(deleteTarget.iri)}`, {
+								method: "DELETE",
+							});
+							await queryClient.invalidateQueries({ queryKey: ["ontologies"] });
+						} finally {
+							setIsDeleting(false);
+							setDeleteTarget(null);
+						}
+					}}
+					disableSubmit={isDeleting}
+					submitLabel={t("home.delete.submit")}>
+					<p>
+						{t("home.delete.confirm", {
+							label: deleteTarget.label || extractSlug(deleteTarget.iri),
+						})}
+					</p>
 				</SimpleModal>
 			)}
 		</div>

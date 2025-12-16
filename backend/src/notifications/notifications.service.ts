@@ -48,7 +48,7 @@ type NotificationRow = {
 @Injectable()
 export class NotificationsService {
 	private readonly fusekiBase = (
-		process.env.FUSEKI_URL ?? "http://fuseki:3030/autonomy"
+		process.env.FUSEKI_URL ?? "http://localhost:3030/autonomy"
 	).replace(/\/$/, "");
 	private readonly fusekiUrl = `${this.fusekiBase}/sparql`;
 	private readonly fusekiUpdateUrl = `${this.fusekiBase}/update`;
@@ -74,13 +74,9 @@ export class NotificationsService {
 
 	private async runUpdate(update: string) {
 		await lastValueFrom(
-			this.http.post(
-				this.fusekiUpdateUrl,
-				new URLSearchParams({ update }),
-				{
-					auth: this.auth,
-				}
-			)
+			this.http.post(this.fusekiUpdateUrl, new URLSearchParams({ update }), {
+				auth: this.auth,
+			})
 		);
 	}
 
@@ -111,6 +107,27 @@ export class NotificationsService {
 		if (name) return name;
 		if (email) return email;
 		return userIri.split("/").pop() || userIri;
+	}
+
+	/*private async getResourceLabel(
+		resourceIri: string
+	): Promise<string | undefined> {
+		const query = `
+      PREFIX rdfs: <${RDFS}>
+      SELECT ?lbl WHERE { <${resourceIri}> rdfs:label ?lbl } LIMIT 1
+    `;
+		const data = await this.runSelect(query);
+		return data?.results?.bindings?.[0]?.lbl?.value;
+	}*/
+
+	private async getResourceLabel(resourceIri: string, graphIri?: string): Promise<string | undefined> {
+		const graphClause = graphIri ? `GRAPH <${graphIri}> { <${resourceIri}> rdfs:label ?lbl }` : `<${resourceIri}> rdfs:label ?lbl`;
+		const query = `
+      PREFIX rdfs: <${RDFS}>
+      SELECT ?lbl WHERE { ${graphClause} } LIMIT 1
+    `;
+		const data = await this.runSelect(query);
+		return data?.results?.bindings?.[0]?.lbl?.value;
 	}
 
 	private buildLink(target?: string, fallback?: string) {
@@ -463,7 +480,12 @@ export class NotificationsService {
 			action === "add"
 				? `Vous avez été ajouté(e) au groupe ${groupLabel} par ${actorName}`
 				: `Vous avez été retiré(e) du groupe ${groupLabel} par ${actorName}`;
-		const hasRecent = await this.hasRecentNotification(memberIri, verb, 2, groupIri);
+		const hasRecent = await this.hasRecentNotification(
+			memberIri,
+			verb,
+			2,
+			groupIri
+		);
 		if (hasRecent) return;
 		await this.deleteNotificationsByVerbAndTarget(memberIri, verb, groupIri);
 		await this.createNotification({
@@ -495,9 +517,18 @@ export class NotificationsService {
 			action === "add"
 				? `Vous avez été ajouté(e) à l'organisation ${orgLabel} par ${actorName}`
 				: `Vous avez été retiré(e) de l'organisation ${orgLabel} par ${actorName}`;
-		const hasRecent = await this.hasRecentNotification(memberIri, verb, 2, organizationIri);
+		const hasRecent = await this.hasRecentNotification(
+			memberIri,
+			verb,
+			2,
+			organizationIri
+		);
 		if (hasRecent) return;
-		await this.deleteNotificationsByVerbAndTarget(memberIri, verb, organizationIri);
+		await this.deleteNotificationsByVerbAndTarget(
+			memberIri,
+			verb,
+			organizationIri
+		);
 		await this.createNotification({
 			recipient: memberIri,
 			actor: actorIri,
@@ -516,7 +547,9 @@ export class NotificationsService {
 		const { actorIri, userIri, roles } = params;
 		const actorName = await this.getUserDisplayName(actorIri);
 		const rolesText =
-			roles.length > 0 ? roles.map((r) => r.split("#").pop()).join(", ") : "aucun";
+			roles.length > 0
+				? roles.map((r) => r.split("#").pop()).join(", ")
+				: "aucun";
 		const content = `Vos rôles ont été mis à jour par ${actorName} : ${rolesText}`;
 		// Si une notif récente du même type existe déjà pour cet utilisateur, ne pas dupliquer
 		const verb = `${CORE}RolesUpdated`;
@@ -542,12 +575,20 @@ export class NotificationsService {
 		const superAdmins = Array.from(new Set(await this.getSuperAdmins()));
 		if (superAdmins.length === 0) return;
 		const label =
-			name?.trim() || email?.trim() || userIri.split("/").pop() || "Nouveau compte";
+			name?.trim() ||
+			email?.trim() ||
+			userIri.split("/").pop() ||
+			"Nouveau compte";
 		const content = `Nouvelle inscription à valider : ${label}`;
 
 		for (const recipient of superAdmins) {
 			const verb = `${CORE}UserRegistered`;
-			const hasRecent = await this.hasRecentNotification(recipient, verb, 5, userIri);
+			const hasRecent = await this.hasRecentNotification(
+				recipient,
+				verb,
+				5,
+				userIri
+			);
 			if (hasRecent) continue;
 			await this.deleteNotificationsByVerbAndTarget(recipient, verb, userIri);
 			try {
@@ -726,7 +767,11 @@ export class NotificationsService {
 					ontologyIri
 				);
 				if (hasRecent) return;
-				await this.deleteNotificationsByVerbAndTarget(recipient, verb, ontologyIri);
+				await this.deleteNotificationsByVerbAndTarget(
+					recipient,
+					verb,
+					ontologyIri
+				);
 				try {
 					await this.createNotification({
 						recipient,
@@ -1032,15 +1077,7 @@ export class NotificationsService {
 		return (data?.results?.bindings ?? []).map((b: any) => b.g.value);
 	}
 
-	private async getResourceLabel(resourceIri: string, graphIri?: string): Promise<string | undefined> {
-		const graphClause = graphIri ? `GRAPH <${graphIri}> { <${resourceIri}> rdfs:label ?lbl }` : `<${resourceIri}> rdfs:label ?lbl`;
-		const query = `
-      PREFIX rdfs: <${RDFS}>
-      SELECT ?lbl WHERE { ${graphClause} } LIMIT 1
-    `;
-		const data = await this.runSelect(query);
-		return data?.results?.bindings?.[0]?.lbl?.value;
-	}
+	
 
 	private async getMembersOfGroups(groupIris: string[]): Promise<string[]> {
 		if (groupIris.length === 0) return [];
