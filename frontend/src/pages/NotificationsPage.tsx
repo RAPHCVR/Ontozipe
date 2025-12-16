@@ -9,28 +9,22 @@ import {
 	type NotificationItem,
 } from "../hooks/useNotifications";
 
-const CATEGORY_FILTERS = [
-	{ key: "groups", labelKey: "notifications.categories.groups" },
-	{ key: "administration", labelKey: "notifications.categories.admin" },
-	{ key: "organizations", labelKey: "notifications.categories.organizations" },
-	{ key: "ontologies", labelKey: "notifications.categories.ontologies" },
-] as const;
-
 export default function NotificationsPage() {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const [page, setPage] = useState(1);
 	const [pageSize] = useState(10);
 	const [status, setStatus] = useState<"all" | "unread">("all");
-	const [category, setCategory] = useState<string>("all");
+	const [scope, setScope] = useState<"personal" | "group">("personal");
 
 	const notificationsQuery = useNotifications({
 		status,
 		page,
 		pageSize,
-		category,
+		scope,
 	});
-	const unreadCountQuery = useUnreadCount();
+	const unreadPersonal = useUnreadCount("personal");
+	const unreadGroup = useUnreadCount("group");
 	const { markAllAsRead, deleteNotification } = useNotificationActions();
 	const [pendingDelete, setPendingDelete] = useState<NotificationItem | null>(
 		null
@@ -38,7 +32,7 @@ export default function NotificationsPage() {
 
 	useEffect(() => {
 		setPage(1);
-	}, [status, category]);
+	}, [status, scope]);
 
 	const data = notificationsQuery.data;
 	const items = data?.items ?? [];
@@ -54,7 +48,10 @@ export default function NotificationsPage() {
 					</h1>
 					<p className="text-gray-500 dark:text-gray-400">
 						{t("notifications.subtitle", {
-							count: unreadCountQuery.data?.unreadCount ?? 0,
+							count:
+								scope === "group"
+									? unreadGroup.data?.unreadCount ?? 0
+									: unreadPersonal.data?.unreadCount ?? 0,
 						})}
 					</p>
 				</div>
@@ -62,7 +59,7 @@ export default function NotificationsPage() {
 					type="button"
 					className="btn-secondary"
 					disabled={markAllAsRead.isPending}
-					onClick={() => markAllAsRead.mutate()}>
+					onClick={() => markAllAsRead.mutate(scope)}>
 					{markAllAsRead.isPending
 						? t("notifications.actions.markingAll")
 						: t("notifications.actions.markAllRead")}
@@ -72,11 +69,8 @@ export default function NotificationsPage() {
 			<div className="flex flex-wrap items-center gap-2">
 				<button
 					type="button"
-					onClick={() => {
-						setCategory("all");
-						setStatus("all");
-					}}
-					className={`chip ${category === "all" ? "is-active" : ""}`}>
+					onClick={() => setStatus("all")}
+					className={`chip ${status === "all" ? "is-active" : ""}`}>
 					{t("notifications.filters.all")}
 				</button>
 				<button
@@ -85,16 +79,31 @@ export default function NotificationsPage() {
 					className={`chip ${status === "unread" ? "is-active" : ""}`}>
 					{t("notifications.filters.unread")}
 				</button>
+			</div>
 
-				{CATEGORY_FILTERS.map((filter) => (
-					<button
-						key={filter.key}
-						type="button"
-						onClick={() => setCategory(filter.key)}
-						className={`chip ${category === filter.key ? "is-active" : ""}`}>
-						{t(filter.labelKey)}
-					</button>
-				))}
+			<div className="border-t border-gray-200 dark:border-gray-700 pt-3 flex flex-wrap items-center gap-2">
+				<button
+					type="button"
+					onClick={() => setScope("personal")}
+					className={`chip ${scope === "personal" ? "is-active" : ""}`}>
+					{t("notifications.scope.personal")}{" "}
+					{(unreadPersonal.data?.unreadCount ?? 0) > 0 && (
+						<span className="ml-1 text-xs font-semibold">
+							{unreadPersonal.data!.unreadCount}
+						</span>
+					)}
+				</button>
+				<button
+					type="button"
+					onClick={() => setScope("group")}
+					className={`chip ${scope === "group" ? "is-active" : ""}`}>
+					{t("notifications.scope.group")}{" "}
+					{(unreadGroup.data?.unreadCount ?? 0) > 0 && (
+						<span className="ml-1 text-xs font-semibold">
+							{unreadGroup.data!.unreadCount}
+						</span>
+					)}
+				</button>
 			</div>
 
 			<section className="space-y-3">

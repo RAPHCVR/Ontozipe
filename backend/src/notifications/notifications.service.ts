@@ -23,6 +23,7 @@ type CreateNotificationInput = {
 	isRead?: boolean;
 	createdAt?: string;
 	id?: string;
+	scope?: "personal" | "group";
 };
 
 type ListOptions = {
@@ -31,6 +32,7 @@ type ListOptions = {
 	offset?: number;
 	verb?: string;
 	category?: string;
+	scope?: "personal" | "group";
 };
 
 type NotificationRow = {
@@ -43,6 +45,7 @@ type NotificationRow = {
 	verb?: string;
 	link?: string | null;
 	category?: string;
+	scope?: "personal" | "group";
 };
 
 @Injectable()
@@ -88,7 +91,7 @@ export class NotificationsService {
 	private truncate(text: string, max = 160) {
 		if (!text) return "";
 		if (text.length <= max) return text;
-		return text.slice(0, max - 1).trimEnd() + "…";
+		return text.slice(0, max - 1).trimEnd() + "ÔÇª";
 	}
 
 	private async getUserDisplayName(userIri: string): Promise<string> {
@@ -136,19 +139,20 @@ export class NotificationsService {
 		return target;
 	}
 
-	async createNotification({
-		recipient,
-		actor,
-		verb,
-		target,
-		link,
-		content,
-		isRead = false,
-		createdAt,
-		id,
-	}: CreateNotificationInput): Promise<string> {
-		const iri = this.newNotificationIri(id);
-		const now = createdAt ?? new Date().toISOString();
+async createNotification({
+	recipient,
+	actor,
+	verb,
+	target,
+	link,
+	content,
+	isRead = false,
+	createdAt,
+	id,
+	scope = "personal",
+}: CreateNotificationInput): Promise<string> {
+	const iri = this.newNotificationIri(id);
+	const now = createdAt ?? new Date().toISOString();
 
 		const triples: string[] = [
 			`<${iri}> a <${CORE}Notification> ;`,
@@ -167,14 +171,21 @@ export class NotificationsService {
 		if (target) {
 			triples.splice(triples.length - 1, 0, `  <${CORE}target> <${target}> ;`);
 		}
-		if (link) {
-			const escapedLink = escapeSparqlLiteral(link);
-			triples.splice(
-				triples.length - 1,
-				0,
-				`  <${CORE}link> "${escapedLink}"^^<${XSD}anyURI> ;`
-			);
-		}
+	if (link) {
+		const escapedLink = escapeSparqlLiteral(link);
+		triples.splice(
+			triples.length - 1,
+			0,
+			`  <${CORE}link> "${escapedLink}"^^<${XSD}anyURI> ;`
+		);
+	}
+	if (scope) {
+		triples.splice(
+			triples.length - 1,
+			0,
+			`  <${CORE}scope> "${escapeSparqlLiteral(scope)}" ;`
+		);
+	}
 
 		const update = `
       PREFIX core: <${CORE}>
@@ -185,60 +196,66 @@ export class NotificationsService {
 		return iri;
 	}
 
-	async listForUser(
-		userIri: string,
-		options: ListOptions = {}
-	): Promise<{
-		items: NotificationRow[];
+async listForUser(
+	userIri: string,
+	options: ListOptions = {}
+): Promise<{
+	items: NotificationRow[];
 		total: number;
 		unreadCount: number;
 		limit: number;
 		offset: number;
 	}> {
-		const status = options.status ?? "all";
-		const limit = Math.max(1, Math.min(100, options.limit ?? 20));
-		const offset = Math.max(0, options.offset ?? 0);
-		const verbFilter = options.verb ? `FILTER(?verb = <${options.verb}>)` : "";
-		const statusFilter =
-			status === "unread"
-				? `FILTER(!BOUND(?isRead) || lcase(str(?isRead)) = "false" || str(?isRead) = "0")`
-				: "";
-		const categoryVerbs = this.verbsForCategory(options.category);
-		const categoryFilter =
-			categoryVerbs.length > 0
-				? `FILTER(?verb IN (${categoryVerbs.map((v) => `<${v}>`).join(", ")}))`
-				: "";
+	const status = options.status ?? "all";
+	const limit = Math.max(1, Math.min(100, options.limit ?? 20));
+	const offset = Math.max(0, options.offset ?? 0);
+	const verbFilter = options.verb ? `FILTER(?verbRaw = <${options.verb}>)` : "";
+	const scopeFilter = options.scope
+		? `FILTER(lcase(str(?scopeRaw)) = "${options.scope}")`
+		: "";
+	const statusFilter =
+		status === "unread"
+			? `FILTER(!BOUND(?isRead) || lcase(str(?isRead)) = "false" || str(?isRead) = "0")`
+			: "";
+	const categoryVerbs = this.verbsForCategory(options.category);
+	const categoryFilter =
+		categoryVerbs.length > 0
+			? `FILTER(?verbRaw IN (${categoryVerbs.map((v) => `<${v}>`).join(", ")}))`
+			: "";
 
 		const query = `
       PREFIX core: <${CORE}>
       PREFIX foaf: <${FOAF}>
       PREFIX rdfs: <${RDFS}>
-      SELECT ?notif ?content ?createdAt
-             (SAMPLE(?isReadRaw) AS ?isRead)
-             (SAMPLE(?actorRaw) AS ?actor)
-             (SAMPLE(?actorNameRaw) AS ?actorName)
-             (SAMPLE(?targetRaw) AS ?target)
-             (SAMPLE(?targetLabelRaw) AS ?targetLabel)
-             (SAMPLE(?verbRaw) AS ?verb)
-             (SAMPLE(?linkRaw) AS ?link)
-      WHERE {
-        GRAPH <${this.graph}> {
-          ?notif a core:Notification ;
-                 core:recipient <${userIri}> ;
-                 core:content ?content ;
-                 core:createdAt ?createdAt .
-          OPTIONAL { ?notif core:isRead ?isReadRaw }
-          OPTIONAL { ?notif core:actor ?actorRaw }
-          OPTIONAL { ?notif core:target ?targetRaw }
-          OPTIONAL { ?notif core:verb ?verbRaw }
-          OPTIONAL { ?notif core:link ?linkRaw }
-        }
-        OPTIONAL { ?actorRaw foaf:name ?actorNameRaw }
-        OPTIONAL { ?targetRaw rdfs:label ?targetLabelRaw }
-        ${statusFilter}
-        ${verbFilter}
-        ${categoryFilter}
-      }
+	SELECT ?notif ?content ?createdAt
+           (SAMPLE(?isReadRaw) AS ?isRead)
+           (SAMPLE(?actorRaw) AS ?actor)
+           (SAMPLE(?actorNameRaw) AS ?actorName)
+           (SAMPLE(?targetRaw) AS ?target)
+           (SAMPLE(?targetLabelRaw) AS ?targetLabel)
+           (SAMPLE(?verbRaw) AS ?verb)
+           (SAMPLE(?linkRaw) AS ?link)
+           (SAMPLE(?scopeRaw) AS ?scope)
+  WHERE {
+    GRAPH <${this.graph}> {
+      ?notif a core:Notification ;
+             core:recipient <${userIri}> ;
+             core:content ?content ;
+             core:createdAt ?createdAt .
+      OPTIONAL { ?notif core:isRead ?isReadRaw }
+      OPTIONAL { ?notif core:actor ?actorRaw }
+      OPTIONAL { ?notif core:target ?targetRaw }
+      OPTIONAL { ?notif core:verb ?verbRaw }
+      OPTIONAL { ?notif core:link ?linkRaw }
+      OPTIONAL { ?notif core:scope ?scopeRaw }
+    }
+    OPTIONAL { ?actorRaw foaf:name ?actorNameRaw }
+    OPTIONAL { ?targetRaw rdfs:label ?targetLabelRaw }
+    ${statusFilter}
+    ${verbFilter}
+    ${scopeFilter}
+    ${categoryFilter}
+  }
       GROUP BY ?notif ?content ?createdAt
       ORDER BY DESC(?createdAt)
       LIMIT ${limit}
@@ -263,6 +280,8 @@ export class NotificationsService {
 				verb: row.verb?.value,
 				link: row.link?.value ?? null,
 				category: this.categoryForVerb(row.verb?.value),
+				scope:
+					row.scope?.value?.toLowerCase() === "group" ? "group" : "personal",
 			})
 		);
 
@@ -270,9 +289,10 @@ export class NotificationsService {
 			userIri,
 			status,
 			options.verb,
-			categoryVerbs
+			categoryVerbs,
+			options.scope
 		);
-		const unreadCount = await this.getUnreadCountForUser(userIri);
+		const unreadCount = await this.getUnreadCountForUser(userIri, options.scope);
 		return { items, total, unreadCount, limit, offset };
 	}
 
@@ -280,17 +300,21 @@ export class NotificationsService {
 		userIri: string,
 		status: "all" | "unread",
 		verb?: string,
-		categoryVerbs?: string[]
+		categoryVerbs?: string[],
+		scope?: "personal" | "group"
 	): Promise<number> {
 		const statusFilter =
 			status === "unread"
 				? `FILTER(!BOUND(?isRead) || lcase(str(?isRead)) = "false" || str(?isRead) = "0")`
 				: "";
-		const verbFilter = verb ? `FILTER(?verb = <${verb}>)` : "";
+		const verbFilter = verb ? `FILTER(?verbRaw = <${verb}>)` : "";
 		const categoryFilter =
 			categoryVerbs && categoryVerbs.length > 0
-				? `FILTER(?verb IN (${categoryVerbs.map((v) => `<${v}>`).join(", ")}))`
+				? `FILTER(?verbRaw IN (${categoryVerbs.map((v) => `<${v}>`).join(", ")}))`
 				: "";
+		const scopeFilter = scope
+			? `FILTER(lcase(str(?scopeRaw)) = "${scope}")`
+			: "";
 		const query = `
       PREFIX core: <${CORE}>
       SELECT (COUNT(?notif) AS ?total) WHERE {
@@ -298,10 +322,12 @@ export class NotificationsService {
           ?notif a core:Notification ;
                  core:recipient <${userIri}> .
           OPTIONAL { ?notif core:isRead ?isRead }
-          OPTIONAL { ?notif core:verb ?verb }
+          OPTIONAL { ?notif core:verb ?verbRaw }
+          OPTIONAL { ?notif core:scope ?scopeRaw }
           ${statusFilter}
           ${verbFilter}
           ${categoryFilter}
+          ${scopeFilter}
         }
       }
     `;
@@ -310,7 +336,13 @@ export class NotificationsService {
 		return Number(value ?? 0);
 	}
 
-	async getUnreadCountForUser(userIri: string): Promise<number> {
+	async getUnreadCountForUser(
+		userIri: string,
+		scope?: "personal" | "group"
+	): Promise<number> {
+		const scopeFilter = scope
+			? `OPTIONAL { ?notif core:scope ?scopeRaw } FILTER(lcase(str(?scopeRaw)) = "${scope}")`
+			: "";
 		const query = `
       PREFIX core: <${CORE}>
       SELECT (COUNT(?notif) AS ?total) WHERE {
@@ -318,6 +350,8 @@ export class NotificationsService {
           ?notif a core:Notification ;
                  core:recipient <${userIri}> .
           OPTIONAL { ?notif core:isRead ?isRead }
+          OPTIONAL { ?notif core:scope ?scopeRaw }
+          ${scopeFilter}
           FILTER(!BOUND(?isRead) || lcase(str(?isRead)) = "false" || str(?isRead) = "0")
         }
       }
@@ -338,7 +372,10 @@ export class NotificationsService {
 		await this.runUpdate(update);
 	}
 
-	async markAllAsRead(userIri: string) {
+	async markAllAsRead(userIri: string, scope?: "personal" | "group") {
+		const scopeFilter = scope
+			? `OPTIONAL { ?n core:scope ?scopeRaw } FILTER(lcase(str(?scopeRaw)) = "${scope}")`
+			: "";
 		const update = `
       PREFIX core: <${CORE}>
       WITH <${this.graph}>
@@ -348,6 +385,8 @@ export class NotificationsService {
         ?n a core:Notification ;
            core:recipient <${userIri}> .
         OPTIONAL { ?n core:isRead ?r }
+        OPTIONAL { ?n core:scope ?scopeRaw }
+        ${scopeFilter}
       }
     `;
 		await this.runUpdate(update);
@@ -365,7 +404,7 @@ export class NotificationsService {
 		await this.runUpdate(update);
 	}
 
-		async notifyComment(params: {
+			async notifyComment(params: {
 		actorIri: string;
 		resourceIri: string;
 		ontologyIri: string;
@@ -407,6 +446,7 @@ export class NotificationsService {
 					target: resourceIri,
 					link,
 					content,
+					scope: "personal",
 				});
 			}
 			notified.add(recipient);
@@ -437,6 +477,7 @@ export class NotificationsService {
 						target: replyTo,
 						link,
 						content,
+						scope: "personal",
 					});
 				}
 				notified.add(parentAuthor);
@@ -460,6 +501,7 @@ export class NotificationsService {
 					content: `${actorName} a commenté l'élément ${resourceLabel} : ${this.truncate(
 						body
 					)}`,
+					scope: "group",
 				});
 				notified.add(m);
 			}
@@ -478,8 +520,8 @@ export class NotificationsService {
 			action === "add" ? `${CORE}AddedToGroup` : `${CORE}RemovedFromGroup`;
 		const content =
 			action === "add"
-				? `Vous avez été ajouté(e) au groupe ${groupLabel} par ${actorName}`
-				: `Vous avez été retiré(e) du groupe ${groupLabel} par ${actorName}`;
+				? `Vous avez +®t+® ajout+®(e) au groupe ${groupLabel} par ${actorName}`
+				: `Vous avez +®t+® retir+®(e) du groupe ${groupLabel} par ${actorName}`;
 		const hasRecent = await this.hasRecentNotification(
 			memberIri,
 			verb,
@@ -515,8 +557,8 @@ export class NotificationsService {
 				: `${CORE}RemovedFromOrganization`;
 		const content =
 			action === "add"
-				? `Vous avez été ajouté(e) à l'organisation ${orgLabel} par ${actorName}`
-				: `Vous avez été retiré(e) de l'organisation ${orgLabel} par ${actorName}`;
+				? `Vous avez +®t+® ajout+®(e) +á l'organisation ${orgLabel} par ${actorName}`
+				: `Vous avez +®t+® retir+®(e) de l'organisation ${orgLabel} par ${actorName}`;
 		const hasRecent = await this.hasRecentNotification(
 			memberIri,
 			verb,
@@ -550,12 +592,12 @@ export class NotificationsService {
 			roles.length > 0
 				? roles.map((r) => r.split("#").pop()).join(", ")
 				: "aucun";
-		const content = `Vos rôles ont été mis à jour par ${actorName} : ${rolesText}`;
-		// Si une notif récente du même type existe déjà pour cet utilisateur, ne pas dupliquer
+		const content = `Vos r+¦les ont +®t+® mis +á jour par ${actorName} : ${rolesText}`;
+		// Si une notif r+®cente du m+¬me type existe d+®j+á pour cet utilisateur, ne pas dupliquer
 		const verb = `${CORE}RolesUpdated`;
 		const hasRecent = await this.hasRecentNotification(userIri, verb, 2);
 		if (hasRecent) return;
-		// Nettoyer les anciennes notifications de rôles pour éviter les doublons accumulés
+		// Nettoyer les anciennes notifications de r+¦les pour +®viter les doublons accumul+®s
 		await this.deleteNotificationsByVerb(userIri, verb);
 		await this.createNotification({
 			recipient: userIri,
@@ -579,7 +621,7 @@ export class NotificationsService {
 			email?.trim() ||
 			userIri.split("/").pop() ||
 			"Nouveau compte";
-		const content = `Nouvelle inscription à valider : ${label}`;
+		const content = `Nouvelle inscription +á valider : ${label}`;
 
 		for (const recipient of superAdmins) {
 			const verb = `${CORE}UserRegistered`;
@@ -743,7 +785,7 @@ export class NotificationsService {
 		return "general";
 	}
 
-	async notifyOntologyAccessGranted(params: {
+		async notifyOntologyAccessGranted(params: {
 		actorIri: string;
 		ontologyIri: string;
 		groupIris: string[];
@@ -780,6 +822,7 @@ export class NotificationsService {
 						target: ontologyIri,
 						link: `/ontology?iri=${encodeURIComponent(ontologyIri)}`,
 						content: `${actorName} a rendu l'ontologie ${ontologyLabel} accessible à votre groupe`,
+						scope: "group",
 					});
 				} catch (error) {
 					this.logger.warn(
@@ -788,9 +831,7 @@ export class NotificationsService {
 				}
 			})
 		);
-	}
-
-	async notifyIndividualCreated(params: {
+	}	async notifyIndividualCreated(params: {
 		actorIri: string;
 		individualIri: string;
 		ontologyIri: string;
@@ -826,6 +867,7 @@ export class NotificationsService {
 					target: individualIri,
 					link,
 					content: `${actorName} a cree l'individu ${label}`,
+					scope: "personal",
 				});
 			}
 			notified.add(projectOwner);
@@ -859,13 +901,12 @@ export class NotificationsService {
 					target: individualIri,
 					link,
 					content: `Un nouvel individu ${label} est accessible a votre groupe (cree par ${actorName})`,
+					scope: "group",
 				});
 				notified.add(recipient);
 			}
 		}
-	}
-
-	async notifyIndividualAclChanged(params: {
+	}	async notifyIndividualAclChanged(params: {
 		actorIri: string;
 		individualIri: string;
 		ontologyIri: string;
@@ -908,6 +949,7 @@ export class NotificationsService {
 					target: individualIri,
 					link,
 					content: contentBuilder(recipient),
+					scope: "group",
 				});
 			}
 		};
@@ -922,9 +964,7 @@ export class NotificationsService {
 			VERB_INDIVIDUAL_ACCESS_REVOKED,
 			() => `L'acces a l'individu ${label} vous a ete retire par ${actorName}`
 		);
-	}
-
-	async notifyIndividualDeleted(params: {
+	}	async notifyIndividualDeleted(params: {
 		actorIri: string;
 		individualIri: string;
 		ontologyIri: string;
@@ -957,6 +997,7 @@ export class NotificationsService {
 					target: individualIri,
 					link,
 					content: `L'individu ${label} a ete supprime par ${actorName}`,
+					scope: "personal",
 				});
 			}
 			notified.add(creator);
@@ -983,6 +1024,7 @@ export class NotificationsService {
 					target: individualIri,
 					link,
 					content: `L'individu ${label} a ete supprime par ${actorName}`,
+					scope: "personal",
 				});
 			}
 			notified.add(projectOwner);
@@ -1016,13 +1058,12 @@ export class NotificationsService {
 					target: individualIri,
 					link,
 					content: `L'acces a l'individu ${label} a ete retire (ressource supprimee)`,
+					scope: "group",
 				});
 				notified.add(recipient);
 			}
 		}
-	}
-
-	private async findResourceCreator(
+	}private async findResourceCreator(
 		resourceIri: string,
 		graphIri: string
 	): Promise<string | null> {

@@ -1,4 +1,4 @@
-import { FALLBACK_LANGUAGE, SUPPORTED_LANGUAGES } from "./config";
+﻿import { FALLBACK_LANGUAGE, SUPPORTED_LANGUAGES } from "./config";
 import type { SupportedLanguage } from "./config";
 
 type MessageDefinitions = Record<string, Record<SupportedLanguage, string>>;
@@ -1303,6 +1303,15 @@ const definitions = {
 		fr: "Ontologies",
 		en: "Ontologies",
 		es: "Ontologías",
+	},	"notifications.scope.personal": {
+		fr: "Mon activité",
+		en: "My activity",
+		es: "Mi actividad",
+	},
+	"notifications.scope.group": {
+		fr: "Activité de groupes",
+		en: "Group activity",
+		es: "Actividad de grupos",
 	},
     "notifications.loading": { fr: "Chargement des notifications...", en: "Loading notifications...", es: "Cargando notificaciones..." },
     "notifications.empty": { fr: "Aucune notification pour le moment.", en: "No notifications yet.", es: "Sin notificaciones por ahora." },

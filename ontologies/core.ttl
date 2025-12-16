@@ -137,6 +137,8 @@ core:agentSteps     a owl:DatatypeProperty ; rdfs:domain core:ChatMessage ; rdfs
 core:isRead         a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:boolean .
 core:content        a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:string .
 core:link           a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:anyURI .
+core:scope          a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:string .
+core:scope          a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:string .
 
 ##############################
 ## 7. Règles & annotations ###

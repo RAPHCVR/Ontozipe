@@ -11,6 +11,7 @@ export type NotificationItem = {
 	target?: { iri: string; label?: string };
 	verb?: string;
 	link?: string | null;
+	scope?: "personal" | "group";
 };
 
 type ListResponse = {
@@ -27,6 +28,7 @@ type ListParams = {
 	pageSize?: number;
 	verb?: string;
 	category?: string;
+	scope?: "personal" | "group";
 };
 
 export const useNotifications = (params: ListParams) => {
@@ -47,6 +49,9 @@ export const useNotifications = (params: ListParams) => {
 			if (params.category && params.category !== "all") {
 				qs.set("category", params.category);
 			}
+			if (params.scope && params.scope !== "all") {
+				qs.set("scope", params.scope);
+			}
 			const res = await api(`/notifications?${qs.toString()}`);
 			return (await res.json()) as ListResponse;
 		},
@@ -63,21 +68,24 @@ export const useNotificationsPreview = (limit = 5) => {
 		queryFn: async () => {
 			const qs = new URLSearchParams();
 			qs.set("limit", String(limit));
+			qs.set("scope", "personal");
 			const res = await api(`/notifications?${qs.toString()}`);
 			return (await res.json()) as ListResponse;
 		},
 	});
 };
 
-export const useUnreadCount = () => {
+export const useUnreadCount = (scope?: "personal" | "group") => {
 	const api = useApi();
 	const { token } = useAuth();
 	return useQuery<{ unreadCount: number }, Error>({
-		queryKey: ["notifications", "unreadCount", token],
+		queryKey: ["notifications", "unreadCount", token, scope],
 		enabled: Boolean(token),
 		staleTime: 10 * 1000,
 		queryFn: async () => {
-			const res = await api(`/notifications/unread/count`);
+			const qs = new URLSearchParams();
+			if (scope && scope !== "all") qs.set("scope", scope);
+			const res = await api(`/notifications/unread/count?${qs.toString()}`);
 			return (await res.json()) as { unreadCount: number };
 		},
 	});
@@ -102,8 +110,10 @@ export const useNotificationActions = () => {
 	});
 
 	const markAllAsRead = useMutation({
-		mutationFn: async () => {
-			await api(`/notifications/read-all`, { method: "POST" });
+		mutationFn: async (scope?: "personal" | "group") => {
+			const qs = new URLSearchParams();
+			if (scope && scope !== "all") qs.set("scope", scope);
+			await api(`/notifications/read-all?${qs.toString()}`, { method: "POST" });
 		},
 		onSuccess: invalidate,
 	});
