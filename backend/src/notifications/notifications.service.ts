@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+﻿import { Injectable, Logger } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { lastValueFrom } from "rxjs";
 import { randomUUID } from "crypto";
@@ -9,9 +9,12 @@ const FOAF = "http://xmlns.com/foaf/0.1/";
 const RDFS = "http://www.w3.org/2000/01/rdf-schema#";
 const XSD = "http://www.w3.org/2001/XMLSchema#";
 const VERB_INDIVIDUAL_CREATED = `${CORE}IndividualCreated`;
+const VERB_INDIVIDUAL_UPDATED = `${CORE}IndividualUpdated`;
 const VERB_INDIVIDUAL_DELETED = `${CORE}IndividualDeleted`;
 const VERB_INDIVIDUAL_ACCESS_GRANTED = `${CORE}IndividualAccessGranted`;
 const VERB_INDIVIDUAL_ACCESS_REVOKED = `${CORE}IndividualAccessRevoked`;
+const VERB_ONTOLOGY_ACCESS_REVOKED = `${CORE}OntologyAccessRevoked`;
+const VERB_ORGANIZATION_OWNER_CHANGED = `${CORE}OrganizationOwnerChanged`;
 
 type CreateNotificationInput = {
 	recipient: string;
@@ -209,14 +212,14 @@ async listForUser(
 	const status = options.status ?? "all";
 	const limit = Math.max(1, Math.min(100, options.limit ?? 20));
 	const offset = Math.max(0, options.offset ?? 0);
-	const verbFilter = options.verb ? `FILTER(?verbRaw = <${options.verb}>)` : "";
-	const scopeFilter = options.scope
-		? `FILTER(lcase(str(?scopeRaw)) = "${options.scope}")`
-		: "";
-	const statusFilter =
-		status === "unread"
-			? `FILTER(!BOUND(?isRead) || lcase(str(?isRead)) = "false" || str(?isRead) = "0")`
+		const verbFilter = options.verb ? `FILTER(?verbRaw = <${options.verb}>)` : "";
+		const scopeFilter = options.scope
+			? `FILTER(lcase(str(?scopeRaw)) = "${options.scope}")`
 			: "";
+		const statusFilter =
+			status === "unread"
+				? `FILTER(!BOUND(?isReadRaw) || lcase(str(?isReadRaw)) = "false" || str(?isReadRaw) = "0")`
+				: "";
 	const categoryVerbs = this.verbsForCategory(options.category);
 	const categoryFilter =
 		categoryVerbs.length > 0
@@ -540,6 +543,52 @@ async listForUser(
 		});
 	}
 
+	async notifyGroupMembershipBroadcast(params: {
+		actorIri: string;
+		memberIri: string;
+		groupIri: string;
+		action: "add" | "remove";
+	}) {
+		const { actorIri, memberIri, groupIri, action } = params;
+		if (actorIri === memberIri) return;
+
+		const actorName = await this.getUserDisplayName(actorIri);
+		const memberName = await this.getUserDisplayName(memberIri);
+		const groupLabel = (await this.getResourceLabel(groupIri)) || "groupe";
+
+		const verb =
+			action === "add" ? `${CORE}AddedToGroup` : `${CORE}RemovedFromGroup`;
+		const content =
+			action === "add"
+				? `${actorName} a ajoute ${memberName} au groupe ${groupLabel}`
+				: `${actorName} a retire ${memberName} du groupe ${groupLabel}`;
+
+		const members = await this.getMembersOfGroups([groupIri]);
+		const recipients = Array.from(
+			new Set(members.filter((m) => m !== actorIri && m !== memberIri))
+		);
+
+		for (const recipient of recipients) {
+			const hasRecent = await this.hasRecentNotification(
+				recipient,
+				verb,
+				2,
+				groupIri
+			);
+			if (hasRecent) continue;
+			await this.deleteNotificationsByVerbAndTarget(recipient, verb, groupIri);
+			await this.createNotification({
+				recipient,
+				actor: actorIri,
+				verb,
+				target: groupIri,
+				link: `/groups`,
+				content,
+				scope: "group",
+			});
+		}
+	}
+
 	async notifyOrganizationMembershipChange(params: {
 		actorIri: string;
 		memberIri: string;
@@ -579,6 +628,60 @@ async listForUser(
 			link: `/organisations`,
 			content,
 		});
+	}
+
+	async notifyOrganizationOwnerChanged(params: {
+		actorIri: string;
+		organizationIri: string;
+		previousOwnerIri?: string | null;
+		newOwnerIri?: string | null;
+	}) {
+		const { actorIri, organizationIri, previousOwnerIri, newOwnerIri } = params;
+		if (!previousOwnerIri && !newOwnerIri) return;
+		if (previousOwnerIri && newOwnerIri && previousOwnerIri === newOwnerIri) return;
+
+		const actorName = await this.getUserDisplayName(actorIri);
+		const orgLabel =
+			(await this.getResourceLabel(organizationIri)) || "organisation";
+		const verb = VERB_ORGANIZATION_OWNER_CHANGED;
+
+		const notify = async (recipient: string, content: string) => {
+			const recent = await this.hasRecentNotification(
+				recipient,
+				verb,
+				2,
+				organizationIri
+			);
+			if (recent) return;
+			await this.deleteNotificationsByVerbAndTarget(
+				recipient,
+				verb,
+				organizationIri
+			);
+			await this.createNotification({
+				recipient,
+				actor: actorIri,
+				verb,
+				target: organizationIri,
+				link: `/organisations`,
+				content,
+				scope: "personal",
+			});
+		};
+
+		if (previousOwnerIri) {
+			await notify(
+				previousOwnerIri,
+				`Vous n'etes plus owner de l'organisation ${orgLabel} (par ${actorName})`
+			);
+		}
+
+		if (newOwnerIri) {
+			await notify(
+				newOwnerIri,
+				`Vous etes desormais owner de l'organisation ${orgLabel} (par ${actorName})`
+			);
+		}
 	}
 
 	async notifyRolesUpdated(params: {
@@ -748,13 +851,16 @@ async listForUser(
 				return [
 					`${CORE}AddedToOrganization`,
 					`${CORE}RemovedFromOrganization`,
+					VERB_ORGANIZATION_OWNER_CHANGED,
 				];
 			case "administration":
 				return [`${CORE}RolesUpdated`, `${CORE}UserRegistered`];
 			case "ontologies":
 				return [
 					`${CORE}OntologyAccessGranted`,
+					VERB_ONTOLOGY_ACCESS_REVOKED,
 					VERB_INDIVIDUAL_CREATED,
+					VERB_INDIVIDUAL_UPDATED,
 					VERB_INDIVIDUAL_DELETED,
 				];
 			default:
@@ -772,13 +878,19 @@ async listForUser(
 			verb === VERB_INDIVIDUAL_ACCESS_REVOKED
 		)
 			return "groups";
-		if (verb === `${CORE}AddedToOrganization` || verb === `${CORE}RemovedFromOrganization`)
+		if (
+			verb === `${CORE}AddedToOrganization` ||
+			verb === `${CORE}RemovedFromOrganization` ||
+			verb === VERB_ORGANIZATION_OWNER_CHANGED
+		)
 			return "organizations";
 		if (verb === `${CORE}RolesUpdated` || verb === `${CORE}UserRegistered`)
 			return "administration";
 		if (
 			verb === `${CORE}OntologyAccessGranted` ||
+			verb === VERB_ONTOLOGY_ACCESS_REVOKED ||
 			verb === VERB_INDIVIDUAL_CREATED ||
+			verb === VERB_INDIVIDUAL_UPDATED ||
 			verb === VERB_INDIVIDUAL_DELETED
 		)
 			return "ontologies";
@@ -831,7 +943,57 @@ async listForUser(
 				}
 			})
 		);
-	}	async notifyIndividualCreated(params: {
+	}
+
+	async notifyOntologyAccessRevoked(params: {
+		actorIri: string;
+		ontologyIri: string;
+		groupIris: string[];
+	}) {
+		const { actorIri, ontologyIri, groupIris } = params;
+		if (!groupIris || groupIris.length === 0) return;
+		const actorName = await this.getUserDisplayName(actorIri);
+		const ontologyLabel =
+			(await this.getResourceLabel(ontologyIri)) || "ontologie";
+		const members = await this.getMembersOfGroups(groupIris);
+		const uniqueRecipients = Array.from(
+			new Set(members.filter((m) => m !== actorIri))
+		);
+		await Promise.all(
+			uniqueRecipients.map(async (recipient) => {
+				const verb = VERB_ONTOLOGY_ACCESS_REVOKED;
+				const hasRecent = await this.hasRecentNotification(
+					recipient,
+					verb,
+					2,
+					ontologyIri
+				);
+				if (hasRecent) return;
+				await this.deleteNotificationsByVerbAndTarget(
+					recipient,
+					verb,
+					ontologyIri
+				);
+				try {
+					await this.createNotification({
+						recipient,
+						actor: actorIri,
+						verb,
+						target: ontologyIri,
+						link: `/ontology?iri=${encodeURIComponent(ontologyIri)}`,
+						content: `${actorName} a retire l'acces a l'ontologie ${ontologyLabel} pour votre groupe`,
+						scope: "group",
+					});
+				} catch (error) {
+					this.logger.warn(
+						`notifyOntologyAccessRevoked failed for ${recipient}: ${error}`
+					);
+				}
+			})
+		);
+	}
+
+	async notifyIndividualCreated(params: {
 		actorIri: string;
 		individualIri: string;
 		ontologyIri: string;
@@ -906,7 +1068,85 @@ async listForUser(
 				notified.add(recipient);
 			}
 		}
-	}	async notifyIndividualAclChanged(params: {
+	}
+
+	async notifyIndividualUpdated(params: {
+		actorIri: string;
+		individualIri: string;
+		ontologyIri: string;
+		visibleToGroups?: string[];
+	}) {
+		const { actorIri, individualIri, ontologyIri } = params;
+		const actorName = await this.getUserDisplayName(actorIri);
+		const label =
+			(await this.getResourceLabel(individualIri, ontologyIri)) || "individu";
+		const link = `/ontology?iri=${encodeURIComponent(
+			ontologyIri
+		)}#${encodeURIComponent(individualIri)}`;
+		const notified = new Set<string>();
+
+		const creator = await this.findResourceCreator(individualIri, ontologyIri);
+		if (creator && creator !== actorIri) {
+			const recent = await this.hasRecentNotification(
+				creator,
+				VERB_INDIVIDUAL_UPDATED,
+				2,
+				individualIri
+			);
+			if (!recent) {
+				await this.deleteNotificationsByVerbAndTarget(
+					creator,
+					VERB_INDIVIDUAL_UPDATED,
+					individualIri
+				);
+				await this.createNotification({
+					recipient: creator,
+					actor: actorIri,
+					verb: VERB_INDIVIDUAL_UPDATED,
+					target: individualIri,
+					link,
+					content: `${actorName} a modifie l'individu ${label}`,
+					scope: "personal",
+				});
+			}
+			notified.add(creator);
+		}
+
+		const groups =
+			(params.visibleToGroups ?? []).length > 0
+				? params.visibleToGroups ?? []
+				: await this.getVisibleGroupsForResource(individualIri, ontologyIri);
+		if (groups.length > 0) {
+			const members = await this.getMembersOfGroups(groups);
+			for (const recipient of Array.from(new Set(members))) {
+				if (recipient === actorIri) continue;
+				if (notified.has(recipient)) continue;
+				const recent = await this.hasRecentNotification(
+					recipient,
+					VERB_INDIVIDUAL_UPDATED,
+					2,
+					individualIri
+				);
+				if (recent) continue;
+				await this.deleteNotificationsByVerbAndTarget(
+					recipient,
+					VERB_INDIVIDUAL_UPDATED,
+					individualIri
+				);
+				await this.createNotification({
+					recipient,
+					actor: actorIri,
+					verb: VERB_INDIVIDUAL_UPDATED,
+					target: individualIri,
+					link,
+					content: `${actorName} a modifie l'individu ${label}`,
+					scope: "group",
+				});
+			}
+		}
+	}
+
+	async notifyIndividualAclChanged(params: {
 		actorIri: string;
 		individualIri: string;
 		ontologyIri: string;

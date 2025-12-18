@@ -174,6 +174,20 @@ export class IndividualsService extends OntologyBaseService {
                 }
             }
         }
+
+        const hasPropChanges = addProps.length > 0 || _delProps.length > 0;
+        if (hasPropChanges) {
+            try {
+                await this.notifications.notifyIndividualUpdated({
+                    actorIri: requesterIri,
+                    individualIri: iri,
+                    ontologyIri,
+                    visibleToGroups: Array.isArray(newVisibleToGroups) ? newVisibleToGroups : undefined,
+                });
+            } catch (error) {
+                console.error("Failed to notify individual update", error);
+            }
+        }
     }
 
     async deleteIndividual(iri: string, ontologyIri: string, requesterIri: string): Promise<void> {

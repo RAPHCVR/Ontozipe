@@ -161,12 +161,15 @@ core:RemovedFromGroup        a core:Resource ; rdfs:label "Retrait du groupe"@fr
 core:AddedToOrganization     a core:Resource ; rdfs:label "Ajout ?? l'organisation"@fr , "Added to organization"@en .
 core:RemovedFromOrganization a core:Resource ; rdfs:label "Retrait de l'organisation"@fr , "Removed from organization"@en .
 core:RolesUpdated            a core:Resource ; rdfs:label "R??les mis ?? jour"@fr , "Roles updated"@en .
-core:UserRegistered          a core:Resource ; rdfs:label "Nouvelle inscription"@fr , "User registered"@en .
-core:OntologyAccessGranted   a core:Resource ; rdfs:label "Acc??s ontologie"@fr , "Ontology access granted"@en .
-core:IndividualCreated       a core:Resource ; rdfs:label "Creation individu"@fr , "Individual created"@en .
-core:IndividualDeleted       a core:Resource ; rdfs:label "Suppression individu"@fr , "Individual deleted"@en .
-core:IndividualAccessGranted a core:Resource ; rdfs:label "Acces individu accorde"@fr , "Individual access granted"@en .
-core:IndividualAccessRevoked a core:Resource ; rdfs:label "Acces individu retire"@fr , "Individual access revoked"@en .
+  core:UserRegistered          a core:Resource ; rdfs:label "Nouvelle inscription"@fr , "User registered"@en .
+  core:OntologyAccessGranted   a core:Resource ; rdfs:label "Acc??s ontologie"@fr , "Ontology access granted"@en .
+core:OntologyAccessRevoked   a core:Resource ; rdfs:label "Acces ontologie retire"@fr , "Ontology access revoked"@en .
+  core:IndividualCreated       a core:Resource ; rdfs:label "Creation individu"@fr , "Individual created"@en .
+core:IndividualUpdated       a core:Resource ; rdfs:label "Modification individu"@fr , "Individual updated"@en .
+  core:IndividualDeleted       a core:Resource ; rdfs:label "Suppression individu"@fr , "Individual deleted"@en .
+  core:IndividualAccessGranted a core:Resource ; rdfs:label "Acces individu accorde"@fr , "Individual access granted"@en .
+  core:IndividualAccessRevoked a core:Resource ; rdfs:label "Acces individu retire"@fr , "Individual access revoked"@en .
+core:OrganizationOwnerChanged a core:Resource ; rdfs:label "Changement owner organisation"@fr , "Organization owner changed"@en .
 
 ##############################
 # FIN #######################

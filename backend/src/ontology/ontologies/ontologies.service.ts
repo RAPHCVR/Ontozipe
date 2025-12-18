@@ -147,6 +147,19 @@ export class OntologiesService extends OntologyBaseService {
             throw new ForbiddenException("Accès refusé. Vous n'avez pas les droits d'écriture sur cette ontologie.");
         }
 
+        let previousVisibleGroups: string[] | undefined;
+        if (Array.isArray(visibleToGroups)) {
+            const data = await this.runSelect(`
+                PREFIX core: <${this.CORE}>
+                SELECT ?g WHERE {
+                  GRAPH <${this.PROJECTS_GRAPH}> {
+                    <${projectIri}> core:visibleTo ?g .
+                  }
+                }
+            `);
+            previousVisibleGroups = (data?.results?.bindings ?? []).map((b: any) => b.g.value);
+        }
+
         const operations: string[] = [];
         const targetGroups = Array.isArray(visibleToGroups) ? visibleToGroups : undefined;
 
@@ -186,15 +199,34 @@ export class OntologiesService extends OntologyBaseService {
         `;
 
         await this.runUpdate(update);
-        if (targetGroups && targetGroups.length > 0) {
-            try {
-                await this.notifications.notifyOntologyAccessGranted({
-                    actorIri: requesterIri,
-                    ontologyIri: projectIri,
-                    groupIris: targetGroups,
-                });
-            } catch (error) {
-                console.error("Failed to notify ontology visibility change", error);
+        if (Array.isArray(targetGroups)) {
+            const prev = new Set(previousVisibleGroups ?? []);
+            const next = new Set(targetGroups);
+            const added = Array.from(next).filter((g) => !prev.has(g));
+            const removed = Array.from(prev).filter((g) => !next.has(g));
+
+            if (added.length > 0) {
+                try {
+                    await this.notifications.notifyOntologyAccessGranted({
+                        actorIri: requesterIri,
+                        ontologyIri: projectIri,
+                        groupIris: added,
+                    });
+                } catch (error) {
+                    console.error("Failed to notify ontology visibility change (granted)", error);
+                }
+            }
+
+            if (removed.length > 0) {
+                try {
+                    await this.notifications.notifyOntologyAccessRevoked({
+                        actorIri: requesterIri,
+                        ontologyIri: projectIri,
+                        groupIris: removed,
+                    });
+                } catch (error) {
+                    console.error("Failed to notify ontology visibility change (revoked)", error);
+                }
             }
         }
     }
