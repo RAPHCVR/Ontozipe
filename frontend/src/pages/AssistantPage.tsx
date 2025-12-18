@@ -75,6 +75,7 @@ export default function AssistantPage() {
     const [systemPromptLoading, setSystemPromptLoading] = useState<boolean>(false);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
+	const sendingLockRef = useRef(false);
 
     const base = useMemo(() => (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, ""), []);
 
@@ -363,9 +364,11 @@ export default function AssistantPage() {
             return;
         }
         if (messagesLoading) return;
+		if (sendingLockRef.current) return;
         const q = input.trim();
         if (!q || sending) return;
 
+		sendingLockRef.current = true;
         const history = messages.slice(1);
         const questionMsg: ChatMsg = { role: "user", content: q };
 
@@ -501,14 +504,28 @@ export default function AssistantPage() {
 
 									let updatedPlan = lastMsg.plan ?? null;
 									if (!updatedPlan) {
-										const strategyPattern = /^(Stratégie[\s\S]*?)(?:\r?\n\r?\n|$)/i;
+										const normalizePrefix = (s: string) =>
+											s
+												.normalize("NFD")
+												.replace(/[\u0300-\u036f]/g, "")
+												.trimStart()
+												.toLowerCase();
+
+										const strategyPattern =
+											/^\s*((?:Stratégie|Strategie|Strategy)[\s\S]*?)(?:\r?\n\r?\n|$)/i;
 										const match = chunk.match(strategyPattern);
 										if (match) {
 											updatedPlan = match[1].trim();
 											chunk = chunk.slice(match[0].length);
-										} else if (chunk.trim().toLowerCase().startsWith("stratégie")) {
-											updatedPlan = chunk.trim();
-											chunk = "";
+										} else {
+											const normalized = normalizePrefix(chunk);
+											if (
+												normalized.startsWith("strategie") ||
+												normalized.startsWith("strategy")
+											) {
+												updatedPlan = chunk.trim();
+												chunk = "";
+											}
 										}
 									}
 
@@ -522,12 +539,13 @@ export default function AssistantPage() {
 								});
 								break;
 
-							case "done":
-								setSending(false);
-								setMessages((prev) => {
-									if (prev.length === 0) return prev;
-									const lastMsg = prev[prev.length - 1];
-									if (lastMsg.role !== "assistant") return prev;
+                            case "done":
+                                setSending(false);
+								sendingLockRef.current = false;
+                                setMessages((prev) => {
+                                    if (prev.length === 0) return prev;
+                                    const lastMsg = prev[prev.length - 1];
+                                    if (lastMsg.role !== "assistant") return prev;
 									const newLastMsg: ChatMsg = {
 										...lastMsg,
 										isStreaming: false,
@@ -537,10 +555,10 @@ export default function AssistantPage() {
 								});
 								break;
 
-							case "error":
-								console.error("Received error from server:", data);
-								setMessages((prev) => {
-									if (prev.length === 0) return prev;
+                            case "error":
+                                console.error("Received error from server:", data);
+                                setMessages((prev) => {
+                                    if (prev.length === 0) return prev;
 									const lastMsg = prev[prev.length - 1];
 									if (lastMsg.role !== "assistant") return prev;
 									const message = typeof data === "string" ? data : String(data ?? "");
@@ -551,10 +569,11 @@ export default function AssistantPage() {
 										status: null,
 									};
 									return [...prev.slice(0, -1), errorMsg];
-								});
-								setSending(false);
-								break;
-						}
+                                });
+                                setSending(false);
+								sendingLockRef.current = false;
+                                break;
+                        }
                     } catch (parseErr) {
                         console.error("Failed to parse SSE data chunk:", event.data, parseErr);
                     }
@@ -562,10 +581,24 @@ export default function AssistantPage() {
 
                 onclose() {
                     setSending(false);
+					sendingLockRef.current = false;
+                    setMessages((prev) => {
+                        if (prev.length === 0) return prev;
+                        const lastMsg = prev[prev.length - 1];
+                        if (lastMsg.role !== "assistant") return prev;
+                        if (!lastMsg.isStreaming) return prev;
+                        const newLastMsg: ChatMsg = {
+                            ...lastMsg,
+                            isStreaming: false,
+                            status: null,
+                        };
+                        return [...prev.slice(0, -1), newLastMsg];
+                    });
                 },
 
 				onerror(err) {
 					console.error("SSE connection error:", err);
+					sendingLockRef.current = false;
 					setMessages((prev) => {
 						if (prev.length === 0) return prev;
 						const lastMsg = prev[prev.length - 1];
@@ -588,6 +621,7 @@ export default function AssistantPage() {
             toastError(t("assistant.errors.connection"));
         } finally {
             setSending(false);
+			sendingLockRef.current = false;
             if (sessionToRefresh && sessionToRefresh === activeSessionId) {
                 loadMessages(sessionToRefresh, { silent: true }).catch((err) =>
                     console.error("Failed to refresh messages:", err)
@@ -738,12 +772,9 @@ export default function AssistantPage() {
 									<p className="uppercase tracking-wide text-[10px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1">
 										{t("assistant.agentReasoning.planTitle")}
 									</p>
-									<ReactMarkdown
-										remarkPlugins={[remarkGfm]}
-										className="prose prose-sm dark:prose-invert"
-									>
-										{m.plan}
-									</ReactMarkdown>
+									<div className="prose prose-sm dark:prose-invert">
+										<ReactMarkdown remarkPlugins={[remarkGfm]}>{m.plan}</ReactMarkdown>
+									</div>
 								</div>
 							)}
 

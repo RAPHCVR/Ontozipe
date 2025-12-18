@@ -33,6 +33,18 @@ export class LlmService {
 	private readonly sseRuns = new Map<string, Set<Response>>();
 	private readonly representations = new Map<string, ResultRepresentation>();
 
+	private static readonly RESOLUTION_CACHE_TTL_MS = Number(
+		process.env.LLM_RESOLUTION_CACHE_TTL_MS ?? 5 * 60_000
+	);
+	private readonly resolvedSubjectCache = new Map<
+		string,
+		{ value: string; expiresAt: number }
+	>();
+	private readonly resolvedPredicateCache = new Map<
+		string,
+		{ value: string; expiresAt: number }
+	>();
+
 	private cleanThinking(text: string): string {
 		if (!text) return text;
 		return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
@@ -46,9 +58,41 @@ export class LlmService {
 		return `${userIri}::${ontologyIri ?? "default"}::${sessionId ?? "default"}`;
 	}
 
-	private isLikelyIri(value?: string | null): value is string {
+	private isLikelyIri(value?: string | null): boolean {
 		if (!value) return false;
 		return /^https?:\/\//i.test(value);
+	}
+
+	private getCachedResolution(
+		cache: Map<string, { value: string; expiresAt: number }>,
+		key: string
+	): string | undefined {
+		const entry = cache.get(key);
+		if (!entry) return undefined;
+		if (entry.expiresAt < Date.now()) {
+			cache.delete(key);
+			return undefined;
+		}
+		return entry.value;
+	}
+
+	private setCachedResolution(
+		cache: Map<string, { value: string; expiresAt: number }>,
+		key: string,
+		value: string
+	) {
+		cache.set(key, {
+			value,
+			expiresAt: Date.now() + LlmService.RESOLUTION_CACHE_TTL_MS,
+		});
+	}
+
+	private extractLocalName(value: string): string {
+		const hashIdx = value.lastIndexOf("#");
+		const slashIdx = value.lastIndexOf("/");
+		const idx = Math.max(hashIdx, slashIdx);
+		if (idx >= 0 && idx < value.length - 1) return value.slice(idx + 1);
+		return value;
 	}
 
 	private getOrCreateRepresentation(
@@ -214,6 +258,166 @@ export class LlmService {
 		}
 	}
 
+	private async iriAppearsInGraph(
+		ontologyIri: string,
+		candidate: string
+	): Promise<boolean> {
+		const sparql = `ASK { GRAPH <${ontologyIri}> { { <${candidate}> ?p ?o } UNION { ?s ?p <${candidate}> } } }`;
+		const params = new URLSearchParams({
+			query: sparql,
+			format: "application/sparql-results+json",
+		});
+		try {
+			const res = await lastValueFrom(
+				this.http.get(this.FUSEKI_SPARQL, { params })
+			);
+			return Boolean(res.data?.boolean);
+		} catch (error) {
+			console.warn(
+				"[LlmService] Failed to verify IRI presence:",
+				candidate,
+				error
+			);
+			return false;
+		}
+	}
+
+	private async predicateExistsInGraph(
+		ontologyIri: string,
+		predicateIri: string
+	): Promise<boolean> {
+		const sparql = `ASK { GRAPH <${ontologyIri}> { ?s <${predicateIri}> ?o } }`;
+		const params = new URLSearchParams({
+			query: sparql,
+			format: "application/sparql-results+json",
+		});
+		try {
+			const res = await lastValueFrom(
+				this.http.get(this.FUSEKI_SPARQL, { params })
+			);
+			return Boolean(res.data?.boolean);
+		} catch (error) {
+			console.warn(
+				"[LlmService] Failed to verify predicate usage:",
+				predicateIri,
+				error
+			);
+			return false;
+		}
+	}
+
+	private async resolveSubjectIriByLocalName(
+		ontologyIri: string,
+		identifier: string
+	): Promise<string | undefined> {
+		const localName = identifier.trim();
+		if (!localName) return undefined;
+
+		const cacheKey = `${ontologyIri}::subject::${localName.toLowerCase()}`;
+		const cached = this.getCachedResolution(this.resolvedSubjectCache, cacheKey);
+		if (cached) return cached;
+
+		const safe = escapeSparqlLiteral(localName);
+		const sparql = `
+			SELECT DISTINCT ?s WHERE {
+				GRAPH <${ontologyIri}> {
+					?s ?p ?o .
+					FILTER(isIRI(?s))
+					BIND(REPLACE(STR(?s), "^.*[/#]([^/#]+)$", "$1") AS ?local)
+					FILTER(LCASE(?local) = LCASE("${safe}"))
+				}
+			}
+			LIMIT 2
+		`;
+		const params = new URLSearchParams({
+			query: sparql,
+			format: "application/sparql-results+json",
+		});
+		try {
+			const res = await lastValueFrom(this.http.get(this.FUSEKI_SPARQL, { params }));
+			const binding = (res.data?.results?.bindings ?? [])[0] as
+				| { s?: { value: string } }
+				| undefined;
+			const found = binding?.s?.value;
+			if (found && this.isLikelyIri(found)) {
+				this.setCachedResolution(this.resolvedSubjectCache, cacheKey, found);
+				return found;
+			}
+		} catch (error) {
+			console.warn(
+				"[LlmService] Failed to resolve subject by localName:",
+				localName,
+				error
+			);
+		}
+		return undefined;
+	}
+
+	private async resolvePredicateIriByLocalName(
+		ontologyIri: string,
+		identifier: string
+	): Promise<string | undefined> {
+		const localName = identifier.trim();
+		if (!localName) return undefined;
+
+		const cacheKey = `${ontologyIri}::predicate::${localName.toLowerCase()}`;
+		const cached = this.getCachedResolution(this.resolvedPredicateCache, cacheKey);
+		if (cached) return cached;
+
+		const safe = escapeSparqlLiteral(localName);
+		const sparql = `
+			SELECT DISTINCT ?p WHERE {
+				GRAPH <${ontologyIri}> {
+					?s ?p ?o .
+					BIND(REPLACE(STR(?p), "^.*[/#]([^/#]+)$", "$1") AS ?local)
+					FILTER(LCASE(?local) = LCASE("${safe}"))
+				}
+			}
+			LIMIT 5
+		`;
+		const params = new URLSearchParams({
+			query: sparql,
+			format: "application/sparql-results+json",
+		});
+		try {
+			const res = await lastValueFrom(this.http.get(this.FUSEKI_SPARQL, { params }));
+			const binding = (res.data?.results?.bindings ?? [])[0] as
+				| { p?: { value: string } }
+				| undefined;
+			const found = binding?.p?.value;
+			if (found && this.isLikelyIri(found)) {
+				this.setCachedResolution(this.resolvedPredicateCache, cacheKey, found);
+				return found;
+			}
+		} catch (error) {
+			console.warn(
+				"[LlmService] Failed to resolve predicate by localName:",
+				localName,
+				error
+			);
+		}
+		return undefined;
+	}
+
+	private async resolvePredicateIri(
+		ontologyIri: string,
+		predicate: string
+	): Promise<string> {
+		const trimmed = predicate.trim();
+		if (!trimmed) return predicate;
+
+		if (this.isLikelyIri(trimmed)) {
+			const exists = await this.predicateExistsInGraph(ontologyIri, trimmed);
+			if (exists) return trimmed;
+			const localName = this.extractLocalName(trimmed);
+			const resolved = await this.resolvePredicateIriByLocalName(ontologyIri, localName);
+			return resolved ?? trimmed;
+		}
+
+		const resolved = await this.resolvePredicateIriByLocalName(ontologyIri, trimmed);
+		return resolved ?? trimmed;
+	}
+
 	private buildCandidateUris(
 		identifier: string,
 		ontologyIri?: string
@@ -240,14 +444,50 @@ export class LlmService {
 			const value = raw?.trim();
 			if (!value) continue;
 
-			if (/^https?:\/\//i.test(value)) {
-				normalized.push(value);
-				continue;
-			}
-
 			const cached = cache.get(value) ?? cache.get(value.toLowerCase());
 			if (cached) {
 				normalized.push(cached);
+				continue;
+			}
+
+			// If a full IRI is provided, verify it exists in the graph; otherwise try to resolve by local name.
+			if (this.isLikelyIri(value)) {
+				if (
+					context.ontologyIri &&
+					(await this.iriAppearsInGraph(context.ontologyIri, value))
+				) {
+					cache.set(value, value);
+					cache.set(value.toLowerCase(), value);
+					normalized.push(value);
+					continue;
+				}
+
+				const handle = this.extractLocalName(value);
+				const fromRep = rep.findMatchingUri(value) ?? rep.findMatchingUri(handle);
+				if (fromRep) {
+					cache.set(value, fromRep);
+					cache.set(value.toLowerCase(), fromRep);
+					normalized.push(fromRep);
+					continue;
+				}
+
+				if (context.ontologyIri) {
+					const resolved = await this.resolveSubjectIriByLocalName(
+						context.ontologyIri,
+						handle
+					);
+					if (resolved) {
+						cache.set(value, resolved);
+						cache.set(value.toLowerCase(), resolved);
+						normalized.push(resolved);
+						continue;
+					}
+				}
+
+				console.warn(
+					"[LlmService] Unable to resolve IRI in graph:",
+					value
+				);
 				continue;
 			}
 
@@ -267,6 +507,13 @@ export class LlmService {
 						resolved = candidate;
 						break;
 					}
+				}
+
+				if (!resolved) {
+					resolved = await this.resolveSubjectIriByLocalName(
+						context.ontologyIri,
+						value
+					);
 				}
 			}
 
@@ -378,27 +625,95 @@ export class LlmService {
 				try {
 					let nodes: Node[] = [];
 					if (hasAdvancedFilters) {
-						const request = new NodeRequest({
-							keywords: keywords ?? [],
-							uris: uris ?? [],
-							object_uris: objectUris ?? [],
-							relation_filters: (relationFilters ?? []).map((rf) => ({
+						const resolutionContext = {
+							userIri,
+							ontologyIri: onto || ontologyIri,
+							sessionId,
+						};
+
+						const normalizedSeedUris = uris?.length
+							? await this.normalizeEntityIdentifiers(uris, resolutionContext)
+							: [];
+						if (uris?.length && normalizedSeedUris.length === 0) {
+							return "Erreur : aucune URI n'a pu être résolue dans l'ontologie pour le champ 'uris'.";
+						}
+
+						const normalizedObjectSeedUris = objectUris?.length
+							? await this.normalizeEntityIdentifiers(objectUris, resolutionContext)
+							: [];
+						if (objectUris?.length && normalizedObjectSeedUris.length === 0) {
+							return "Erreur : aucune URI n'a pu être résolue dans l'ontologie pour le champ 'objectUris'.";
+						}
+
+						const relationNameFiltersFromUnresolved: Array<{
+							name: string;
+							direction?: "incoming" | "outgoing" | "both";
+							present?: boolean;
+						}> = [];
+
+						const resolvedRelationFilters = await Promise.all(
+							(relationFilters ?? []).map(async (rf) => {
+								const predicate = await this.resolvePredicateIri(onto, rf.predicate);
+								const resolvedObjectUris = rf.objectUris?.length
+									? await this.normalizeEntityIdentifiers(
+											rf.objectUris,
+											resolutionContext
+										)
+									: [];
+								return {
+									predicate,
+									direction: rf.direction,
+									present: rf.present,
+									objectUris: resolvedObjectUris,
+								};
+							})
+						);
+
+						const safeRelationFilters = resolvedRelationFilters
+							.filter((rf) => {
+								if (this.isLikelyIri(rf.predicate)) return true;
+								relationNameFiltersFromUnresolved.push({
+									name: rf.predicate,
+									direction: rf.direction,
+									present: rf.present,
+								});
+								return false;
+							})
+							.map((rf) => ({
 								predicate: rf.predicate,
 								direction: rf.direction,
 								present: rf.present,
-								object_uris: rf.objectUris ?? [],
-							})),
+								object_uris: rf.objectUris,
+							}));
+
+						const mergedRelationNameFilters = [
+							...(relationNameFilters ?? []),
+							...relationNameFiltersFromUnresolved,
+						].map((r) => ({
+							name: r.name,
+							direction: r.direction,
+							present: r.present ?? true,
+						}));
+
+						const request = new NodeRequest({
+							keywords: keywords ?? [],
+							uris: normalizedSeedUris,
+							object_uris: normalizedObjectSeedUris,
+							relation_filters: safeRelationFilters,
 							type_name_patterns: typeNames ?? [],
-							relation_name_filters: (relationNameFilters ?? []).map((r) => ({
-								name: r.name,
-								direction: r.direction,
-								present: r.present ?? true,
-							})),
+							relation_name_filters: mergedRelationNameFilters,
 							max_results: sanitizedMax,
 						});
 						nodes = (
 							await request.fetch(this.http, this.FUSEKI_SPARQL, onto)
-						).filter((node) => this.isLikelyIri(node?.uri));
+						).filter((node) => {
+							if (!this.isLikelyIri(node?.uri)) return false;
+							const hasData =
+								Boolean(node?.built) ||
+								(node?.attributes?.length ?? 0) > 0 ||
+								(node?.relationships?.length ?? 0) > 0;
+							return hasData;
+						});
 					} else {
                         if (!keywords || keywords.length === 0) {
                             return "Erreur : au moins un mot-clé est requis pour la recherche.";
@@ -525,7 +840,9 @@ export class LlmService {
 								objectUris: z
 									.array(z.string())
 									.optional()
-									.describe("Cibles spécifiques pour outgoing"),
+									.describe(
+										"Cibles spécifiques (outgoing: objets, incoming: sujets, both: les deux)."
+									),
 							})
 						)
 						.optional(),
@@ -585,15 +902,11 @@ export class LlmService {
 						ontologyIri: onto || ontologyIri,
 						sessionId,
 					});
-					const baseCandidates = normalizedUris.length ? normalizedUris : uris;
 					const uniqueUris = Array.from(
-						new Set(baseCandidates.filter((uri) => this.isLikelyIri(uri)))
+						new Set(normalizedUris.filter((uri) => this.isLikelyIri(uri)))
 					);
 					if (uniqueUris.length === 0) {
-						return "Erreur : aucune URI valide n'a été fournie pour créer le graph de debug.";
-					}
-					if (uniqueUris.length === 0) {
-						return "Erreur : aucune URI valide n'a été fournie.";
+						return "Erreur : aucune URI n'a pu être résolue dans l'ontologie pour créer le graph de debug.";
 					}
 
 					let nodes: Node[] = [];
@@ -624,7 +937,14 @@ export class LlmService {
 						}
 					}
 
-					nodes = nodes.filter((node) => this.isLikelyIri(node?.uri));
+					nodes = nodes.filter((node) => {
+						if (!this.isLikelyIri(node?.uri)) return false;
+						const hasData =
+							Boolean(node?.built) ||
+							(node?.attributes?.length ?? 0) > 0 ||
+							(node?.relationships?.length ?? 0) > 0;
+						return hasData;
+					});
 
 					this.updateRepresentationWithNodes(userIri, onto, nodes, sessionId);
 
