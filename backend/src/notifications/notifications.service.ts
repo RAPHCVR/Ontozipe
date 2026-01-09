@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+﻿import { Injectable, Logger } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { lastValueFrom } from "rxjs";
 import { randomUUID } from "crypto";
@@ -8,6 +8,13 @@ const CORE = "http://example.org/core#";
 const FOAF = "http://xmlns.com/foaf/0.1/";
 const RDFS = "http://www.w3.org/2000/01/rdf-schema#";
 const XSD = "http://www.w3.org/2001/XMLSchema#";
+const VERB_INDIVIDUAL_CREATED = `${CORE}IndividualCreated`;
+const VERB_INDIVIDUAL_UPDATED = `${CORE}IndividualUpdated`;
+const VERB_INDIVIDUAL_DELETED = `${CORE}IndividualDeleted`;
+const VERB_INDIVIDUAL_ACCESS_GRANTED = `${CORE}IndividualAccessGranted`;
+const VERB_INDIVIDUAL_ACCESS_REVOKED = `${CORE}IndividualAccessRevoked`;
+const VERB_ONTOLOGY_ACCESS_REVOKED = `${CORE}OntologyAccessRevoked`;
+const VERB_ORGANIZATION_OWNER_CHANGED = `${CORE}OrganizationOwnerChanged`;
 
 type CreateNotificationInput = {
 	recipient: string;
@@ -19,6 +26,7 @@ type CreateNotificationInput = {
 	isRead?: boolean;
 	createdAt?: string;
 	id?: string;
+	scope?: "personal" | "group";
 };
 
 type ListOptions = {
@@ -26,6 +34,8 @@ type ListOptions = {
 	limit?: number;
 	offset?: number;
 	verb?: string;
+	category?: string;
+	scope?: "personal" | "group";
 };
 
 type NotificationRow = {
@@ -37,6 +47,8 @@ type NotificationRow = {
 	target?: { iri: string; label?: string };
 	verb?: string;
 	link?: string | null;
+	category?: string;
+	scope?: "personal" | "group";
 };
 
 @Injectable()
@@ -82,7 +94,7 @@ export class NotificationsService {
 	private truncate(text: string, max = 160) {
 		if (!text) return "";
 		if (text.length <= max) return text;
-		return text.slice(0, max - 1).trimEnd() + "…";
+		return text.slice(0, max - 1).trimEnd() + "ÔÇª";
 	}
 
 	private async getUserDisplayName(userIri: string): Promise<string> {
@@ -103,12 +115,22 @@ export class NotificationsService {
 		return userIri.split("/").pop() || userIri;
 	}
 
-	private async getResourceLabel(
+	/*private async getResourceLabel(
 		resourceIri: string
 	): Promise<string | undefined> {
 		const query = `
       PREFIX rdfs: <${RDFS}>
       SELECT ?lbl WHERE { <${resourceIri}> rdfs:label ?lbl } LIMIT 1
+    `;
+		const data = await this.runSelect(query);
+		return data?.results?.bindings?.[0]?.lbl?.value;
+	}*/
+
+	private async getResourceLabel(resourceIri: string, graphIri?: string): Promise<string | undefined> {
+		const graphClause = graphIri ? `GRAPH <${graphIri}> { <${resourceIri}> rdfs:label ?lbl }` : `<${resourceIri}> rdfs:label ?lbl`;
+		const query = `
+      PREFIX rdfs: <${RDFS}>
+      SELECT ?lbl WHERE { ${graphClause} } LIMIT 1
     `;
 		const data = await this.runSelect(query);
 		return data?.results?.bindings?.[0]?.lbl?.value;
@@ -120,19 +142,20 @@ export class NotificationsService {
 		return target;
 	}
 
-	async createNotification({
-		recipient,
-		actor,
-		verb,
-		target,
-		link,
-		content,
-		isRead = false,
-		createdAt,
-		id,
-	}: CreateNotificationInput): Promise<string> {
-		const iri = this.newNotificationIri(id);
-		const now = createdAt ?? new Date().toISOString();
+async createNotification({
+	recipient,
+	actor,
+	verb,
+	target,
+	link,
+	content,
+	isRead = false,
+	createdAt,
+	id,
+	scope = "personal",
+}: CreateNotificationInput): Promise<string> {
+	const iri = this.newNotificationIri(id);
+	const now = createdAt ?? new Date().toISOString();
 
 		const triples: string[] = [
 			`<${iri}> a <${CORE}Notification> ;`,
@@ -151,14 +174,21 @@ export class NotificationsService {
 		if (target) {
 			triples.splice(triples.length - 1, 0, `  <${CORE}target> <${target}> ;`);
 		}
-		if (link) {
-			const escapedLink = escapeSparqlLiteral(link);
-			triples.splice(
-				triples.length - 1,
-				0,
-				`  <${CORE}link> "${escapedLink}"^^<${XSD}anyURI> ;`
-			);
-		}
+	if (link) {
+		const escapedLink = escapeSparqlLiteral(link);
+		triples.splice(
+			triples.length - 1,
+			0,
+			`  <${CORE}link> "${escapedLink}"^^<${XSD}anyURI> ;`
+		);
+	}
+	if (scope) {
+		triples.splice(
+			triples.length - 1,
+			0,
+			`  <${CORE}scope> "${escapeSparqlLiteral(scope)}" ;`
+		);
+	}
 
 		const update = `
       PREFIX core: <${CORE}>
@@ -169,54 +199,66 @@ export class NotificationsService {
 		return iri;
 	}
 
-	async listForUser(
-		userIri: string,
-		options: ListOptions = {}
-	): Promise<{
-		items: NotificationRow[];
+async listForUser(
+	userIri: string,
+	options: ListOptions = {}
+): Promise<{
+	items: NotificationRow[];
 		total: number;
 		unreadCount: number;
 		limit: number;
 		offset: number;
 	}> {
-		const status = options.status ?? "all";
-		const limit = Math.max(1, Math.min(100, options.limit ?? 20));
-		const offset = Math.max(0, options.offset ?? 0);
-		const verbFilter = options.verb ? `FILTER(?verb = <${options.verb}>)` : "";
+	const status = options.status ?? "all";
+	const limit = Math.max(1, Math.min(100, options.limit ?? 20));
+	const offset = Math.max(0, options.offset ?? 0);
+		const verbFilter = options.verb ? `FILTER(?verbRaw = <${options.verb}>)` : "";
+		const scopeFilter = options.scope
+			? `FILTER(lcase(str(?scopeRaw)) = "${options.scope}")`
+			: "";
 		const statusFilter =
 			status === "unread"
-				? `FILTER(!BOUND(?isRead) || lcase(str(?isRead)) = "false" || str(?isRead) = "0")`
+				? `FILTER(!BOUND(?isReadRaw) || lcase(str(?isReadRaw)) = "false" || str(?isReadRaw) = "0")`
 				: "";
+	const categoryVerbs = this.verbsForCategory(options.category);
+	const categoryFilter =
+		categoryVerbs.length > 0
+			? `FILTER(?verbRaw IN (${categoryVerbs.map((v) => `<${v}>`).join(", ")}))`
+			: "";
 
 		const query = `
       PREFIX core: <${CORE}>
       PREFIX foaf: <${FOAF}>
       PREFIX rdfs: <${RDFS}>
-      SELECT ?notif ?content ?createdAt
-             (SAMPLE(?isReadRaw) AS ?isRead)
-             (SAMPLE(?actorRaw) AS ?actor)
-             (SAMPLE(?actorNameRaw) AS ?actorName)
-             (SAMPLE(?targetRaw) AS ?target)
-             (SAMPLE(?targetLabelRaw) AS ?targetLabel)
-             (SAMPLE(?verbRaw) AS ?verb)
-             (SAMPLE(?linkRaw) AS ?link)
-      WHERE {
-        GRAPH <${this.graph}> {
-          ?notif a core:Notification ;
-                 core:recipient <${userIri}> ;
-                 core:content ?content ;
-                 core:createdAt ?createdAt .
-          OPTIONAL { ?notif core:isRead ?isReadRaw }
-          OPTIONAL { ?notif core:actor ?actorRaw }
-          OPTIONAL { ?notif core:target ?targetRaw }
-          OPTIONAL { ?notif core:verb ?verbRaw }
-          OPTIONAL { ?notif core:link ?linkRaw }
-        }
-        OPTIONAL { ?actorRaw foaf:name ?actorNameRaw }
-        OPTIONAL { ?targetRaw rdfs:label ?targetLabelRaw }
-        ${statusFilter}
-        ${verbFilter}
-      }
+	SELECT ?notif ?content ?createdAt
+           (SAMPLE(?isReadRaw) AS ?isRead)
+           (SAMPLE(?actorRaw) AS ?actor)
+           (SAMPLE(?actorNameRaw) AS ?actorName)
+           (SAMPLE(?targetRaw) AS ?target)
+           (SAMPLE(?targetLabelRaw) AS ?targetLabel)
+           (SAMPLE(?verbRaw) AS ?verb)
+           (SAMPLE(?linkRaw) AS ?link)
+           (SAMPLE(?scopeRaw) AS ?scope)
+  WHERE {
+    GRAPH <${this.graph}> {
+      ?notif a core:Notification ;
+             core:recipient <${userIri}> ;
+             core:content ?content ;
+             core:createdAt ?createdAt .
+      OPTIONAL { ?notif core:isRead ?isReadRaw }
+      OPTIONAL { ?notif core:actor ?actorRaw }
+      OPTIONAL { ?notif core:target ?targetRaw }
+      OPTIONAL { ?notif core:verb ?verbRaw }
+      OPTIONAL { ?notif core:link ?linkRaw }
+      OPTIONAL { ?notif core:scope ?scopeRaw }
+    }
+    OPTIONAL { ?actorRaw foaf:name ?actorNameRaw }
+    OPTIONAL { ?targetRaw rdfs:label ?targetLabelRaw }
+    ${statusFilter}
+    ${verbFilter}
+    ${scopeFilter}
+    ${categoryFilter}
+  }
       GROUP BY ?notif ?content ?createdAt
       ORDER BY DESC(?createdAt)
       LIMIT ${limit}
@@ -240,24 +282,42 @@ export class NotificationsService {
 					: undefined,
 				verb: row.verb?.value,
 				link: row.link?.value ?? null,
+				category: this.categoryForVerb(row.verb?.value),
+				scope:
+					row.scope?.value?.toLowerCase() === "group" ? "group" : "personal",
 			})
 		);
 
-		const total = await this.countForUser(userIri, status, options.verb);
-		const unreadCount = await this.getUnreadCountForUser(userIri);
+		const total = await this.countForUser(
+			userIri,
+			status,
+			options.verb,
+			categoryVerbs,
+			options.scope
+		);
+		const unreadCount = await this.getUnreadCountForUser(userIri, options.scope);
 		return { items, total, unreadCount, limit, offset };
 	}
 
 	private async countForUser(
 		userIri: string,
 		status: "all" | "unread",
-		verb?: string
+		verb?: string,
+		categoryVerbs?: string[],
+		scope?: "personal" | "group"
 	): Promise<number> {
 		const statusFilter =
 			status === "unread"
 				? `FILTER(!BOUND(?isRead) || lcase(str(?isRead)) = "false" || str(?isRead) = "0")`
 				: "";
-		const verbFilter = verb ? `FILTER(?verb = <${verb}>)` : "";
+		const verbFilter = verb ? `FILTER(?verbRaw = <${verb}>)` : "";
+		const categoryFilter =
+			categoryVerbs && categoryVerbs.length > 0
+				? `FILTER(?verbRaw IN (${categoryVerbs.map((v) => `<${v}>`).join(", ")}))`
+				: "";
+		const scopeFilter = scope
+			? `FILTER(lcase(str(?scopeRaw)) = "${scope}")`
+			: "";
 		const query = `
       PREFIX core: <${CORE}>
       SELECT (COUNT(?notif) AS ?total) WHERE {
@@ -265,9 +325,12 @@ export class NotificationsService {
           ?notif a core:Notification ;
                  core:recipient <${userIri}> .
           OPTIONAL { ?notif core:isRead ?isRead }
-          OPTIONAL { ?notif core:verb ?verb }
+          OPTIONAL { ?notif core:verb ?verbRaw }
+          OPTIONAL { ?notif core:scope ?scopeRaw }
           ${statusFilter}
           ${verbFilter}
+          ${categoryFilter}
+          ${scopeFilter}
         }
       }
     `;
@@ -276,7 +339,13 @@ export class NotificationsService {
 		return Number(value ?? 0);
 	}
 
-	async getUnreadCountForUser(userIri: string): Promise<number> {
+	async getUnreadCountForUser(
+		userIri: string,
+		scope?: "personal" | "group"
+	): Promise<number> {
+		const scopeFilter = scope
+			? `OPTIONAL { ?notif core:scope ?scopeRaw } FILTER(lcase(str(?scopeRaw)) = "${scope}")`
+			: "";
 		const query = `
       PREFIX core: <${CORE}>
       SELECT (COUNT(?notif) AS ?total) WHERE {
@@ -284,6 +353,8 @@ export class NotificationsService {
           ?notif a core:Notification ;
                  core:recipient <${userIri}> .
           OPTIONAL { ?notif core:isRead ?isRead }
+          OPTIONAL { ?notif core:scope ?scopeRaw }
+          ${scopeFilter}
           FILTER(!BOUND(?isRead) || lcase(str(?isRead)) = "false" || str(?isRead) = "0")
         }
       }
@@ -304,7 +375,10 @@ export class NotificationsService {
 		await this.runUpdate(update);
 	}
 
-	async markAllAsRead(userIri: string) {
+	async markAllAsRead(userIri: string, scope?: "personal" | "group") {
+		const scopeFilter = scope
+			? `OPTIONAL { ?n core:scope ?scopeRaw } FILTER(lcase(str(?scopeRaw)) = "${scope}")`
+			: "";
 		const update = `
       PREFIX core: <${CORE}>
       WITH <${this.graph}>
@@ -314,6 +388,8 @@ export class NotificationsService {
         ?n a core:Notification ;
            core:recipient <${userIri}> .
         OPTIONAL { ?n core:isRead ?r }
+        OPTIONAL { ?n core:scope ?scopeRaw }
+        ${scopeFilter}
       }
     `;
 		await this.runUpdate(update);
@@ -331,42 +407,109 @@ export class NotificationsService {
 		await this.runUpdate(update);
 	}
 
-	async notifyComment(params: {
+			async notifyComment(params: {
 		actorIri: string;
 		resourceIri: string;
 		ontologyIri: string;
 		body: string;
+		commentIri?: string;
+		replyTo?: string;
 	}) {
-		const { actorIri, resourceIri, ontologyIri, body } = params;
-		const recipient = await this.findResourceCreator(resourceIri, ontologyIri);
-		if (!recipient || recipient === actorIri) return;
+		const { actorIri, resourceIri, ontologyIri, body, replyTo } = params;
+		const notified = new Set<string>();
 		const actorName = await this.getUserDisplayName(actorIri);
 		const resourceLabel =
-			(await this.getResourceLabel(resourceIri)) || "ressource";
-		const content = `${actorName} a commenté l'élément ${resourceLabel} : ${this.truncate(body)}`;
+			(await this.getResourceLabel(resourceIri, ontologyIri)) || "ressource";
 		const link = `/ontology?iri=${encodeURIComponent(
 			ontologyIri
 		)}#${encodeURIComponent(resourceIri)}`;
 		const verb = `${CORE}Commented`;
-		const hasRecent = await this.hasRecentNotification(
-			recipient,
-			verb,
-			2,
-			resourceIri
-		);
-		if (hasRecent) return;
-		await this.deleteNotificationsByVerbAndTarget(recipient, verb, resourceIri);
-		await this.createNotification({
-			recipient,
-			actor: actorIri,
-			verb,
-			target: resourceIri,
-			link,
-			content,
-		});
-	}
 
-	async notifyGroupMembershipChange(params: {
+		const recipient = await this.findResourceCreator(resourceIri, ontologyIri);
+		if (recipient && recipient !== actorIri) {
+			const content = `${actorName} a commenté l'élément ${resourceLabel} : ${this.truncate(
+				body
+			)}`;
+			const hasRecent = await this.hasRecentNotification(
+				recipient,
+				verb,
+				2,
+				resourceIri
+			);
+			if (!hasRecent) {
+				await this.deleteNotificationsByVerbAndTarget(
+					recipient,
+					verb,
+					resourceIri
+				);
+				await this.createNotification({
+					recipient,
+					actor: actorIri,
+					verb,
+					target: resourceIri,
+					link,
+					content,
+					scope: "personal",
+				});
+			}
+			notified.add(recipient);
+		}
+
+		if (replyTo) {
+			const parentAuthor = await this.getCommentAuthor(replyTo, ontologyIri);
+			if (parentAuthor && parentAuthor !== actorIri && !notified.has(parentAuthor)) {
+				const content = `${actorName} a répondu à votre commentaire sur ${resourceLabel} : ${this.truncate(
+					body
+				)}`;
+				const recent = await this.hasRecentNotification(
+					parentAuthor,
+					verb,
+					2,
+					replyTo
+				);
+				if (!recent) {
+					await this.deleteNotificationsByVerbAndTarget(
+						parentAuthor,
+						verb,
+						replyTo
+					);
+					await this.createNotification({
+						recipient: parentAuthor,
+						actor: actorIri,
+						verb,
+						target: replyTo,
+						link,
+						content,
+						scope: "personal",
+					});
+				}
+				notified.add(parentAuthor);
+			}
+		}
+
+		const groups = await this.getVisibleGroupsForResource(resourceIri, ontologyIri);
+		if (groups.length > 0) {
+			const members = await this.getMembersOfGroups(groups);
+			for (const m of new Set(members)) {
+				if (m === actorIri || notified.has(m)) continue;
+				const recent = await this.hasRecentNotification(m, verb, 2, resourceIri);
+				if (recent) continue;
+				await this.deleteNotificationsByVerbAndTarget(m, verb, resourceIri);
+				await this.createNotification({
+					recipient: m,
+					actor: actorIri,
+					verb,
+					target: resourceIri,
+					link,
+					content: `${actorName} a commenté l'élément ${resourceLabel} : ${this.truncate(
+						body
+					)}`,
+					scope: "group",
+				});
+				notified.add(m);
+			}
+		}
+	}async notifyGroupMembershipChange(params: {
 		actorIri: string;
 		memberIri: string;
 		groupIri: string;
@@ -380,8 +523,8 @@ export class NotificationsService {
 			action === "add" ? `${CORE}AddedToGroup` : `${CORE}RemovedFromGroup`;
 		const content =
 			action === "add"
-				? `Vous avez été ajouté(e) au groupe ${groupLabel} par ${actorName}`
-				: `Vous avez été retiré(e) du groupe ${groupLabel} par ${actorName}`;
+				? `Vous avez +®t+® ajout+®(e) au groupe ${groupLabel} par ${actorName}`
+				: `Vous avez +®t+® retir+®(e) du groupe ${groupLabel} par ${actorName}`;
 		const hasRecent = await this.hasRecentNotification(
 			memberIri,
 			verb,
@@ -398,6 +541,52 @@ export class NotificationsService {
 			link: `/groups`,
 			content,
 		});
+	}
+
+	async notifyGroupMembershipBroadcast(params: {
+		actorIri: string;
+		memberIri: string;
+		groupIri: string;
+		action: "add" | "remove";
+	}) {
+		const { actorIri, memberIri, groupIri, action } = params;
+		if (actorIri === memberIri) return;
+
+		const actorName = await this.getUserDisplayName(actorIri);
+		const memberName = await this.getUserDisplayName(memberIri);
+		const groupLabel = (await this.getResourceLabel(groupIri)) || "groupe";
+
+		const verb =
+			action === "add" ? `${CORE}AddedToGroup` : `${CORE}RemovedFromGroup`;
+		const content =
+			action === "add"
+				? `${actorName} a ajoute ${memberName} au groupe ${groupLabel}`
+				: `${actorName} a retire ${memberName} du groupe ${groupLabel}`;
+
+		const members = await this.getMembersOfGroups([groupIri]);
+		const recipients = Array.from(
+			new Set(members.filter((m) => m !== actorIri && m !== memberIri))
+		);
+
+		for (const recipient of recipients) {
+			const hasRecent = await this.hasRecentNotification(
+				recipient,
+				verb,
+				2,
+				groupIri
+			);
+			if (hasRecent) continue;
+			await this.deleteNotificationsByVerbAndTarget(recipient, verb, groupIri);
+			await this.createNotification({
+				recipient,
+				actor: actorIri,
+				verb,
+				target: groupIri,
+				link: `/groups`,
+				content,
+				scope: "group",
+			});
+		}
 	}
 
 	async notifyOrganizationMembershipChange(params: {
@@ -417,8 +606,8 @@ export class NotificationsService {
 				: `${CORE}RemovedFromOrganization`;
 		const content =
 			action === "add"
-				? `Vous avez été ajouté(e) à l'organisation ${orgLabel} par ${actorName}`
-				: `Vous avez été retiré(e) de l'organisation ${orgLabel} par ${actorName}`;
+				? `Vous avez +®t+® ajout+®(e) +á l'organisation ${orgLabel} par ${actorName}`
+				: `Vous avez +®t+® retir+®(e) de l'organisation ${orgLabel} par ${actorName}`;
 		const hasRecent = await this.hasRecentNotification(
 			memberIri,
 			verb,
@@ -441,6 +630,60 @@ export class NotificationsService {
 		});
 	}
 
+	async notifyOrganizationOwnerChanged(params: {
+		actorIri: string;
+		organizationIri: string;
+		previousOwnerIri?: string | null;
+		newOwnerIri?: string | null;
+	}) {
+		const { actorIri, organizationIri, previousOwnerIri, newOwnerIri } = params;
+		if (!previousOwnerIri && !newOwnerIri) return;
+		if (previousOwnerIri && newOwnerIri && previousOwnerIri === newOwnerIri) return;
+
+		const actorName = await this.getUserDisplayName(actorIri);
+		const orgLabel =
+			(await this.getResourceLabel(organizationIri)) || "organisation";
+		const verb = VERB_ORGANIZATION_OWNER_CHANGED;
+
+		const notify = async (recipient: string, content: string) => {
+			const recent = await this.hasRecentNotification(
+				recipient,
+				verb,
+				2,
+				organizationIri
+			);
+			if (recent) return;
+			await this.deleteNotificationsByVerbAndTarget(
+				recipient,
+				verb,
+				organizationIri
+			);
+			await this.createNotification({
+				recipient,
+				actor: actorIri,
+				verb,
+				target: organizationIri,
+				link: `/organisations`,
+				content,
+				scope: "personal",
+			});
+		};
+
+		if (previousOwnerIri) {
+			await notify(
+				previousOwnerIri,
+				`Vous n'etes plus owner de l'organisation ${orgLabel} (par ${actorName})`
+			);
+		}
+
+		if (newOwnerIri) {
+			await notify(
+				newOwnerIri,
+				`Vous etes desormais owner de l'organisation ${orgLabel} (par ${actorName})`
+			);
+		}
+	}
+
 	async notifyRolesUpdated(params: {
 		actorIri: string;
 		userIri: string;
@@ -452,12 +695,12 @@ export class NotificationsService {
 			roles.length > 0
 				? roles.map((r) => r.split("#").pop()).join(", ")
 				: "aucun";
-		const content = `Vos rôles ont été mis à jour par ${actorName} : ${rolesText}`;
-		// Si une notif récente du même type existe déjà pour cet utilisateur, ne pas dupliquer
+		const content = `Vos r+¦les ont +®t+® mis +á jour par ${actorName} : ${rolesText}`;
+		// Si une notif r+®cente du m+¬me type existe d+®j+á pour cet utilisateur, ne pas dupliquer
 		const verb = `${CORE}RolesUpdated`;
 		const hasRecent = await this.hasRecentNotification(userIri, verb, 2);
 		if (hasRecent) return;
-		// Nettoyer les anciennes notifications de rôles pour éviter les doublons accumulés
+		// Nettoyer les anciennes notifications de r+¦les pour +®viter les doublons accumul+®s
 		await this.deleteNotificationsByVerb(userIri, verb);
 		await this.createNotification({
 			recipient: userIri,
@@ -481,7 +724,7 @@ export class NotificationsService {
 			email?.trim() ||
 			userIri.split("/").pop() ||
 			"Nouveau compte";
-		const content = `Nouvelle inscription à valider : ${label}`;
+		const content = `Nouvelle inscription +á valider : ${label}`;
 
 		for (const recipient of superAdmins) {
 			const verb = `${CORE}UserRegistered`;
@@ -593,7 +836,68 @@ export class NotificationsService {
 		return Boolean(data?.boolean);
 	}
 
-	async notifyOntologyAccessGranted(params: {
+	private verbsForCategory(category?: string): string[] {
+		if (!category || category === "all") return [];
+		switch (category) {
+			case "groups":
+				return [
+					`${CORE}AddedToGroup`,
+					`${CORE}RemovedFromGroup`,
+					`${CORE}Commented`,
+					VERB_INDIVIDUAL_ACCESS_GRANTED,
+					VERB_INDIVIDUAL_ACCESS_REVOKED,
+				];
+			case "organizations":
+				return [
+					`${CORE}AddedToOrganization`,
+					`${CORE}RemovedFromOrganization`,
+					VERB_ORGANIZATION_OWNER_CHANGED,
+				];
+			case "administration":
+				return [`${CORE}RolesUpdated`, `${CORE}UserRegistered`];
+			case "ontologies":
+				return [
+					`${CORE}OntologyAccessGranted`,
+					VERB_ONTOLOGY_ACCESS_REVOKED,
+					VERB_INDIVIDUAL_CREATED,
+					VERB_INDIVIDUAL_UPDATED,
+					VERB_INDIVIDUAL_DELETED,
+				];
+			default:
+				return [];
+		}
+	}
+
+	private categoryForVerb(verb?: string): string {
+		if (!verb) return "general";
+		if (
+			verb === `${CORE}AddedToGroup` ||
+			verb === `${CORE}RemovedFromGroup` ||
+			verb === `${CORE}Commented` ||
+			verb === VERB_INDIVIDUAL_ACCESS_GRANTED ||
+			verb === VERB_INDIVIDUAL_ACCESS_REVOKED
+		)
+			return "groups";
+		if (
+			verb === `${CORE}AddedToOrganization` ||
+			verb === `${CORE}RemovedFromOrganization` ||
+			verb === VERB_ORGANIZATION_OWNER_CHANGED
+		)
+			return "organizations";
+		if (verb === `${CORE}RolesUpdated` || verb === `${CORE}UserRegistered`)
+			return "administration";
+		if (
+			verb === `${CORE}OntologyAccessGranted` ||
+			verb === VERB_ONTOLOGY_ACCESS_REVOKED ||
+			verb === VERB_INDIVIDUAL_CREATED ||
+			verb === VERB_INDIVIDUAL_UPDATED ||
+			verb === VERB_INDIVIDUAL_DELETED
+		)
+			return "ontologies";
+		return "general";
+	}
+
+		async notifyOntologyAccessGranted(params: {
 		actorIri: string;
 		ontologyIri: string;
 		groupIris: string[];
@@ -630,6 +934,7 @@ export class NotificationsService {
 						target: ontologyIri,
 						link: `/ontology?iri=${encodeURIComponent(ontologyIri)}`,
 						content: `${actorName} a rendu l'ontologie ${ontologyLabel} accessible à votre groupe`,
+						scope: "group",
 					});
 				} catch (error) {
 					this.logger.warn(
@@ -640,13 +945,380 @@ export class NotificationsService {
 		);
 	}
 
-	private async findResourceCreator(
+	async notifyOntologyAccessRevoked(params: {
+		actorIri: string;
+		ontologyIri: string;
+		groupIris: string[];
+	}) {
+		const { actorIri, ontologyIri, groupIris } = params;
+		if (!groupIris || groupIris.length === 0) return;
+		const actorName = await this.getUserDisplayName(actorIri);
+		const ontologyLabel =
+			(await this.getResourceLabel(ontologyIri)) || "ontologie";
+		const members = await this.getMembersOfGroups(groupIris);
+		const uniqueRecipients = Array.from(
+			new Set(members.filter((m) => m !== actorIri))
+		);
+		await Promise.all(
+			uniqueRecipients.map(async (recipient) => {
+				const verb = VERB_ONTOLOGY_ACCESS_REVOKED;
+				const hasRecent = await this.hasRecentNotification(
+					recipient,
+					verb,
+					2,
+					ontologyIri
+				);
+				if (hasRecent) return;
+				await this.deleteNotificationsByVerbAndTarget(
+					recipient,
+					verb,
+					ontologyIri
+				);
+				try {
+					await this.createNotification({
+						recipient,
+						actor: actorIri,
+						verb,
+						target: ontologyIri,
+						link: `/ontology?iri=${encodeURIComponent(ontologyIri)}`,
+						content: `${actorName} a retire l'acces a l'ontologie ${ontologyLabel} pour votre groupe`,
+						scope: "group",
+					});
+				} catch (error) {
+					this.logger.warn(
+						`notifyOntologyAccessRevoked failed for ${recipient}: ${error}`
+					);
+				}
+			})
+		);
+	}
+
+	async notifyIndividualCreated(params: {
+		actorIri: string;
+		individualIri: string;
+		ontologyIri: string;
+		visibleToGroups?: string[];
+	}) {
+		const { actorIri, individualIri, ontologyIri } = params;
+		const actorName = await this.getUserDisplayName(actorIri);
+		const label =
+			(await this.getResourceLabel(individualIri, ontologyIri)) || "individu";
+		const link = `/ontology?iri=${encodeURIComponent(
+			ontologyIri
+		)}#${encodeURIComponent(individualIri)}`;
+		const notified = new Set<string>();
+
+		const projectOwner = await this.getProjectOwner(ontologyIri);
+		if (projectOwner && projectOwner !== actorIri) {
+			const hasRecent = await this.hasRecentNotification(
+				projectOwner,
+				VERB_INDIVIDUAL_CREATED,
+				2,
+				individualIri
+			);
+			if (!hasRecent) {
+				await this.deleteNotificationsByVerbAndTarget(
+					projectOwner,
+					VERB_INDIVIDUAL_CREATED,
+					individualIri
+				);
+				await this.createNotification({
+					recipient: projectOwner,
+					actor: actorIri,
+					verb: VERB_INDIVIDUAL_CREATED,
+					target: individualIri,
+					link,
+					content: `${actorName} a cree l'individu ${label}`,
+					scope: "personal",
+				});
+			}
+			notified.add(projectOwner);
+		}
+
+		const groups =
+			(params.visibleToGroups ?? []).length > 0
+				? params.visibleToGroups ?? []
+				: await this.getVisibleGroupsForResource(individualIri, ontologyIri);
+		if (groups.length > 0) {
+			const members = await this.getMembersOfGroups(groups);
+			for (const recipient of Array.from(new Set(members))) {
+				if (recipient === actorIri) continue;
+				if (notified.has(recipient)) continue;
+				const recent = await this.hasRecentNotification(
+					recipient,
+					VERB_INDIVIDUAL_ACCESS_GRANTED,
+					2,
+					individualIri
+				);
+				if (recent) continue;
+				await this.deleteNotificationsByVerbAndTarget(
+					recipient,
+					VERB_INDIVIDUAL_ACCESS_GRANTED,
+					individualIri
+				);
+				await this.createNotification({
+					recipient,
+					actor: actorIri,
+					verb: VERB_INDIVIDUAL_ACCESS_GRANTED,
+					target: individualIri,
+					link,
+					content: `Un nouvel individu ${label} est accessible a votre groupe (cree par ${actorName})`,
+					scope: "group",
+				});
+				notified.add(recipient);
+			}
+		}
+	}
+
+	async notifyIndividualUpdated(params: {
+		actorIri: string;
+		individualIri: string;
+		ontologyIri: string;
+		visibleToGroups?: string[];
+	}) {
+		const { actorIri, individualIri, ontologyIri } = params;
+		const actorName = await this.getUserDisplayName(actorIri);
+		const label =
+			(await this.getResourceLabel(individualIri, ontologyIri)) || "individu";
+		const link = `/ontology?iri=${encodeURIComponent(
+			ontologyIri
+		)}#${encodeURIComponent(individualIri)}`;
+		const notified = new Set<string>();
+
+		const creator = await this.findResourceCreator(individualIri, ontologyIri);
+		if (creator && creator !== actorIri) {
+			const recent = await this.hasRecentNotification(
+				creator,
+				VERB_INDIVIDUAL_UPDATED,
+				2,
+				individualIri
+			);
+			if (!recent) {
+				await this.deleteNotificationsByVerbAndTarget(
+					creator,
+					VERB_INDIVIDUAL_UPDATED,
+					individualIri
+				);
+				await this.createNotification({
+					recipient: creator,
+					actor: actorIri,
+					verb: VERB_INDIVIDUAL_UPDATED,
+					target: individualIri,
+					link,
+					content: `${actorName} a modifie l'individu ${label}`,
+					scope: "personal",
+				});
+			}
+			notified.add(creator);
+		}
+
+		const groups =
+			(params.visibleToGroups ?? []).length > 0
+				? params.visibleToGroups ?? []
+				: await this.getVisibleGroupsForResource(individualIri, ontologyIri);
+		if (groups.length > 0) {
+			const members = await this.getMembersOfGroups(groups);
+			for (const recipient of Array.from(new Set(members))) {
+				if (recipient === actorIri) continue;
+				if (notified.has(recipient)) continue;
+				const recent = await this.hasRecentNotification(
+					recipient,
+					VERB_INDIVIDUAL_UPDATED,
+					2,
+					individualIri
+				);
+				if (recent) continue;
+				await this.deleteNotificationsByVerbAndTarget(
+					recipient,
+					VERB_INDIVIDUAL_UPDATED,
+					individualIri
+				);
+				await this.createNotification({
+					recipient,
+					actor: actorIri,
+					verb: VERB_INDIVIDUAL_UPDATED,
+					target: individualIri,
+					link,
+					content: `${actorName} a modifie l'individu ${label}`,
+					scope: "group",
+				});
+			}
+		}
+	}
+
+	async notifyIndividualAclChanged(params: {
+		actorIri: string;
+		individualIri: string;
+		ontologyIri: string;
+		addedGroups?: string[];
+		removedGroups?: string[];
+	}) {
+		const { actorIri, individualIri, ontologyIri } = params;
+		const actorName = await this.getUserDisplayName(actorIri);
+		const label =
+			(await this.getResourceLabel(individualIri, ontologyIri)) || "individu";
+		const link = `/ontology?iri=${encodeURIComponent(
+			ontologyIri
+		)}#${encodeURIComponent(individualIri)}`;
+
+		const process = async (
+			groupIris: string[],
+			verb: string,
+			contentBuilder: (recipient: string) => string
+		) => {
+			if (groupIris.length === 0) return;
+			const members = await this.getMembersOfGroups(groupIris);
+			for (const recipient of Array.from(new Set(members))) {
+				if (recipient === actorIri) continue;
+				const recent = await this.hasRecentNotification(
+					recipient,
+					verb,
+					2,
+					individualIri
+				);
+				if (recent) continue;
+				await this.deleteNotificationsByVerbAndTarget(
+					recipient,
+					verb,
+					individualIri
+				);
+				await this.createNotification({
+					recipient,
+					actor: actorIri,
+					verb,
+					target: individualIri,
+					link,
+					content: contentBuilder(recipient),
+					scope: "group",
+				});
+			}
+		};
+
+		await process(
+			params.addedGroups ?? [],
+			VERB_INDIVIDUAL_ACCESS_GRANTED,
+			() => `L'acces a l'individu ${label} vous a ete accorde par ${actorName}`
+		);
+		await process(
+			params.removedGroups ?? [],
+			VERB_INDIVIDUAL_ACCESS_REVOKED,
+			() => `L'acces a l'individu ${label} vous a ete retire par ${actorName}`
+		);
+	}	async notifyIndividualDeleted(params: {
+		actorIri: string;
+		individualIri: string;
+		ontologyIri: string;
+	}) {
+		const { actorIri, individualIri, ontologyIri } = params;
+		const actorName = await this.getUserDisplayName(actorIri);
+		const label =
+			(await this.getResourceLabel(individualIri, ontologyIri)) || "individu";
+		const link = `/ontology?iri=${encodeURIComponent(ontologyIri)}`;
+		const notified = new Set<string>();
+
+		const creator = await this.findResourceCreator(individualIri, ontologyIri);
+		if (creator && creator !== actorIri) {
+			const recent = await this.hasRecentNotification(
+				creator,
+				VERB_INDIVIDUAL_DELETED,
+				2,
+				individualIri
+			);
+			if (!recent) {
+				await this.deleteNotificationsByVerbAndTarget(
+					creator,
+					VERB_INDIVIDUAL_DELETED,
+					individualIri
+				);
+				await this.createNotification({
+					recipient: creator,
+					actor: actorIri,
+					verb: VERB_INDIVIDUAL_DELETED,
+					target: individualIri,
+					link,
+					content: `L'individu ${label} a ete supprime par ${actorName}`,
+					scope: "personal",
+				});
+			}
+			notified.add(creator);
+		}
+
+		const projectOwner = await this.getProjectOwner(ontologyIri);
+		if (projectOwner && projectOwner !== actorIri && !notified.has(projectOwner)) {
+			const recent = await this.hasRecentNotification(
+				projectOwner,
+				VERB_INDIVIDUAL_DELETED,
+				2,
+				individualIri
+			);
+			if (!recent) {
+				await this.deleteNotificationsByVerbAndTarget(
+					projectOwner,
+					VERB_INDIVIDUAL_DELETED,
+					individualIri
+				);
+				await this.createNotification({
+					recipient: projectOwner,
+					actor: actorIri,
+					verb: VERB_INDIVIDUAL_DELETED,
+					target: individualIri,
+					link,
+					content: `L'individu ${label} a ete supprime par ${actorName}`,
+					scope: "personal",
+				});
+			}
+			notified.add(projectOwner);
+		}
+
+		const groups = await this.getVisibleGroupsForResource(
+			individualIri,
+			ontologyIri
+		);
+		if (groups.length > 0) {
+			const members = await this.getMembersOfGroups(groups);
+			for (const recipient of Array.from(new Set(members))) {
+				if (recipient === actorIri) continue;
+				if (notified.has(recipient)) continue;
+				const recent = await this.hasRecentNotification(
+					recipient,
+					VERB_INDIVIDUAL_ACCESS_REVOKED,
+					2,
+					individualIri
+				);
+				if (recent) continue;
+				await this.deleteNotificationsByVerbAndTarget(
+					recipient,
+					VERB_INDIVIDUAL_ACCESS_REVOKED,
+					individualIri
+				);
+				await this.createNotification({
+					recipient,
+					actor: actorIri,
+					verb: VERB_INDIVIDUAL_ACCESS_REVOKED,
+					target: individualIri,
+					link,
+					content: `L'acces a l'individu ${label} a ete retire (ressource supprimee)`,
+					scope: "group",
+				});
+				notified.add(recipient);
+			}
+		}
+	}private async findResourceCreator(
 		resourceIri: string,
 		graphIri: string
 	): Promise<string | null> {
 		const query = `
       PREFIX core: <${CORE}>
       SELECT ?creator WHERE { GRAPH <${graphIri}> { <${resourceIri}> core:createdBy ?creator } } LIMIT 1
+    `;
+		const data = await this.runSelect(query);
+		return data?.results?.bindings?.[0]?.creator?.value ?? null;
+	}
+
+	private async getCommentAuthor(commentIri: string, graphIri: string): Promise<string | null> {
+		const query = `
+      PREFIX core: <${CORE}>
+      SELECT ?creator WHERE { GRAPH <${graphIri}> { <${commentIri}> core:createdBy ?creator } } LIMIT 1
     `;
 		const data = await this.runSelect(query);
 		return data?.results?.bindings?.[0]?.creator?.value ?? null;
@@ -660,6 +1332,33 @@ export class NotificationsService {
 		const data = await this.runSelect(query);
 		return (data?.results?.bindings ?? []).map((b: any) => b.u.value);
 	}
+
+	private async getProjectOwner(projectIri: string): Promise<string | null> {
+		const query = `
+      PREFIX core: <${CORE}>
+      SELECT ?owner WHERE {
+        GRAPH <${this.fusekiBase}#projects> {
+          <${projectIri}> core:createdBy ?owner .
+        }
+      } LIMIT 1
+    `;
+		const data = await this.runSelect(query);
+		return data?.results?.bindings?.[0]?.owner?.value ?? null;
+	}
+
+	private async getVisibleGroupsForResource(
+		resourceIri: string,
+		graphIri: string
+	): Promise<string[]> {
+		const query = `
+      PREFIX core: <${CORE}>
+      SELECT ?g WHERE { GRAPH <${graphIri}> { <${resourceIri}> core:visibleTo ?g } }
+    `;
+		const data = await this.runSelect(query);
+		return (data?.results?.bindings ?? []).map((b: any) => b.g.value);
+	}
+
+	
 
 	private async getMembersOfGroups(groupIris: string[]): Promise<string[]> {
 		if (groupIris.length === 0) return [];

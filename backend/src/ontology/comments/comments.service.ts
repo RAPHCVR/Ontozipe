@@ -139,6 +139,8 @@ export class CommentsService extends OntologyBaseService {
                 resourceIri: onResource,
                 ontologyIri,
                 body,
+                commentIri: id,
+                replyTo,
             });
         } catch (error) {
             console.error("Failed to notify comment", error);
@@ -193,4 +195,3 @@ export class CommentsService extends OntologyBaseService {
         await this.runUpdate(update);
     }
 }
-

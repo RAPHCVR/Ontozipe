@@ -27,7 +27,9 @@ export class NotificationsController {
 		@Query("status") status?: string,
 		@Query("limit") limit?: string,
 		@Query("offset") offset?: string,
-		@Query("verb") verb?: string
+		@Query("verb") verb?: string,
+		@Query("category") category?: string,
+		@Query("scope") scope?: string
 	) {
 		const parsedLimit = Math.max(1, Math.min(100, Number(limit) || 20));
 		const parsedOffset = Math.max(0, Number(offset) || 0);
@@ -37,13 +39,19 @@ export class NotificationsController {
 			limit: parsedLimit,
 			offset: parsedOffset,
 			verb,
+			category,
+			scope: scope === "group" ? "group" : scope === "personal" ? "personal" : undefined,
 		});
 	}
 
 	@Get("unread/count")
-	async unreadCount(@Req() req: AuthRequest) {
+	async unreadCount(
+		@Req() req: AuthRequest,
+		@Query("scope") scope?: string
+	) {
 		const unreadCount = await this.notifications.getUnreadCountForUser(
-			req.user.sub
+			req.user.sub,
+			scope === "group" ? "group" : scope === "personal" ? "personal" : undefined
 		);
 		return { unreadCount };
 	}
@@ -56,8 +64,14 @@ export class NotificationsController {
 	}
 
 	@Post("read-all")
-	async markAllRead(@Req() req: AuthRequest) {
-		await this.notifications.markAllAsRead(req.user.sub);
+	async markAllRead(
+		@Req() req: AuthRequest,
+		@Query("scope") scope?: string
+	) {
+		await this.notifications.markAllAsRead(
+			req.user.sub,
+			scope === "group" ? "group" : scope === "personal" ? "personal" : undefined
+		);
 		return { ok: true };
 	}
 

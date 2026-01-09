@@ -9,24 +9,22 @@ import {
 	type NotificationItem,
 } from "../hooks/useNotifications";
 
-const FILTERS = [
-	{ key: "all", labelKey: "notifications.filters.all" },
-	{ key: "unread", labelKey: "notifications.filters.unread" },
-] as const;
-
 export default function NotificationsPage() {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const [page, setPage] = useState(1);
 	const [pageSize] = useState(10);
 	const [status, setStatus] = useState<"all" | "unread">("all");
+	const [scope, setScope] = useState<"personal" | "group">("personal");
 
 	const notificationsQuery = useNotifications({
 		status,
 		page,
 		pageSize,
+		scope,
 	});
-	const unreadCountQuery = useUnreadCount();
+	const unreadPersonal = useUnreadCount("personal");
+	const unreadGroup = useUnreadCount("group");
 	const { markAllAsRead, deleteNotification } = useNotificationActions();
 	const [pendingDelete, setPendingDelete] = useState<NotificationItem | null>(
 		null
@@ -34,7 +32,7 @@ export default function NotificationsPage() {
 
 	useEffect(() => {
 		setPage(1);
-	}, [status]);
+	}, [status, scope]);
 
 	const data = notificationsQuery.data;
 	const items = data?.items ?? [];
@@ -50,7 +48,10 @@ export default function NotificationsPage() {
 					</h1>
 					<p className="text-gray-500 dark:text-gray-400">
 						{t("notifications.subtitle", {
-							count: unreadCountQuery.data?.unreadCount ?? 0,
+							count:
+								scope === "group"
+									? unreadGroup.data?.unreadCount ?? 0
+									: unreadPersonal.data?.unreadCount ?? 0,
 						})}
 					</p>
 				</div>
@@ -58,7 +59,7 @@ export default function NotificationsPage() {
 					type="button"
 					className="btn-secondary"
 					disabled={markAllAsRead.isPending}
-					onClick={() => markAllAsRead.mutate()}>
+					onClick={() => markAllAsRead.mutate(scope)}>
 					{markAllAsRead.isPending
 						? t("notifications.actions.markingAll")
 						: t("notifications.actions.markAllRead")}
@@ -66,15 +67,43 @@ export default function NotificationsPage() {
 			</header>
 
 			<div className="flex flex-wrap items-center gap-2">
-				{FILTERS.map((filter) => (
-					<button
-						key={filter.key}
-						type="button"
-						onClick={() => setStatus(filter.key)}
-						className={`chip ${status === filter.key ? "is-active" : ""}`}>
-						{t(filter.labelKey)}
-					</button>
-				))}
+				<button
+					type="button"
+					onClick={() => setStatus("all")}
+					className={`chip ${status === "all" ? "is-active" : ""}`}>
+					{t("notifications.filters.all")}
+				</button>
+				<button
+					type="button"
+					onClick={() => setStatus("unread")}
+					className={`chip ${status === "unread" ? "is-active" : ""}`}>
+					{t("notifications.filters.unread")}
+				</button>
+			</div>
+
+			<div className="border-t border-gray-200 dark:border-gray-700 pt-3 flex flex-wrap items-center gap-2">
+				<button
+					type="button"
+					onClick={() => setScope("personal")}
+					className={`chip ${scope === "personal" ? "is-active" : ""}`}>
+					{t("notifications.scope.personal")}{" "}
+					{(unreadPersonal.data?.unreadCount ?? 0) > 0 && (
+						<span className="ml-1 text-xs font-semibold">
+							{unreadPersonal.data!.unreadCount}
+						</span>
+					)}
+				</button>
+				<button
+					type="button"
+					onClick={() => setScope("group")}
+					className={`chip ${scope === "group" ? "is-active" : ""}`}>
+					{t("notifications.scope.group")}{" "}
+					{(unreadGroup.data?.unreadCount ?? 0) > 0 && (
+						<span className="ml-1 text-xs font-semibold">
+							{unreadGroup.data!.unreadCount}
+						</span>
+					)}
+				</button>
 			</div>
 
 			<section className="space-y-3">
@@ -251,8 +280,8 @@ function NotificationRow({
 						type="button"
 						className={
 							isDarkMode
-								? "text-indigo-300 hover:text-indigo-200"
-								: "text-indigo-600 hover:text-indigo-800"
+								? "text-indigo-300 hover:text-indigo-200 cursor-pointer"
+								: "text-indigo-600 hover:text-indigo-800 cursor-pointer"
 						}
 						onClick={handleOpen}>
 						{item.link
@@ -266,8 +295,8 @@ function NotificationRow({
 					type="button"
 					className={
 						isDarkMode
-							? "text-gray-400 hover:text-gray-200"
-							: "text-gray-400 hover:text-gray-600"
+							? "text-gray-400 hover:text-gray-200 cursor-pointer"
+							: "text-gray-400 hover:text-gray-600 cursor-pointer"
 					}
 					onClick={onAskDelete}
 					title={t("notifications.actions.delete")}>

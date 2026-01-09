@@ -157,6 +157,19 @@ export class OrganizationsService extends OntologyBaseService {
             throw new ForbiddenException("Seul un super‑admin peut modifier l’organisation");
         }
 
+        let previousOwner: string | null = null;
+        if (newOwner !== undefined) {
+            const data = await this.runSelect(`
+                PREFIX core: <${this.CORE}>
+                SELECT ?o WHERE {
+                  GRAPH <${this.PROJECTS_GRAPH}> {
+                    <${orgIri}> core:ownedBy ?o .
+                  }
+                } LIMIT 1
+            `);
+            previousOwner = data?.results?.bindings?.[0]?.o?.value ?? null;
+        }
+
         let deletePart = "";
         let insertPart = "";
 
@@ -180,6 +193,19 @@ export class OrganizationsService extends OntologyBaseService {
         await this.runUpdate(update);
         this.invalidateOrganizationOwnership(orgIri);
         if (newOwner) this.invalidateUserGroups(newOwner);
+        if (previousOwner && newOwner && previousOwner !== newOwner) {
+            this.invalidateUserGroups(previousOwner);
+            try {
+                await this.notifications.notifyOrganizationOwnerChanged({
+                    actorIri: requesterIri,
+                    organizationIri: orgIri,
+                    previousOwnerIri: previousOwner,
+                    newOwnerIri: newOwner,
+                });
+            } catch (error) {
+                console.error("Failed to notify organization owner change", error);
+            }
+        }
     }
 
     async deleteOrganization(requesterIri: string, orgIri: string): Promise<void> {

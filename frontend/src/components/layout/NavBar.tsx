@@ -31,7 +31,7 @@ export default function Navbar() {
 	const { language, setLanguage } = useLanguage();
 	const profileQuery = useProfile();
 	const notificationsPreview = useNotificationsPreview(5);
-	const unreadQuery = useUnreadCount();
+	const unreadQuery = useUnreadCount("personal");
 	const [showNotifications, setShowNotifications] = useState(false);
 	const notifRef = useRef<HTMLLIElement | null>(null);
 

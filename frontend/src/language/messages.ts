@@ -1760,6 +1760,37 @@ const definitions = {
 		en: "Unread",
 		es: "Sin leer",
 	},
+	"notifications.categories.all": { fr: "Toutes", en: "All", es: "Todas" },
+	"notifications.categories.groups": {
+		fr: "Groupes",
+		en: "Groups",
+		es: "Grupos",
+	},
+	"notifications.categories.admin": {
+		fr: "Administration",
+		en: "Administration",
+		es: "Administración",
+	},
+	"notifications.categories.organizations": {
+		fr: "Organisations",
+		en: "Organizations",
+		es: "Organizaciones",
+	},
+	"notifications.categories.ontologies": {
+		fr: "Ontologies",
+		en: "Ontologies",
+		es: "Ontologías",
+	},
+	"notifications.scope.personal": {
+		fr: "Mon activité",
+		en: "My activity",
+		es: "Mi actividad",
+	},
+	"notifications.scope.group": {
+		fr: "Activité de groupes",
+		en: "Group activity",
+		es: "Actividad de grupos",
+	},
 	"notifications.loading": {
 		fr: "Chargement des notifications...",
 		en: "Loading notifications...",
@@ -1773,7 +1804,7 @@ const definitions = {
 	"notifications.actions.markAllRead": {
 		fr: "Tout marquer comme lu",
 		en: "Mark all as read",
-		es: "Marcar todo como le\u00eddo",
+		es: "Marcar todo como leído",
 	},
 	"notifications.actions.markingAll": {
 		fr: "Marquage...",
@@ -1784,7 +1815,7 @@ const definitions = {
 	"notifications.actions.markRead": {
 		fr: "Marquer comme lue",
 		en: "Mark as read",
-		es: "Marcar como le\u00edda",
+		es: "Marcar como leída",
 	},
 	"notifications.actions.delete": {
 		fr: "Supprimer",
@@ -1794,16 +1825,16 @@ const definitions = {
 	"notifications.actions.confirmDelete": {
 		fr: "Voulez-vous supprimer cette notification ?",
 		en: "Delete this notification?",
-		es: "\u00bfEliminar esta notificaci\u00f3n?",
+		es: "¿Eliminar esta notificación?",
 	},
 	"notifications.status.unread": {
 		fr: "Non lue",
 		en: "Unread",
 		es: "Sin leer",
 	},
-	"notifications.status.read": { fr: "Lue", en: "Read", es: "Le\u00edda" },
+	"notifications.status.read": { fr: "Lue", en: "Read", es: "Leída" },
 	"notifications.preview.title": {
-		fr: "Aper\u00e7u",
+		fr: "Aperçu",
 		en: "Preview",
 		es: "Vista previa",
 	},
@@ -1816,7 +1847,7 @@ const definitions = {
 	"notifications.pagination": {
 		fr: "Page {{page}} / {{totalPages}}",
 		en: "Page {{page}} / {{totalPages}}",
-		es: "P\u00e1gina {{page}} / {{totalPages}}",
+		es: "Página {{page}} / {{totalPages}}",
 	},
 } as const satisfies MessageDefinitions;
 

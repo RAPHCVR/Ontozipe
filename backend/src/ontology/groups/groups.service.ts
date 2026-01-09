@@ -127,6 +127,12 @@ export class GroupsService extends OntologyBaseService {
                 groupIri,
                 action: "add",
             });
+            await this.notifications.notifyGroupMembershipBroadcast({
+                actorIri: requesterIri,
+                memberIri,
+                groupIri,
+                action: "add",
+            });
         } catch (error) {
             console.error("Failed to notify group add", error);
         }
@@ -145,6 +151,12 @@ export class GroupsService extends OntologyBaseService {
         this.invalidateGroupOwnership(groupIri);
         try {
             await this.notifications.notifyGroupMembershipChange({
+                actorIri: requesterIri,
+                memberIri,
+                groupIri,
+                action: "remove",
+            });
+            await this.notifications.notifyGroupMembershipBroadcast({
                 actorIri: requesterIri,
                 memberIri,
                 groupIri,
