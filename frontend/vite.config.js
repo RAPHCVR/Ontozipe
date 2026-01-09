@@ -19,4 +19,9 @@ export default defineConfig({
 		},
 	},
 	resolve: { alias: { "@": resolve(__dirname, "src") } },
+	server: {
+		open: true,
+		host: true,
+		allowedHosts: ["ontozipe.hugopereira.fr"],
+	},
 });

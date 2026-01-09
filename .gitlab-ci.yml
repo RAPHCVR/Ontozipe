@@ -1,0 +1,46 @@
+variables:
+  IMAGE_TAG: "$CI_COMMIT_REF_NAME"
+  REGISTRY_IMAGE: "$CI_REGISTRY_IMAGE"
+
+stages:
+  - build
+  - publish
+
+test-docker:
+  stage: build
+  tags:
+    - docker-perso
+  image: docker:29.1.2
+  script:
+    - docker version
+    - docker info
+    - docker ps
+
+docker-build:
+  stage: build
+  image: docker:29.1.2
+  tags:
+    - docker-perso
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+
+    - docker build -t "$REGISTRY_IMAGE/frontend:$IMAGE_TAG" frontend
+    - docker build -t "$REGISTRY_IMAGE/backend:$IMAGE_TAG" backend
+  only:
+    - comments-llm
+
+docker-publish:
+  stage: publish
+  image: docker:29.1.2
+  tags:
+    - docker-perso
+  needs:
+    - docker-build
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+
+    - docker push "$REGISTRY_IMAGE/frontend:$IMAGE_TAG"
+    - docker push "$REGISTRY_IMAGE/backend:$IMAGE_TAG"
+    - echo "$REGISTRY_IMAGE/backend:$IMAGE_TAG" and "$REGISTRY_IMAGE/frontend:$IMAGE_TAG" are availaibles
+  only:
+    - comments-llm

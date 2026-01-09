@@ -74,40 +74,61 @@ export class LlmController {
             return this.toLangchainHistory(history);
         }
 
-        const keepCount = Math.max(0, history.length - HISTORY_SUMMARY_TAKE_LAST);
-        const prefix = history.slice(0, keepCount);
-        const tail = history.slice(keepCount);
+        const splitIndex = Math.max(0, history.length - HISTORY_SUMMARY_TAKE_LAST);
+        const prefix = history.slice(0, splitIndex);
+        const tail = history.slice(splitIndex);
+        if (prefix.length === 0) {
+            return this.toLangchainHistory(history);
+        }
+
+        const prefixMessages = this.toLangchainHistory(prefix);
         const tailMessages = this.toLangchainHistory(tail);
 
         const summaryPrompt = [
             new SystemMessage(
-                "Tu es un assistant de résumé. Résume en français les 10 derniers messages (utilisateur et assistant) " +
+                "Tu es un assistant de résumé. Résume en français les messages précédents (partie ancienne de la conversation) " +
                     "en 5 à 8 points concis (<=120 mots), en conservant les faits et les intentions (pas de fioritures)."
             ),
-            ...tailMessages,
+            ...prefixMessages,
         ];
 
         const summaryMsg = await summarizer.invoke(summaryPrompt);
         const summary = getText(summaryMsg) ?? "";
 
-        if (sseKey) {
+        if (sseKey && process.env.LLM_SSE_DEBUG === "1") {
             this.llmService.sseBroadcast(sseKey, {
                 type: "history_summary",
-                data: { count: HISTORY_SUMMARY_TAKE_LAST, summary },
+                data: { count: prefix.length, summary },
             });
         }
 
         return [
-            ...this.toLangchainHistory(prefix),
-            new SystemMessage(`Résumé (10 derniers messages, pour contexte court et utile):\n${summary}`),
+            new SystemMessage(`Résumé (messages précédents, pour contexte court et utile):\n${summary}`),
+            ...tailMessages,
         ];
     }
 
     private extractToolCalls(ai: AIMessage | AIMessageChunk): ToolCall[] {
-        const raw =
+        let raw: any =
             (ai as any)?.tool_calls ??
             (ai as any)?.additional_kwargs?.tool_calls ??
             [];
+
+        const toolCallChunks = (ai as any)?.tool_call_chunks;
+        if (
+            (!Array.isArray(raw) || raw.length === 0) &&
+            Array.isArray(toolCallChunks) &&
+            toolCallChunks.length > 0
+        ) {
+            try {
+                const rebuilt = new AIMessageChunk({ content: "", tool_call_chunks: toolCallChunks });
+                raw = (rebuilt as any)?.tool_calls ?? [];
+            } catch {
+                // ignore parsing failures; fallback to empty
+                raw = [];
+            }
+        }
+
         if (!Array.isArray(raw)) return [];
         return raw.map((c: any, idx: number) => {
             const name = c?.name ?? c?.function?.name ?? "unknown_tool";
@@ -121,6 +142,64 @@ export class LlmController {
             }
             return { id, name, args };
         });
+    }
+
+    private normalizeForHeuristics(text: string): string {
+        return text
+            .normalize("NFD")
+            .replace(/\p{Diacritic}/gu, "")
+            .replace(/[’']/g, "'")
+            .toLowerCase();
+    }
+
+    private looksLikePendingToolUse(text: string): boolean {
+        const trimmed = text.trim();
+        if (!trimmed) return false;
+        const normalized = this.normalizeForHeuristics(trimmed);
+
+        const startsWithStrategy =
+            normalized.startsWith("strategie") || normalized.startsWith("strategy");
+
+        const mentionsToolName =
+            normalized.includes("search_from_natural_language") ||
+            normalized.includes("search_from_uri") ||
+            normalized.includes("get_most_connected_nodes");
+
+        const verbMarkers = ["execute", "lance", "interroge", "explore", "appelle", "cherche", "utilise"];
+        const hasVerbMarker = verbMarkers.some((m) => normalized.includes(m));
+
+        const mentionsOntology = normalized.includes("ontologie") || normalized.includes("ontology");
+        const mentionsNL =
+            normalized.includes("nl") ||
+            normalized.includes("natural language") ||
+            normalized.includes("langage naturel");
+
+        return (
+            mentionsToolName ||
+            startsWithStrategy ||
+            (hasVerbMarker && (mentionsOntology || mentionsNL))
+        );
+    }
+
+    private stableStringify(value: unknown): string {
+        if (value === null) return "null";
+        const t = typeof value;
+        if (t === "string" || t === "number" || t === "boolean") {
+            return JSON.stringify(value);
+        }
+        if (t === "undefined") return "null";
+        if (t !== "object") return JSON.stringify(String(value));
+        if (Array.isArray(value)) {
+            return `[${value.map((v) => this.stableStringify(v)).join(",")}]`;
+        }
+        const obj = value as Record<string, unknown>;
+        const keys = Object.keys(obj).sort();
+        const entries = keys.map((k) => `${JSON.stringify(k)}:${this.stableStringify(obj[k])}`);
+        return `{${entries.join(",")}}`;
+    }
+
+    private makeToolSignature(name: string, args: Record<string, unknown>): string {
+        return `${name}::${this.stableStringify(args)}`;
     }
 
     private getChunkText(chunk: AIMessageChunk): string {
@@ -239,7 +318,6 @@ export class LlmController {
         const userMessage: AppendMessageInput = { role: "user", content: dto.question };
         let assistantMessage: AppendMessageInput | null = null;
         const agentSteps: AgentStep[] = [];
-        const agentStepIndex = new Map<string, number>();
 
         try {
             await this.chatHistory.ensureSession(req.user.sub, sessionId, { ontologyIri: dto.ontologyIri });
@@ -257,10 +335,12 @@ export class LlmController {
                 console.warn("[LLM Controller] Decision model unavailable:", err instanceof Error ? err.message : err);
             }
 
-            this.llmService.sseBroadcast(key, {
-                type: "tools_schema",
-                data: tools.map((t) => convertToOpenAITool(t)),
-            });
+            if (process.env.LLM_SSE_DEBUG === "1") {
+                this.llmService.sseBroadcast(key, {
+                    type: "tools_schema",
+                    data: tools.map((t) => convertToOpenAITool(t)),
+                });
+            }
 
             const buildSystemPrompt = () => {
                 let prompt = `${SYSTEM_PROMPT_FR}${dto.ontologyIri ? `\nContexte: l'ontologie active est <${dto.ontologyIri}>` : ""}`;
@@ -285,6 +365,13 @@ export class LlmController {
             ];
 
             let finalAssistantText = "";
+            let awaitingToolCall = false;
+            let toolCallNudge: SystemMessage | null = null;
+            const toolResultCache = new Map<string, string>();
+            let toolInvocations = 0;
+            const MAX_TOOL_INVOCATIONS_TOTAL = 20;
+            const MAX_TOOL_CALLS_PER_STEP = 12;
+            let didBreakEarly = false;
 
             for (let step = 0; step < MAX_STEPS; step++) {
                 if (step > 0) {
@@ -296,15 +383,30 @@ export class LlmController {
                     data: `--- Étape ${step + 1}/${MAX_STEPS} ---`,
                 });
 
-                const { finalChunk, finalText } = await this.streamOneAssistantTurn(llmWithTools, messages, key);
+                const turnMessages = toolCallNudge ? [...messages, toolCallNudge] : messages;
+                toolCallNudge = null;
+                const { finalChunk, finalText } = await this.streamOneAssistantTurn(llmWithTools, turnMessages, key);
                 if (finalText?.trim()) {
                     finalAssistantText = finalText;
                 }
 
-                const toolCallPayload =
+                let toolCallPayload: any =
                     (finalChunk as any)?.tool_calls ??
                     (finalChunk as any)?.additional_kwargs?.tool_calls ??
                     undefined;
+                const toolCallChunks = (finalChunk as any)?.tool_call_chunks;
+                if (
+                    toolCallPayload === undefined &&
+                    Array.isArray(toolCallChunks) &&
+                    toolCallChunks.length > 0
+                ) {
+                    try {
+                        const rebuilt = new AIMessageChunk({ content: "", tool_call_chunks: toolCallChunks });
+                        toolCallPayload = (rebuilt as any)?.tool_calls ?? undefined;
+                    } catch {
+                        // ignore parsing failures
+                    }
+                }
                 const aiMessageForHistory = new AIMessage({
                     content: finalText,
                     ...(toolCallPayload ? { tool_calls: toolCallPayload } : {}),
@@ -314,15 +416,63 @@ export class LlmController {
 
                 const toolCalls = finalChunk ? this.extractToolCalls(finalChunk) : [];
                 if (toolCalls.length === 0) {
+                    if (
+                        !awaitingToolCall &&
+                        this.looksLikePendingToolUse(finalText) &&
+                        step < MAX_STEPS - 1
+                    ) {
+                        awaitingToolCall = true;
+                        this.llmService.sseBroadcast(key, {
+                            type: "info",
+                            data: "Je passe à l'exécution via les outils...",
+                        });
+                        toolCallNudge = new SystemMessage(
+                            "Tu as annoncé une recherche/stratégie. Maintenant exécute-la en appelant l'outil le plus pertinent. " +
+                                "Si un outil est disponible, réponds uniquement par un appel d'outil (tool_call), sans texte supplémentaire."
+                        );
+                        continue;
+                    }
+                    didBreakEarly = true;
                     break;
                 }
+                awaitingToolCall = false;
 
                 const toolMessages: ToolMessage[] = [];
-                const toolSysMessages: SystemMessage[] = [];
-                for (const tc of toolCalls) {
+
+                const toolCallsToRun = toolCalls.slice(0, MAX_TOOL_CALLS_PER_STEP);
+                const toolCallsSkipped = toolCalls.slice(MAX_TOOL_CALLS_PER_STEP);
+                if (toolCallsSkipped.length > 0) {
+                    this.llmService.sseBroadcast(key, {
+                        type: "info",
+                        data: `Trop d'appels d'outils dans un même tour (${toolCalls.length}). Je limite à ${MAX_TOOL_CALLS_PER_STEP} et je synthétise ensuite.`,
+                    });
+                    for (const tc of toolCallsSkipped) {
+                        toolMessages.push(
+                            new ToolMessage({
+                                tool_call_id: tc.id,
+                                content:
+                                    "Appel d'outil non exécuté (trop d'appels dans le même tour). " +
+                                    "Utilise les informations déjà collectées et passe à la synthèse.",
+                            })
+                        );
+                    }
+                }
+
+                for (const tc of toolCallsToRun) {
+                    const signature = this.makeToolSignature(tc.name, tc.args);
+                    const cached = toolResultCache.get(signature);
+                    if (cached) {
+                        toolMessages.push(
+                            new ToolMessage({
+                                tool_call_id: tc.id,
+                                content: `Resultat reutilise (appel identique deja execute):\n${cached}`,
+                            })
+                        );
+                        continue;
+                    }
+
                     const stepIndex = agentSteps.length;
                     agentSteps.push({ id: tc.id, name: tc.name, args: tc.args });
-                    agentStepIndex.set(tc.id, stepIndex);
 
                     this.llmService.sseBroadcast(key, {
                         type: "tool_call",
@@ -332,15 +482,27 @@ export class LlmController {
                     const tool = tools.find((t) => t.name === tc.name);
                     if (!tool) {
                         const errorMsg = `Erreur: l'outil '${tc.name}' est introuvable.`;
+                        toolResultCache.set(signature, errorMsg);
                         agentSteps[stepIndex] = { ...agentSteps[stepIndex], result: errorMsg };
                         this.llmService.sseBroadcast(key, {
                             type: "tool_result",
                             data: { id: tc.id, name: tc.name, observation: errorMsg },
                         });
                         toolMessages.push(new ToolMessage({ tool_call_id: tc.id, content: errorMsg }));
-                        toolSysMessages.push(
-                            new SystemMessage(`Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${errorMsg}`)
-                        );
+                        continue;
+                    }
+
+                    if (toolInvocations >= MAX_TOOL_INVOCATIONS_TOTAL) {
+                        const limitMsg =
+                            "Appel d'outil non execute (limite atteinte). " +
+                            "Synthetise avec les informations deja collectees.";
+                        toolResultCache.set(signature, limitMsg);
+                        agentSteps[stepIndex] = { ...agentSteps[stepIndex], result: limitMsg };
+                        this.llmService.sseBroadcast(key, {
+                            type: "tool_result",
+                            data: { id: tc.id, name: tc.name, observation: limitMsg },
+                        });
+                        toolMessages.push(new ToolMessage({ tool_call_id: tc.id, content: limitMsg }));
                         continue;
                     }
 
@@ -348,17 +510,14 @@ export class LlmController {
                         const observation = await tool.invoke(tc.args);
                         const observationStr =
                             typeof observation === "string" ? observation : JSON.stringify(observation);
+                        toolResultCache.set(signature, observationStr);
+                        toolInvocations += 1;
                         agentSteps[stepIndex] = { ...agentSteps[stepIndex], result: observationStr };
                         this.llmService.sseBroadcast(key, {
                             type: "tool_result",
                             data: { id: tc.id, name: tc.name, observation: observationStr },
                         });
                         toolMessages.push(new ToolMessage({ tool_call_id: tc.id, content: observationStr }));
-                        toolSysMessages.push(
-                            new SystemMessage(
-                                `Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${observationStr}`
-                            )
-                        );
                     } catch (toolErr) {
                         const errorMsg =
                             toolErr instanceof Error
@@ -370,17 +529,11 @@ export class LlmController {
                             data: { id: tc.id, name: tc.name, observation: errorMsg },
                         });
                         toolMessages.push(new ToolMessage({ tool_call_id: tc.id, content: errorMsg }));
-                        toolSysMessages.push(
-                            new SystemMessage(`Résultat de l'outil '${tc.name}' (id ${tc.id}) : ${errorMsg}`)
-                        );
                     }
                 }
 
                 if (toolMessages.length) {
                     messages.push(...toolMessages);
-                }
-                if (toolSysMessages.length) {
-                    messages.push(...toolSysMessages);
                 }
 
                 const updatedPrompt = buildSystemPrompt();
@@ -388,11 +541,46 @@ export class LlmController {
                 this.llmService.sseBroadcast(key, { type: "system_prompt", data: updatedPrompt });
             }
 
-            const assistantText = finalAssistantText.trim()
+            let assistantText = finalAssistantText.trim()
                 ? finalAssistantText
                 : "Je n’ai pas pu formuler la réponse finale. Les outils n'ont peut-être pas trouvé de résultats pertinents.";
 
-            if (!finalAssistantText.trim()) {
+            const shouldForceFinalAnswer =
+                !didBreakEarly ||
+                this.looksLikePendingToolUse(assistantText) ||
+                toolInvocations >= MAX_TOOL_INVOCATIONS_TOTAL;
+
+            if (shouldForceFinalAnswer) {
+                this.llmService.sseBroadcast(key, {
+                    type: "info",
+                    data: "Je synthetise les resultats et je reponds.",
+                });
+                try {
+                    const finalizerMsg = await llm.invoke([
+                        ...messages,
+                        new SystemMessage(
+                            "Redige maintenant la reponse finale a l'utilisateur (francais, 5-7 lignes max). " +
+                                "N'annonce plus de strategie et n'appelle aucun outil. " +
+                                "Si une information manque (entite/relation absente), dis-le explicitement et propose la prochaine etape utile."
+                        ),
+                    ]);
+                    const finalText = (getText(finalizerMsg) ?? "").trim();
+                    if (finalText) {
+                        assistantText = finalText;
+                        this.llmService.sseBroadcast(key, { type: "chunk", data: finalText });
+                    } else if (!finalAssistantText.trim()) {
+                        this.llmService.sseBroadcast(key, { type: "chunk", data: assistantText });
+                    }
+                } catch (finalErr) {
+                    console.warn(
+                        "[LLM Controller] Finalization step failed:",
+                        finalErr instanceof Error ? finalErr.message : finalErr
+                    );
+                    if (!finalAssistantText.trim()) {
+                        this.llmService.sseBroadcast(key, { type: "chunk", data: assistantText });
+                    }
+                }
+            } else if (!finalAssistantText.trim()) {
                 this.llmService.sseBroadcast(key, { type: "chunk", data: assistantText });
             }
 
