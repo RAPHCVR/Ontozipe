@@ -14,6 +14,21 @@ import {
 	UseInterceptors,
 	BadRequestException,
 } from "@nestjs/common";
+import {
+	ApiBadRequestResponse,
+	ApiBearerAuth,
+	ApiBody,
+	ApiConsumes,
+	ApiCreatedResponse,
+	ApiForbiddenResponse,
+	ApiHeader,
+	ApiOkResponse,
+	ApiOperation,
+	ApiParam,
+	ApiQuery,
+	ApiTags,
+	ApiUnauthorizedResponse,
+} from "@nestjs/swagger";
 import { Request, Express } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { extname } from "path";
@@ -22,9 +37,21 @@ import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
 import { OntologiesService } from "./ontologies.service";
 import { CreateOntologyDto } from "./dto/create-ontology.dto";
 import { UpdateOntologyDto } from "./dto/update-ontology.dto";
+import {
+	ClassPropertiesResponseDto,
+	FullSnapshotDto,
+	GraphDto,
+	OntologyProjectSummaryDto,
+} from "../common/dto/ontology-response.dto";
+import { ApiErrorDto } from "../../common/dto/api-error.dto";
+import { OkResponseDto } from "../../common/dto/standard-response.dto";
 
 type AuthRequest = Request & { user: { sub: string; email?: string } };
 
+@ApiTags("Ontologies")
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ type: ApiErrorDto })
+@ApiForbiddenResponse({ type: ApiErrorDto })
 @UseGuards(JwtAuthGuard)
 @Controller("ontologies")
 export class OntologiesController {
@@ -45,6 +72,14 @@ export class OntologiesController {
 	}
 
 	@Get()
+	@ApiOperation({ summary: "Lister les ontologies" })
+	@ApiOkResponse({ type: [OntologyProjectSummaryDto] })
+	@ApiQuery({ name: "lang", required: false, type: String, example: "fr" })
+	@ApiHeader({
+		name: "accept-language",
+		required: false,
+		description: "Langues préférées (ex: fr, en-GB).",
+	})
 	getProjects(
 		@Query("lang") lang?: string,
 		@Headers("accept-language") acceptLanguage?: string
@@ -53,6 +88,36 @@ export class OntologiesController {
 	}
 
 	@Post()
+	@ApiOperation({ summary: "Creer une ontologie (optionnel: fichier RDF)" })
+	@ApiConsumes("multipart/form-data")
+	@ApiBody({
+		schema: {
+			type: "object",
+			properties: {
+				iri: { type: "string", format: "uri", example: "http://example.org/ontology/core" },
+				label: { type: "string", example: "Core Ontology" },
+				labels: {
+					type: "array",
+					items: {
+						type: "object",
+						properties: {
+							value: { type: "string", example: "Ontologie coeur" },
+							lang: { type: "string", example: "fr" },
+						},
+					},
+				},
+				visibleToGroups: {
+					type: "array",
+					items: { type: "string", format: "uri" },
+					example: ["http://example.org/group/research"],
+				},
+				file: { type: "string", format: "binary" },
+			},
+			required: ["iri"],
+		},
+	})
+	@ApiCreatedResponse({ type: OkResponseDto })
+	@ApiBadRequestResponse({ type: ApiErrorDto })
 	@UseInterceptors(
 		FileInterceptor("file", { limits: { fileSize: 10 * 1024 * 1024 } })
 	)
@@ -77,6 +142,17 @@ export class OntologiesController {
 	}
 
 	@Patch(":iri")
+	@ApiOperation({
+		summary: "Mettre a jour une ontologie",
+		description: "SuperAdmin ou owner de l'ontologie requis.",
+	})
+	@ApiOkResponse({ description: "Ontologie mise à jour." })
+	@ApiParam({
+		name: "iri",
+		description: "IRI encode (URL-encoded) de l'ontologie",
+		example: "http%3A%2F%2Fexample.org%2Fontology%2Fcore",
+	})
+	@ApiBadRequestResponse({ type: ApiErrorDto })
 	updateProject(
 		@Req() req: AuthRequest,
 		@Param("iri") iri: string,
@@ -92,6 +168,17 @@ export class OntologiesController {
 	}
 
 	@Delete(":iri")
+	@ApiOperation({
+		summary: "Supprimer une ontologie",
+		description: "SuperAdmin ou owner de l'ontologie requis.",
+	})
+	@ApiOkResponse({ description: "Ontologie supprimée." })
+	@ApiParam({
+		name: "iri",
+		description: "IRI encode (URL-encoded) de l'ontologie",
+		example: "http%3A%2F%2Fexample.org%2Fontology%2Fcore",
+	})
+	@ApiBadRequestResponse({ type: ApiErrorDto })
 	deleteProject(@Req() req: AuthRequest, @Param("iri") iri: string) {
 		return this.ontologiesService.deleteProject(
 			req.user.sub,
@@ -100,6 +187,19 @@ export class OntologiesController {
 	}
 
 	@Get(":iri/graph")
+	@ApiOperation({ summary: "Recuperer le graphe de l'ontologie (classes)" })
+	@ApiOkResponse({ type: GraphDto })
+	@ApiParam({
+		name: "iri",
+		description: "IRI encode (URL-encoded) de l'ontologie",
+		example: "http%3A%2F%2Fexample.org%2Fontology%2Fcore",
+	})
+	@ApiQuery({ name: "lang", required: false, type: String, example: "fr" })
+	@ApiHeader({
+		name: "accept-language",
+		required: false,
+		description: "Langues préférées (ex: fr, en-GB).",
+	})
 	getGraph(
 		@Param("iri") iri: string,
 		@Query("lang") lang?: string,
@@ -113,6 +213,26 @@ export class OntologiesController {
 	}
 
 	@Get(":iri/properties")
+	@ApiOperation({ summary: "Lister les proprietes d'une classe" })
+	@ApiOkResponse({ type: ClassPropertiesResponseDto })
+	@ApiParam({
+		name: "iri",
+		description: "IRI encode (URL-encoded) de l'ontologie",
+		example: "http%3A%2F%2Fexample.org%2Fontology%2Fcore",
+	})
+	@ApiQuery({
+		name: "class",
+		required: true,
+		type: String,
+		example: "http://example.org/ontology#Person",
+	})
+	@ApiQuery({ name: "lang", required: false, type: String, example: "fr" })
+	@ApiHeader({
+		name: "accept-language",
+		required: false,
+		description: "Langues préférées (ex: fr, en-GB).",
+	})
+	@ApiBadRequestResponse({ type: ApiErrorDto })
 	getClassProperties(
 		@Req() req: AuthRequest,
 		@Param("iri") iri: string,
@@ -133,6 +253,19 @@ export class OntologiesController {
 	}
 
 	@Get(":iri/snapshot")
+	@ApiOperation({ summary: "Recuperer le snapshot complet d'une ontologie" })
+	@ApiOkResponse({ type: FullSnapshotDto })
+	@ApiParam({
+		name: "iri",
+		description: "IRI encode (URL-encoded) de l'ontologie",
+		example: "http%3A%2F%2Fexample.org%2Fontology%2Fcore",
+	})
+	@ApiQuery({ name: "lang", required: false, type: String, example: "fr" })
+	@ApiHeader({
+		name: "accept-language",
+		required: false,
+		description: "Langues préférées (ex: fr, en-GB).",
+	})
 	getSnapshot(
 		@Req() req: AuthRequest,
 		@Param("iri") iri: string,

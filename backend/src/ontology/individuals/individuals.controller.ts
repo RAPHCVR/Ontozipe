@@ -14,6 +14,21 @@ import {
 	UseGuards,
 	UseInterceptors,
 } from "@nestjs/common";
+import {
+	ApiBadRequestResponse,
+	ApiBearerAuth,
+	ApiBody,
+	ApiConsumes,
+	ApiCreatedResponse,
+	ApiForbiddenResponse,
+	ApiHeader,
+	ApiOkResponse,
+	ApiOperation,
+	ApiParam,
+	ApiQuery,
+	ApiTags,
+	ApiUnauthorizedResponse,
+} from "@nestjs/swagger";
 import { Request } from "express";
 
 import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
@@ -24,15 +39,28 @@ import { IndividualNode } from "../common/types";
 import { FilesInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import { extname } from "path";
+import { IndividualNodeDto } from "../common/dto/ontology-response.dto";
+import { UploadedPdfDto } from "./dto/uploaded-pdf.dto";
+import { ApiErrorDto } from "../../common/dto/api-error.dto";
 
 type AuthRequest = Request & { user: { sub: string; email?: string } };
 
+@ApiTags("Individuals")
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ type: ApiErrorDto })
+@ApiForbiddenResponse({ type: ApiErrorDto })
 @UseGuards(JwtAuthGuard)
 @Controller("individuals")
 export class IndividualsController {
 	constructor(private readonly individualsService: IndividualsService) {}
 
 	@Post()
+	@ApiOperation({
+		summary: "Creer un individu",
+		description: "Droits d'ecriture sur l'ontologie requis.",
+	})
+	@ApiCreatedResponse({ description: "Individu créé." })
+	@ApiBadRequestResponse({ type: ApiErrorDto })
 	createIndividual(
 		@Req() req: AuthRequest,
 		@Body() dto: CreateIndividualDto
@@ -55,6 +83,23 @@ export class IndividualsController {
 	}
 
 	@Patch(":iri")
+	@ApiOperation({
+		summary: "Mettre a jour un individu",
+		description: "Droits d'ecriture sur l'ontologie requis.",
+	})
+	@ApiOkResponse({ description: "Individu mis à jour." })
+	@ApiParam({
+		name: "iri",
+		description: "IRI encode (URL-encoded) de l'individu",
+		example: "http%3A%2F%2Fexample.org%2Findiv%2F123",
+	})
+	@ApiQuery({
+		name: "ontology",
+		required: true,
+		type: String,
+		example: "http://example.org/ontology/core",
+	})
+	@ApiBadRequestResponse({ type: ApiErrorDto })
 	updateIndividual(
 		@Req() req: AuthRequest,
 		@Param("iri") iri: string,
@@ -73,6 +118,23 @@ export class IndividualsController {
 	}
 
 	@Delete(":iri")
+	@ApiOperation({
+		summary: "Supprimer un individu",
+		description: "Droits d'ecriture sur l'ontologie requis.",
+	})
+	@ApiOkResponse({ description: "Individu supprimé." })
+	@ApiParam({
+		name: "iri",
+		description: "IRI encode (URL-encoded) de l'individu",
+		example: "http%3A%2F%2Fexample.org%2Findiv%2F123",
+	})
+	@ApiQuery({
+		name: "ontology",
+		required: true,
+		type: String,
+		example: "http://example.org/ontology/core",
+	})
+	@ApiBadRequestResponse({ type: ApiErrorDto })
 	deleteIndividual(
 		@Req() req: AuthRequest,
 		@Param("iri") iri: string,
@@ -100,6 +162,14 @@ export class IndividualsController {
 	}
 
 	@Get("persons")
+	@ApiOperation({ summary: "Lister les personnes (individus de type Person)" })
+	@ApiOkResponse({ type: [IndividualNodeDto] })
+	@ApiQuery({ name: "lang", required: false, type: String, example: "fr" })
+	@ApiHeader({
+		name: "accept-language",
+		required: false,
+		description: "Langues préférées (ex: fr, en-GB).",
+	})
 	getAllPersons(
 		@Headers("accept-language") acceptLanguage?: string,
 		@Query("lang") lang?: string
@@ -110,6 +180,19 @@ export class IndividualsController {
 	}
 
 	@Get("persons/:iri")
+	@ApiOperation({ summary: "Récupérer une personne" })
+	@ApiOkResponse({ type: IndividualNodeDto })
+	@ApiParam({
+		name: "iri",
+		description: "IRI encode (URL-encoded) de la personne",
+		example: "http%3A%2F%2Fexample.org%2Findiv%2F123",
+	})
+	@ApiQuery({ name: "lang", required: false, type: String, example: "fr" })
+	@ApiHeader({
+		name: "accept-language",
+		required: false,
+		description: "Langues préférées (ex: fr, en-GB).",
+	})
 	getPerson(
 		@Param("iri") iri: string,
 		@Headers("accept-language") acceptLanguage?: string,
@@ -126,6 +209,22 @@ export class IndividualsController {
 	 * Retourne l'URL du fichier uploadé
 	 */
 	@Post("upload-pdf")
+	@ApiOperation({ summary: "Uploader des PDFs pour un individu" })
+	@ApiConsumes("multipart/form-data")
+	@ApiCreatedResponse({ type: [UploadedPdfDto] })
+	@ApiBadRequestResponse({ type: ApiErrorDto })
+	@ApiBody({
+		schema: {
+			type: "object",
+			properties: {
+				files: {
+					type: "array",
+					items: { type: "string", format: "binary" },
+				},
+			},
+			required: ["files"],
+		},
+	})
 	@UseInterceptors(
 		FilesInterceptor("files", 10, {
 			storage: diskStorage({

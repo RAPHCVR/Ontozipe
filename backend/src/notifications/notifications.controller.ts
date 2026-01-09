@@ -7,21 +7,62 @@ import {
 	Post,
 	Param,
 	Delete,
-	Body,
 	BadRequestException,
 } from "@nestjs/common";
+import {
+	ApiBadRequestResponse,
+	ApiBearerAuth,
+	ApiCreatedResponse,
+	ApiForbiddenResponse,
+	ApiOkResponse,
+	ApiOperation,
+	ApiParam,
+	ApiQuery,
+	ApiTags,
+	ApiUnauthorizedResponse,
+} from "@nestjs/swagger";
 import { Request } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { NotificationsService } from "./notifications.service";
+import { NotificationsListResponseDto, UnreadCountResponseDto } from "./dto/notification.dto";
+import { OkResponseDto } from "../common/dto/standard-response.dto";
+import { ApiErrorDto } from "../common/dto/api-error.dto";
 
 type AuthRequest = Request & { user: { sub: string; email?: string } };
 
+@ApiTags("Notifications")
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ type: ApiErrorDto })
+@ApiForbiddenResponse({ type: ApiErrorDto })
 @UseGuards(JwtAuthGuard)
 @Controller("notifications")
 export class NotificationsController {
 	constructor(private readonly notifications: NotificationsService) {}
 
 	@Get()
+	@ApiOperation({ summary: "Lister les notifications" })
+	@ApiOkResponse({ type: NotificationsListResponseDto })
+	@ApiQuery({
+		name: "status",
+		required: false,
+		enum: ["all", "unread"],
+		example: "unread",
+	})
+	@ApiQuery({ name: "limit", required: false, type: Number, example: 20 })
+	@ApiQuery({ name: "offset", required: false, type: Number, example: 0 })
+	@ApiQuery({
+		name: "verb",
+		required: false,
+		type: String,
+		example: "http://example.org/core#IndividualCreated",
+	})
+	@ApiQuery({ name: "category", required: false, type: String, example: "administration" })
+	@ApiQuery({
+		name: "scope",
+		required: false,
+		enum: ["personal", "group"],
+		example: "personal",
+	})
 	async list(
 		@Req() req: AuthRequest,
 		@Query("status") status?: string,
@@ -45,6 +86,14 @@ export class NotificationsController {
 	}
 
 	@Get("unread/count")
+	@ApiOperation({ summary: "Compter les notifications non lues" })
+	@ApiOkResponse({ type: UnreadCountResponseDto })
+	@ApiQuery({
+		name: "scope",
+		required: false,
+		enum: ["personal", "group"],
+		example: "personal",
+	})
 	async unreadCount(
 		@Req() req: AuthRequest,
 		@Query("scope") scope?: string
@@ -57,6 +106,14 @@ export class NotificationsController {
 	}
 
 	@Post(":encodedId/read")
+	@ApiOperation({ summary: "Marquer une notification comme lue" })
+	@ApiCreatedResponse({ type: OkResponseDto })
+	@ApiParam({
+		name: "encodedId",
+		description: "Identifiant encode (URL-encoded) de notification",
+		example: "http%3A%2F%2Fexample.org%2Fnotification%2Fabc",
+	})
+	@ApiBadRequestResponse({ type: ApiErrorDto })
 	async markRead(@Req() req: AuthRequest, @Param("encodedId") encodedId: string) {
 		const id = this.decodeId(encodedId);
 		await this.notifications.markAsRead(req.user.sub, id);
@@ -64,6 +121,14 @@ export class NotificationsController {
 	}
 
 	@Post("read-all")
+	@ApiOperation({ summary: "Marquer toutes les notifications comme lues" })
+	@ApiCreatedResponse({ type: OkResponseDto })
+	@ApiQuery({
+		name: "scope",
+		required: false,
+		enum: ["personal", "group"],
+		example: "group",
+	})
 	async markAllRead(
 		@Req() req: AuthRequest,
 		@Query("scope") scope?: string
@@ -76,6 +141,14 @@ export class NotificationsController {
 	}
 
 	@Delete(":encodedId")
+	@ApiOperation({ summary: "Supprimer une notification" })
+	@ApiOkResponse({ type: OkResponseDto })
+	@ApiParam({
+		name: "encodedId",
+		description: "Identifiant encode (URL-encoded) de notification",
+		example: "http%3A%2F%2Fexample.org%2Fnotification%2Fabc",
+	})
+	@ApiBadRequestResponse({ type: ApiErrorDto })
 	async delete(
 		@Req() req: AuthRequest,
 		@Param("encodedId") encodedId: string

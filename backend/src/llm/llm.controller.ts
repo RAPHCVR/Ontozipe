@@ -11,6 +11,19 @@ import {
     Patch,
     Delete,
 } from "@nestjs/common";
+import {
+    ApiBadRequestResponse,
+    ApiBearerAuth,
+    ApiForbiddenResponse,
+    ApiNotFoundResponse,
+    ApiOkResponse,
+    ApiOperation,
+    ApiParam,
+    ApiQuery,
+    ApiResponse,
+    ApiTags,
+    ApiUnauthorizedResponse,
+} from "@nestjs/swagger";
 import { Request, Response } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { LlmService } from "./llm.service";
@@ -23,11 +36,25 @@ import {
     ToolMessage,
 } from "@langchain/core/messages";
 import { SYSTEM_PROMPT_FR } from "./prompt";
-import { AskDto, HistoryItemDto, CreateChatSessionDto, UpdateChatSessionDto } from "./llm.dto";
+import {
+    AskDto,
+    HistoryItemDto,
+    CreateChatSessionDto,
+    UpdateChatSessionDto,
+    DashboardSummaryRequestDto,
+    CommentSummaryRequestDto,
+    SummaryResponseDto,
+    SystemPromptResponseDto,
+    ChatSessionsResponseDto,
+    ChatSessionResponseDto,
+    ChatMessagesResponseDto,
+} from "./llm.dto";
 import { getText } from "./llm.utils";
 import { convertToOpenAITool } from "@langchain/core/utils/function_calling";
 import type { Runnable } from "@langchain/core/runnables";
 import { ChatHistoryService, AppendMessageInput } from "./chat-history.service";
+import { SuccessResponseDto } from "../common/dto/standard-response.dto";
+import { ApiErrorDto } from "../common/dto/api-error.dto";
 
 const HISTORY_SUMMARY_TRIGGER = 14;
 const HISTORY_SUMMARY_TAKE_LAST = 10;
@@ -48,6 +75,10 @@ interface AgentStep {
     result?: unknown;
 }
 
+@ApiTags("LLM")
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ type: ApiErrorDto })
+@ApiForbiddenResponse({ type: ApiErrorDto })
 @Controller("llm")
 @UseGuards(JwtAuthGuard)
 export class LlmController {
@@ -264,9 +295,12 @@ export class LlmController {
     }
 
     @Post("dashboard-summary")
+    @ApiOperation({ summary: "Résumé LLM d'une section dashboard" })
+    @ApiResponse({ status: 201, type: SummaryResponseDto })
+    @ApiBadRequestResponse({ type: ApiErrorDto })
     async summarizeDashboard(
         @Req() req: AuthRequest,
-        @Body() body: { section: string; payload: unknown; language?: string }
+        @Body() body: DashboardSummaryRequestDto
     ) {
         const section = body.section || "dashboard";
         const lang = body.language || "fr";
@@ -275,14 +309,12 @@ export class LlmController {
     }
 
     @Post("comment-summary")
+    @ApiOperation({ summary: "Résumé LLM des commentaires d'un individu" })
+    @ApiResponse({ status: 201, type: SummaryResponseDto })
+    @ApiBadRequestResponse({ type: ApiErrorDto })
     async summarizeComments(
         @Req() req: AuthRequest,
-        @Body()
-        body: {
-            individual: { id: string; label?: string; classId?: string; properties?: Array<{ predicate: string; value: string }> };
-            comments: Array<{ id: string; body: string; createdBy?: string; createdAt?: string; replyTo?: string; onResource?: string }>;
-            language?: string;
-        }
+        @Body() body: CommentSummaryRequestDto
     ) {
         const lang = body.language || "fr";
         const summary = await this.llmService.summarizeIndividualComments({
@@ -294,14 +326,22 @@ export class LlmController {
     }
 
     @Post("ask")
+    @ApiOperation({
+        summary: "Interroger l'assistant (SSE)",
+        description: "Retourne un flux Server-Sent Events (text/event-stream).",
+    })
+    @ApiResponse({
+        status: 200,
+        description: "Flux SSE de réponse assistant.",
+        content: {
+            "text/event-stream": {
+                schema: { type: "string" },
+                example: "event: chunk\\ndata: Bonjour\\n\\n",
+            },
+        },
+    })
+    @ApiBadRequestResponse({ type: ApiErrorDto })
     async ask(@Req() req: AuthRequest, @Body() dto: AskDto, @Res() res: Response) {
-        if (!dto.idempotencyKey) {
-            return res.status(400).json({ message: "La clé d'idempotence est requise." });
-        }
-        if (!dto.sessionId || !dto.sessionId.trim()) {
-            return res.status(400).json({ message: "Le sessionId est requis pour assurer l'historique persistant." });
-        }
-
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Connection", "keep-alive");
         res.setHeader("Cache-Control", "no-cache");
@@ -614,6 +654,15 @@ export class LlmController {
     }
 
     @Get("system-prompt")
+    @ApiOperation({ summary: "Récupérer le system prompt LLM" })
+    @ApiOkResponse({ type: SystemPromptResponseDto })
+    @ApiQuery({
+        name: "ontologyIri",
+        required: false,
+        type: String,
+        example: "http://example.org/ontology/core",
+    })
+    @ApiQuery({ name: "sessionId", required: false, type: String, example: "session-abc" })
     async getSystemPrompt(
         @Req() req: AuthRequest,
         @Query("ontologyIri") ontologyIri?: string,
@@ -628,6 +677,14 @@ export class LlmController {
     }
 
     @Get("chat-sessions")
+    @ApiOperation({ summary: "Lister les sessions de chat" })
+    @ApiOkResponse({ type: ChatSessionsResponseDto })
+    @ApiQuery({
+        name: "ontologyIri",
+        required: false,
+        type: String,
+        example: "http://example.org/ontology/core",
+    })
     async listChatSessions(
         @Req() req: AuthRequest,
         @Query("ontologyIri") ontologyIri?: string,
@@ -637,6 +694,9 @@ export class LlmController {
     }
 
     @Post("chat-sessions")
+    @ApiOperation({ summary: "Créer une session de chat" })
+    @ApiResponse({ status: 201, type: ChatSessionResponseDto })
+    @ApiBadRequestResponse({ type: ApiErrorDto })
     async createChatSession(
         @Req() req: AuthRequest,
         @Body() dto: CreateChatSessionDto,
@@ -649,6 +709,11 @@ export class LlmController {
     }
 
     @Patch("chat-sessions/:sessionId")
+    @ApiOperation({ summary: "Renommer une session de chat" })
+    @ApiOkResponse({ type: SuccessResponseDto })
+    @ApiParam({ name: "sessionId", example: "session-abc" })
+    @ApiNotFoundResponse({ type: ApiErrorDto })
+    @ApiBadRequestResponse({ type: ApiErrorDto })
     async renameChatSession(
         @Req() req: AuthRequest,
         @Param("sessionId") sessionId: string,
@@ -661,6 +726,10 @@ export class LlmController {
     }
 
     @Delete("chat-sessions/:sessionId")
+    @ApiOperation({ summary: "Supprimer une session de chat" })
+    @ApiOkResponse({ type: SuccessResponseDto })
+    @ApiParam({ name: "sessionId", example: "session-abc" })
+    @ApiNotFoundResponse({ type: ApiErrorDto })
     async deleteChatSession(
         @Req() req: AuthRequest,
         @Param("sessionId") sessionId: string,
@@ -670,6 +739,10 @@ export class LlmController {
     }
 
     @Get("chat-sessions/:sessionId/messages")
+    @ApiOperation({ summary: "Lister les messages d'une session" })
+    @ApiOkResponse({ type: ChatMessagesResponseDto })
+    @ApiParam({ name: "sessionId", example: "session-abc" })
+    @ApiNotFoundResponse({ type: ApiErrorDto })
     async getChatSessionMessages(
         @Req() req: AuthRequest,
         @Param("sessionId") sessionId: string,
