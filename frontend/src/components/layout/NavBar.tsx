@@ -170,6 +170,11 @@ export default function Navbar() {
 						</Link>
 					</li>
 					<li className="navbar__item">
+						<Link to="/guide" className="navbar__link" onClick={closeMenu}>
+							{t("navbar.guide")}
+						</Link>
+					</li>
+					<li className="navbar__item">
 						<Link to="/assistant" className="navbar__link" onClick={closeMenu}>
 							{t("navbar.assistant")}
 						</Link>
