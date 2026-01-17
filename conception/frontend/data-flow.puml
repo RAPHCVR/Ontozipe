@@ -1,0 +1,70 @@
+@startuml
+title Frontend Data Flow
+skinparam componentStyle rectangle
+
+package "Context" {
+  [AuthContext]
+  [LanguageContext]
+}
+
+component useApi
+component useTranslation
+component messages
+
+package "React Query hooks" {
+  [useProfile]
+  [useOntologies]
+  [useGroups]
+  [useOrganizations]
+  [useOrganizationMembers]
+  [usePersons]
+}
+
+package "Feature hooks" {
+  [useDashboard]
+  [useDashboardSummary]
+  [useAdminUsers]
+  [useNotifications]
+  [useCommentSummary]
+  [usePdfModal]
+  [useSearchPagination]
+  [useToast]
+}
+
+component Pages
+component "Backend API" as Backend
+
+[AuthContext] --> useApi : token + logout
+[LanguageContext] --> useApi : Accept-Language
+useApi --> Backend : fetch()
+
+useTranslation --> messages
+Pages --> useTranslation
+
+Pages --> [useProfile]
+Pages --> [useOntologies]
+Pages --> [useGroups]
+Pages --> [useOrganizations]
+Pages --> [useOrganizationMembers]
+Pages --> [usePersons]
+Pages --> [useDashboard]
+Pages --> [useDashboardSummary]
+Pages --> [useAdminUsers]
+Pages --> [useNotifications]
+Pages --> [useCommentSummary]
+Pages --> [usePdfModal]
+Pages --> [useSearchPagination]
+Pages --> [useToast]
+
+[useProfile] --> useApi
+[useOntologies] --> useApi
+[useGroups] --> useApi
+[useOrganizations] --> useApi
+[useOrganizationMembers] --> useApi
+[usePersons] --> useApi
+[useDashboard] --> useApi
+[useDashboardSummary] --> useApi
+[useAdminUsers] --> useApi
+[useNotifications] --> useApi
+[useCommentSummary] --> useApi
+@enduml

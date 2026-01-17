@@ -1,0 +1,26 @@
+@startuml
+title Ontology CRUD + PDF Upload Flow
+
+actor User
+participant Frontend
+participant IndividualsController
+participant IndividualsService
+participant NotificationsService
+participant "Fuseki (SPARQL)" as Fuseki
+participant "Uploads (PDF files)" as Uploads
+
+User -> Frontend : select PDFs
+Frontend -> IndividualsController : POST /individuals/upload-pdf
+IndividualsController -> Uploads : store files
+Uploads --> IndividualsController : file URLs
+IndividualsController --> Frontend : pdfUrls
+
+User -> Frontend : create individual
+Frontend -> IndividualsController : POST /individuals (with pdfUrls)
+IndividualsController -> IndividualsService : createIndividual(...)
+IndividualsService -> Fuseki : INSERT triples (individual, ACL, pdf metadata)
+IndividualsService -> NotificationsService : notifyIndividualCreated / access changes
+NotificationsService -> Fuseki : INSERT notification triples
+IndividualsService --> IndividualsController : ok
+IndividualsController --> Frontend : ok
+@enduml

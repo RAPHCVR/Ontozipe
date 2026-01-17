@@ -1,0 +1,22 @@
+@startuml
+title LLM Ask Flow (SSE + Tools)
+
+actor User
+participant Frontend
+participant LlmController
+participant LlmService
+participant ChatHistoryService
+participant "LLM Provider" as LLM
+participant "Fuseki (SPARQL)" as Fuseki
+
+User -> Frontend : ask question
+Frontend -> LlmController : POST /llm/ask (SSE)
+LlmController -> ChatHistoryService : ensureSession(user, sessionId)
+ChatHistoryService -> Fuseki : INSERT/SELECT session
+LlmController -> LlmService : prepareAgentExecutor(...)
+LlmService -> LLM : stream chat completion
+LlmService -> Fuseki : tool queries (SPARQL)
+LlmController --> Frontend : SSE chunks + final text
+LlmController -> ChatHistoryService : append messages
+ChatHistoryService -> Fuseki : INSERT chat history
+@enduml

@@ -1,0 +1,28 @@
+@startuml
+title Auth Register/Login Flow
+
+actor User
+participant Frontend
+participant AuthController
+participant AuthService
+participant NotificationsService
+participant "Fuseki (SPARQL)" as Fuseki
+
+User -> Frontend : fill register form
+Frontend -> AuthController : POST /auth/register
+AuthController -> AuthService : register(email, password, name)
+AuthService -> Fuseki : INSERT user + account + roles
+AuthService -> NotificationsService : notifyUserRegistered
+NotificationsService -> Fuseki : INSERT notification triples
+AuthController -> AuthService : login(email, password)
+AuthService -> Fuseki : SELECT account hash
+AuthService --> AuthController : JWT token
+AuthController --> Frontend : token
+
+User -> Frontend : login
+Frontend -> AuthController : POST /auth/login
+AuthController -> AuthService : login(email, password)
+AuthService -> Fuseki : SELECT account hash
+AuthService --> AuthController : JWT token
+AuthController --> Frontend : token
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Notifications Read/Write Flow
+
+actor User
+participant Frontend
+participant NotificationsController
+participant NotificationsService
+participant "Fuseki (SPARQL)" as Fuseki
+
+User -> Frontend : open notifications
+Frontend -> NotificationsController : GET /notifications
+NotificationsController -> NotificationsService : listNotifications(...)
+NotificationsService -> Fuseki : SELECT notifications
+NotificationsService --> NotificationsController : list
+NotificationsController --> Frontend : list
+
+User -> Frontend : mark as read
+Frontend -> NotificationsController : POST /notifications/:encodedId/read
+NotificationsController -> NotificationsService : markRead(id)
+NotificationsService -> Fuseki : UPDATE notification isRead
+NotificationsService --> NotificationsController : ok
+NotificationsController --> Frontend : ok
+@enduml

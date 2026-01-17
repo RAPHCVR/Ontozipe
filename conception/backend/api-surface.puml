@@ -1,0 +1,95 @@
+@startuml
+title Backend API Surface
+skinparam componentStyle rectangle
+
+component "AuthController" as Auth
+note right of Auth
+  POST /auth/register
+  POST /auth/login
+  GET /auth/me
+  PATCH /auth/me
+  POST /auth/change-password
+end note
+
+component "AdminUsersController" as AdminUsers
+note right of AdminUsers
+  GET /auth/admin/users
+  PATCH /auth/admin/users/:encodedIri
+  DELETE /auth/admin/users/:encodedIri
+end note
+
+component "OntologiesController" as Ontologies
+note right of Ontologies
+  GET /ontologies
+  POST /ontologies (multipart, optional RDF file)
+  PATCH /ontologies/:iri
+  DELETE /ontologies/:iri
+  GET /ontologies/:iri/graph
+  GET /ontologies/:iri/properties
+  GET /ontologies/:iri/snapshot
+end note
+
+component "IndividualsController" as Individuals
+note right of Individuals
+  POST /individuals
+  PATCH /individuals/:iri?ontology=...
+  DELETE /individuals/:iri?ontology=...
+  GET /individuals/persons
+  GET /individuals/persons/:iri
+  POST /individuals/upload-pdf
+end note
+
+component "GroupsController" as Groups
+note right of Groups
+  GET /groups
+  POST /groups
+  PATCH /groups/:iri
+  POST /groups/:iri/members
+  DELETE /groups/:iri/members/:user
+  DELETE /groups/:iri
+end note
+
+component "OrganizationsController" as Orgs
+note right of Orgs
+  GET /organizations
+  POST /organizations
+  PATCH /organizations/:iri
+  DELETE /organizations/:iri
+  POST /organizations/:iri/members
+  DELETE /organizations/:iri/members/:userIri
+  GET /organizations/:iri/members
+end note
+
+component "CommentsController" as Comments
+note right of Comments
+  GET /comments?resource=...&ontology=...
+  POST /comments
+  PATCH /comments/:iri
+  DELETE /comments/:iri
+end note
+
+component "NotificationsController" as Notifications
+note right of Notifications
+  GET /notifications
+  GET /notifications/unread/count
+  POST /notifications/:encodedId/read
+  POST /notifications/read-all
+  DELETE /notifications/:encodedId
+end note
+
+component "DashboardController" as Dashboard
+note right of Dashboard
+  GET /dashboard (scopeType, scopeId, lang...)
+end note
+
+component "LlmController" as Llm
+note right of Llm
+  POST /llm/dashboard-summary
+  POST /llm/comment-summary
+  POST /llm/ask (SSE)
+  GET /llm/system-prompt
+  GET /llm/chat-sessions
+  POST /llm/chat-sessions
+  GET /llm/chat-sessions/:sessionId/messages
+end note
+@enduml

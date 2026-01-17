@@ -1,0 +1,21 @@
+@startuml
+title Guide Page Structure
+skinparam componentStyle rectangle
+
+component GuidePage
+component GuideSidebar
+component GuideContent
+component GuideVideo
+component "guideNav" as GuideNav
+component "guideContent" as GuideContentData
+component useProfile
+component useTranslation
+
+GuidePage --> GuideSidebar
+GuidePage --> GuideContent
+GuideSidebar --> GuideNav
+GuideContent --> GuideContentData
+GuideContent --> GuideVideo
+GuidePage --> useProfile : RBAC filter
+GuidePage --> useTranslation : i18n
+@enduml
