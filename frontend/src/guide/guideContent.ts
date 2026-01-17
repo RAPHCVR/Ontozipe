@@ -9,7 +9,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.profile.start.title",
 		summaryKey: "guide.content.profile.start.summary",
 		markdownKey: "guide.content.profile.start.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "IVRqZ4OZYig",
 		callouts: [
 			{ type: "warning", textKey: "guide.content.profile.start.callouts.warning" },
 			{ type: "tip", textKey: "guide.content.profile.start.callouts.tip" },
@@ -27,7 +27,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.profile.security.title",
 		summaryKey: "guide.content.profile.security.summary",
 		markdownKey: "guide.content.profile.security.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "IP-vzHPGDIg",
 		callouts: [
 			{ type: "warning", textKey: "guide.content.profile.security.callouts.warning" },
 			{ type: "tip", textKey: "guide.content.profile.security.callouts.tip" },
@@ -45,7 +45,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.organization.overview.title",
 		summaryKey: "guide.content.organization.overview.summary",
 		markdownKey: "guide.content.organization.overview.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "oS6JFz90C0k",
 		callouts: [
 			{
 				type: "warning",
@@ -72,7 +72,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.organization.members.title",
 		summaryKey: "guide.content.organization.members.summary",
 		markdownKey: "guide.content.organization.members.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "cb4Lci5oAq0",
 		access: "admin",
 		callouts: [
 			{
@@ -100,7 +100,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.organization.settings.title",
 		summaryKey: "guide.content.organization.settings.summary",
 		markdownKey: "guide.content.organization.settings.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "AhZPXWisnXE",
 		access: "admin",
 		callouts: [
 			{
@@ -128,7 +128,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.organization.users.title",
 		summaryKey: "guide.content.organization.users.summary",
 		markdownKey: "guide.content.organization.users.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "DZw4azZ9eOE",
 		access: "superadmin",
 		callouts: [
 			{
@@ -153,7 +153,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.organization.superadmin.title",
 		summaryKey: "guide.content.organization.superadmin.summary",
 		markdownKey: "guide.content.organization.superadmin.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "RbFNE98Lk5Y",
 		access: "superadmin",
 		callouts: [
 			{
@@ -181,7 +181,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.group.create.title",
 		summaryKey: "guide.content.group.create.summary",
 		markdownKey: "guide.content.group.create.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "wbRzWHsLqXI",
 		callouts: [
 			{ type: "warning", textKey: "guide.content.group.create.callouts.warning" },
 			{ type: "tip", textKey: "guide.content.group.create.callouts.tip" },
@@ -199,7 +199,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.group.members.title",
 		summaryKey: "guide.content.group.members.summary",
 		markdownKey: "guide.content.group.members.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "2izAASs2yIU",
 		callouts: [
 			{ type: "warning", textKey: "guide.content.group.members.callouts.warning" },
 			{ type: "tip", textKey: "guide.content.group.members.callouts.tip" },
@@ -217,7 +217,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.ontology.explore.title",
 		summaryKey: "guide.content.ontology.explore.summary",
 		markdownKey: "guide.content.ontology.explore.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "W4DQTsmQWRU",
 		callouts: [
 			{
 				type: "warning",
