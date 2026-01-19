@@ -95,7 +95,8 @@ body {
 	background-color: var(--surface-app);
 	color: var(--color-text);
 	font-family: "Inter", sans-serif;
-	transition: background-color var(--transition-base),
+	transition:
+		background-color var(--transition-base),
 		color var(--transition-base);
 	-webkit-font-smoothing: antialiased;
 }
@@ -194,8 +195,10 @@ hr {
 	border-radius: 1.1rem;
 	padding: 1.5rem;
 	box-shadow: 0 24px 45px -35px rgba(15, 23, 42, 0.45);
-	transition: background-color var(--transition-base),
-		border-color var(--transition-base), box-shadow var(--transition-base);
+	transition:
+		background-color var(--transition-base),
+		border-color var(--transition-base),
+		box-shadow var(--transition-base);
 }
 
 /* Dashboard */
@@ -444,8 +447,12 @@ hr {
 	color: #0f172a;
 }
 
-.assistant-page .assistant-message--assistant.prose :where(p, ul, ol, li, strong, em, code, blockquote),
-.assistant-page .assistant-system :where(p, ul, ol, li, strong, em, code, blockquote) {
+.assistant-page
+	.assistant-message--assistant.prose
+	:where(p, ul, ol, li, strong, em, code, blockquote),
+.assistant-page
+	.assistant-system
+	:where(p, ul, ol, li, strong, em, code, blockquote) {
 	color: #0f172a !important;
 }
 
@@ -471,7 +478,9 @@ hr {
 	color: #ffffff;
 }
 
-.assistant-page .assistant-message--user.prose :where(p, ul, ol, li, strong, em, code, blockquote) {
+.assistant-page
+	.assistant-message--user.prose
+	:where(p, ul, ol, li, strong, em, code, blockquote) {
 	color: #ffffff !important;
 }
 
@@ -564,8 +573,14 @@ hr {
 	color: #e2e8f0;
 }
 
-.dark .assistant-page .assistant-message--assistant.prose :where(p, ul, ol, li, strong, em, code, blockquote),
-.dark .assistant-page .assistant-system :where(p, ul, ol, li, strong, em, code, blockquote) {
+.dark
+	.assistant-page
+	.assistant-message--assistant.prose
+	:where(p, ul, ol, li, strong, em, code, blockquote),
+.dark
+	.assistant-page
+	.assistant-system
+	:where(p, ul, ol, li, strong, em, code, blockquote) {
 	color: #e2e8f0 !important;
 }
 
@@ -584,7 +599,10 @@ hr {
 	color: #ffffff;
 }
 
-.dark .assistant-page .assistant-message--user.prose :where(p, ul, ol, li, strong, em, code, blockquote) {
+.dark
+	.assistant-page
+	.assistant-message--user.prose
+	:where(p, ul, ol, li, strong, em, code, blockquote) {
 	color: #ffffff !important;
 }
 
@@ -727,8 +745,12 @@ hr {
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
-	transition: transform 150ms ease, box-shadow 200ms ease,
-		background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+	transition:
+		transform 150ms ease,
+		box-shadow 200ms ease,
+		background-color 200ms ease,
+		color 200ms ease,
+		border-color 200ms ease;
 }
 
 .button:focus-visible,
@@ -817,7 +839,9 @@ hr {
 	font-size: 0.8rem;
 	font-weight: 500;
 	cursor: pointer;
-	transition: background-color 180ms ease, border-color 180ms ease,
+	transition:
+		background-color 180ms ease,
+		border-color 180ms ease,
 		color 180ms ease;
 }
 
@@ -909,7 +933,9 @@ hr {
 	color: inherit;
 	font-size: 1.5rem;
 	cursor: pointer;
-	transition: background-color 160ms ease, transform 150ms ease;
+	transition:
+		background-color 160ms ease,
+		transform 150ms ease;
 }
 
 .navbar__toggle:hover {
@@ -928,7 +954,9 @@ hr {
 	gap: 0.6rem;
 	transform: translateY(-120%);
 	opacity: 0;
-	transition: transform 220ms ease, opacity 220ms ease;
+	transition:
+		transform 220ms ease,
+		opacity 220ms ease;
 	box-shadow: 0 30px 50px -45px rgba(15, 23, 42, 0.75);
 }
 
@@ -951,8 +979,68 @@ hr {
 	background: transparent;
 	color: inherit;
 	font-weight: 500;
-	transition: background-color 180ms ease, transform 150ms ease;
+	transition:
+		background-color 180ms ease,
+		transform 150ms ease;
 	border: none;
+}
+
+.navbar__link-text {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.navbar__link-icon {
+	font-size: 1.1rem;
+}
+
+.navbar__link--icon {
+	justify-content: center;
+	padding: 0.55rem;
+	width: 42px;
+	height: 42px;
+}
+
+.navbar__flags {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.25rem;
+	border-radius: 999px;
+	background: rgba(248, 250, 252, 0.12);
+	border: 1px solid rgba(248, 250, 252, 0.2);
+}
+
+.navbar__flag {
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	border: 1px solid transparent;
+	background: transparent;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.05rem;
+	cursor: pointer;
+	color: inherit;
+	transition: transform 150ms ease, border-color 150ms ease,
+		background-color 150ms ease;
+}
+
+.navbar__flag:hover {
+	transform: translateY(-1px);
+	border-color: rgba(248, 250, 252, 0.45);
+}
+
+.navbar__flag.is-active {
+	background: rgba(248, 250, 252, 0.22);
+	border-color: rgba(248, 250, 252, 0.6);
+	box-shadow: 0 10px 25px -18px rgba(15, 23, 42, 0.55);
+}
+
+.navbar__spacer {
+	display: none;
 }
 
 .navbar__link:hover,
@@ -1002,13 +1090,27 @@ hr {
 		padding: 0;
 		display: flex;
 		align-items: center;
-		gap: 0.3rem;
+		gap: 0.2rem;
+		flex: 1;
+		justify-content: flex-start;
 		box-shadow: none;
 	}
 
 	.navbar__link {
 		min-width: 0;
 		justify-content: center;
+		padding: 0.55rem 0.7rem;
+		font-size: 0.92rem;
+	}
+
+	.navbar__link--icon {
+		width: 40px;
+		height: 40px;
+		padding: 0;
+	}
+
+	.navbar__flags {
+		padding: 0.2rem;
 	}
 
 	.navbar__theme-label {
@@ -1017,6 +1119,12 @@ hr {
 
 	.navbar__divider {
 		display: none;
+	}
+
+	.navbar__spacer {
+		display: block;
+		flex: 1;
+		height: 1px;
 	}
 }
 
@@ -1104,7 +1212,9 @@ hr {
 	background: var(--surface-card);
 	border: 1px solid color-mix(in srgb, var(--border-color) 75%, transparent);
 	box-shadow: 0 30px 60px -45px rgba(15, 23, 42, 0.5);
-	transition: transform 200ms ease, box-shadow 200ms ease,
+	transition:
+		transform 200ms ease,
+		box-shadow 200ms ease,
 		border-color 200ms ease;
 }
 
@@ -1186,8 +1296,11 @@ hr {
 	display: grid;
 	place-items: center;
 	font-size: 0.95rem;
-	transition: background-color 160ms ease, border-color 160ms ease,
-		color 160ms ease, transform 160ms ease;
+	transition:
+		background-color 160ms ease,
+		border-color 160ms ease,
+		color 160ms ease,
+		transform 160ms ease;
 }
 
 .icon-button:hover {
@@ -1322,7 +1435,9 @@ hr {
 	border-radius: 0.9rem;
 	background: var(--surface-card);
 	border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
-	transition: transform 160ms ease, box-shadow 160ms ease,
+	transition:
+		transform 160ms ease,
+		box-shadow 160ms ease,
 		border-color 160ms ease;
 	cursor: grab;
 }
@@ -1375,7 +1490,9 @@ hr {
 	cursor: pointer;
 	display: grid;
 	place-items: center;
-	transition: background-color 160ms ease, color 160ms ease;
+	transition:
+		background-color 160ms ease,
+		color 160ms ease;
 }
 
 .member-selector__action:hover {
@@ -1416,7 +1533,8 @@ hr {
 
 .home__hero {
 	position: relative;
-	background: radial-gradient(
+	background:
+		radial-gradient(
 			circle at 15% 20%,
 			rgba(253, 224, 71, 0.28),
 			transparent 55%
@@ -1431,7 +1549,8 @@ hr {
 }
 
 .dark .home__hero {
-	background: radial-gradient(
+	background:
+		radial-gradient(
 			circle at 20% 20%,
 			rgba(250, 204, 21, 0.12),
 			transparent 60%
@@ -1627,7 +1746,9 @@ hr {
 	display: flex;
 	flex-direction: column;
 	gap: 1.2rem;
-	transition: transform 220ms ease, box-shadow 220ms ease,
+	transition:
+		transform 220ms ease,
+		box-shadow 220ms ease,
 		border-color 220ms ease;
 	opacity: 0;
 	transform: translateY(24px);
@@ -1694,7 +1815,9 @@ hr {
 	color: rgba(148, 163, 184, 0.8);
 	font-size: 1.2rem;
 	cursor: pointer;
-	transition: color 160ms ease, transform 160ms ease;
+	transition:
+		color 160ms ease,
+		transform 160ms ease;
 }
 
 .ontology-card__favorite:hover {
@@ -1817,7 +1940,9 @@ hr {
 	color: var(--color-muted);
 	font-size: 1rem;
 	cursor: pointer;
-	transition: transform 150ms ease, color 150ms ease;
+	transition:
+		transform 150ms ease,
+		color 150ms ease;
 }
 
 .modal__close:hover {
@@ -1912,8 +2037,10 @@ select {
 	color: var(--color-text);
 	padding: 0.75rem 1rem;
 	font-size: 0.95rem;
-	transition: background-color var(--transition-base),
-		color var(--transition-base), border-color var(--transition-base),
+	transition:
+		background-color var(--transition-base),
+		color var(--transition-base),
+		border-color var(--transition-base),
 		box-shadow var(--transition-base);
 }
 
@@ -1943,8 +2070,11 @@ input:disabled {
 	color: var(--form-placeholder);
 	opacity: 0.82;
 	pointer-events: none;
-	transition: transform var(--transition-base), color var(--transition-base),
-		font-size var(--transition-base), top var(--transition-base),
+	transition:
+		transform var(--transition-base),
+		color var(--transition-base),
+		font-size var(--transition-base),
+		top var(--transition-base),
 		opacity var(--transition-base);
 }
 
@@ -2205,7 +2335,8 @@ textarea::placeholder {
 	border: 1px solid rgba(79, 70, 229, 0.35);
 	background: rgba(255, 255, 255, 0.92);
 	box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
-	transition: border-color var(--transition-base),
+	transition:
+		border-color var(--transition-base),
 		box-shadow var(--transition-base);
 }
 
@@ -2526,7 +2657,8 @@ textarea::placeholder {
    -------------------------------------------------*/
 
 .guide-page {
-	background: radial-gradient(
+	background:
+		radial-gradient(
 			circle at top left,
 			rgba(79, 70, 229, 0.06),
 			transparent 50%
@@ -2591,7 +2723,9 @@ textarea::placeholder {
 	font-weight: 600;
 	cursor: pointer;
 	box-shadow: 0 10px 25px -15px rgba(79, 70, 229, 0.35);
-	transition: transform 150ms ease, box-shadow 150ms ease;
+	transition:
+		transform 150ms ease,
+		box-shadow 150ms ease;
 }
 
 .guide-hero__toggle:hover {
@@ -2635,7 +2769,7 @@ textarea::placeholder {
 	flex-direction: column;
 	max-height: calc(100vh - 140px);
 	overflow: hidden;
-	z-index: 50;
+	z-index: 1;
 }
 
 .guide-sidebar__header {
@@ -2683,7 +2817,9 @@ textarea::placeholder {
 	background: var(--form-bg);
 	color: var(--color-text);
 	font-size: 0.85rem;
-	transition: border-color 150ms ease, box-shadow 150ms ease;
+	transition:
+		border-color 150ms ease,
+		box-shadow 150ms ease;
 }
 
 .guide-sidebar__search input:focus {
@@ -2747,7 +2883,9 @@ textarea::placeholder {
 	max-height: 0;
 	opacity: 0;
 	overflow: hidden;
-	transition: max-height 180ms ease, opacity 180ms ease;
+	transition:
+		max-height 180ms ease,
+		opacity 180ms ease;
 }
 
 .guide-accordion__panel.is-open,
@@ -2774,7 +2912,9 @@ textarea::placeholder {
 	padding: 0.55rem 0.7rem;
 	margin: 0.35rem 0;
 	cursor: pointer;
-	transition: border-color 150ms ease, background-color 150ms ease,
+	transition:
+		border-color 150ms ease,
+		background-color 150ms ease,
 		transform 150ms ease;
 }
 
@@ -2827,7 +2967,7 @@ textarea::placeholder {
 
 .guide-content__layout {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 320px;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 1.5rem;
 	align-items: start;
 }
@@ -2932,6 +3072,50 @@ textarea::placeholder {
 .guide-callouts {
 	display: grid;
 	gap: 0.8rem;
+}
+
+.guide-content__nav {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+}
+
+.guide-content__nav-button {
+	border: 1px solid var(--border-color);
+	border-radius: 1rem;
+	padding: 0.85rem 1rem;
+	background: var(--surface-card);
+	color: var(--color-text);
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	align-items: flex-start;
+	transition: border-color 150ms ease, transform 150ms ease,
+		box-shadow 150ms ease;
+}
+
+.guide-content__nav-button:hover:not(:disabled) {
+	border-color: var(--color-primary);
+	transform: translateY(-1px);
+	box-shadow: 0 14px 30px -24px rgba(79, 70, 229, 0.4);
+}
+
+.guide-content__nav-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.guide-content__nav-label {
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--color-muted);
+	font-weight: 600;
+}
+
+.guide-content__nav-title {
+	font-size: 0.95rem;
+	font-weight: 600;
 }
 
 .guide-callout {
@@ -3095,6 +3279,10 @@ textarea::placeholder {
 	}
 
 	.guide-content__layout {
+		grid-template-columns: 1fr;
+	}
+
+	.guide-content__nav {
 		grid-template-columns: 1fr;
 	}
 }
@@ -3267,7 +3455,9 @@ textarea::placeholder {
 	font-weight: 600;
 	padding: 0.45rem 0.9rem;
 	cursor: pointer;
-	transition: background-color var(--transition-base), transform 120ms ease;
+	transition:
+		background-color var(--transition-base),
+		transform 120ms ease;
 }
 
 .form-input--file:hover::file-selector-button {
@@ -3439,7 +3629,9 @@ select:hover {
 	border-left: 2px solid var(--border-color);
 	max-width: 70ch;
 	font-size: 0.95rem;
-	transition: border-color var(--transition-base), background-color var(--transition-base);
+	transition:
+		border-color var(--transition-base),
+		background-color var(--transition-base);
 }
 
 .comment-block__content {
@@ -3525,7 +3717,9 @@ select:hover {
 	color: var(--color-text);
 	font-size: 0.9rem;
 	resize: none;
-	transition: border-color var(--transition-base), box-shadow var(--transition-base);
+	transition:
+		border-color var(--transition-base),
+		box-shadow var(--transition-base);
 }
 
 .comment-block__textarea:focus {
@@ -3561,7 +3755,9 @@ select:hover {
 .comment-suggestions__item {
 	padding: 0.35rem 0.75rem;
 	cursor: pointer;
-	transition: background-color var(--transition-base), color var(--transition-base);
+	transition:
+		background-color var(--transition-base),
+		color var(--transition-base);
 }
 
 .comment-suggestions__item:hover,
@@ -3642,7 +3838,9 @@ select:hover {
 	font-size: 1.4rem;
 	color: var(--color-muted);
 	cursor: pointer;
-	transition: color var(--transition-base), transform var(--transition-base);
+	transition:
+		color var(--transition-base),
+		transform var(--transition-base);
 }
 
 .pdf-modal__close:hover {
@@ -3890,7 +4088,10 @@ select:hover {
 	font-size: 0.85rem;
 	color: var(--color-text);
 	background: var(--surface-card);
-	transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base);
+	transition:
+		background-color var(--transition-base),
+		border-color var(--transition-base),
+		color var(--transition-base);
 }
 
 .individual-form__chip.is-selected {
@@ -3927,7 +4128,9 @@ select:hover {
 	border: 1px solid var(--border-color);
 	border-radius: 0.9rem;
 	padding: 1rem 1.1rem;
-	transition: background-color var(--transition-base), box-shadow var(--transition-base),
+	transition:
+		background-color var(--transition-base),
+		box-shadow var(--transition-base),
 		border-color var(--transition-base);
 }
 
@@ -3996,7 +4199,11 @@ select:hover {
 	inset: 0;
 	pointer-events: none;
 	opacity: 0.35;
-	background: radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.35), transparent 32%);
+	background: radial-gradient(
+		circle at 10% 10%,
+		rgba(255, 255, 255, 0.35),
+		transparent 32%
+	);
 }
 
 .individual-card__section--data {
@@ -4005,7 +4212,8 @@ select:hover {
 		color-mix(in srgb, var(--button-primary-bg) 6%, transparent),
 		transparent 60%
 	);
-	border: 1px solid color-mix(in srgb, var(--button-primary-bg) 20%, var(--border-color));
+	border: 1px solid
+		color-mix(in srgb, var(--button-primary-bg) 20%, var(--border-color));
 	border-radius: 0.9rem;
 	padding: 0.8rem 0.9rem;
 	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -4110,12 +4318,19 @@ select:hover {
 	cursor: pointer;
 	background: var(--surface-card);
 	color: var(--color-text);
-	transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base);
+	transition:
+		background-color var(--transition-base),
+		border-color var(--transition-base),
+		color var(--transition-base);
 }
 
 .relation-chip.has-data {
 	background: color-mix(in srgb, var(--button-primary-bg) 10%, transparent);
-	border-color: color-mix(in srgb, var(--button-primary-bg) 45%, var(--border-color));
+	border-color: color-mix(
+		in srgb,
+		var(--button-primary-bg) 45%,
+		var(--border-color)
+	);
 	color: color-mix(in srgb, var(--button-primary-bg) 60%, var(--color-text));
 }
 
@@ -4141,7 +4356,9 @@ select:hover {
 	white-space: nowrap;
 	opacity: 0;
 	visibility: hidden;
-	transition: opacity var(--transition-base), visibility var(--transition-base);
+	transition:
+		opacity var(--transition-base),
+		visibility var(--transition-base);
 	z-index: 5;
 }
 

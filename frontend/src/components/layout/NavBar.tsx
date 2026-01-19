@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import {
 	HiOutlineMenu,
 	HiOutlineMoon,
+	HiOutlineSparkles,
 	HiOutlineSun,
 	HiX,
 } from "react-icons/hi";
@@ -22,6 +23,12 @@ import {
 } from "../../hooks/useNotifications";
 
 type ThemeMode = "light" | "dark";
+
+const LANGUAGE_FLAGS: Record<SupportedLanguage, string> = {
+	fr: "\u{1F1EB}\u{1F1F7}",
+	en: "\u{1F1EC}\u{1F1E7}",
+	es: "\u{1F1EA}\u{1F1F8}",
+};
 
 export default function Navbar() {
 	const { logout } = useAuth();
@@ -49,7 +56,7 @@ export default function Navbar() {
 		}
 
 		const prefersDark = window.matchMedia(
-			"(prefers-color-scheme: dark)"
+			"(prefers-color-scheme: dark)",
 		).matches;
 		const resolved = prefersDark ? "dark" : "light";
 		root.classList.toggle("dark", prefersDark);
@@ -98,11 +105,23 @@ export default function Navbar() {
 	const closeMenu = () => setOpen(false);
 
 	const languageLabels = useMemo(() => {
-		return SUPPORTED_LANGUAGES.reduce((acc, code) => {
-			const key = `language.option.${code}` as const;
-			return { ...acc, [code]: t(key) };
-		}, {} as Record<SupportedLanguage, string>);
+		return SUPPORTED_LANGUAGES.reduce(
+			(acc, code) => {
+				const key = `language.option.${code}` as const;
+				return { ...acc, [code]: t(key) };
+			},
+			{} as Record<SupportedLanguage, string>,
+		);
 	}, [t]);
+	const languageOptions = useMemo(
+		() =>
+			SUPPORTED_LANGUAGES.map((code) => ({
+				code,
+				label: languageLabels[code],
+				flag: LANGUAGE_FLAGS[code] ?? "\u{1F3F3}\u{FE0F}",
+			})),
+		[languageLabels],
+	);
 
 	const unreadCount = unreadQuery.data?.unreadCount ?? 0;
 	const badgeValue =
@@ -130,23 +149,6 @@ export default function Navbar() {
 					<span className="navbar__title">OntoZIPE</span>
 				</Link>
 
-				<div className="hidden md:flex items-center gap-2 text-sm">
-					<label htmlFor="language-select" className="text-white/80">
-						{t("common.language")}
-					</label>
-					<select
-						id="language-select"
-						value={language}
-						onChange={(event) => setLanguage(event.target.value)}
-						className="bg-indigo-500/30 text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/50">
-						{SUPPORTED_LANGUAGES.map((code) => (
-							<option key={code} value={code}>
-								{languageLabels[code]}
-							</option>
-						))}
-					</select>
-				</div>
-
 				<div className="navbar__actions">
 					<button
 						type="button"
@@ -170,13 +172,12 @@ export default function Navbar() {
 						</Link>
 					</li>
 					<li className="navbar__item">
-						<Link to="/guide" className="navbar__link" onClick={closeMenu}>
-							{t("navbar.guide")}
-						</Link>
-					</li>
-					<li className="navbar__item">
 						<Link to="/assistant" className="navbar__link" onClick={closeMenu}>
-							{t("navbar.assistant")}
+							<span className="navbar__link-text">{t("navbar.assistant")}</span>
+							<HiOutlineSparkles
+								className="navbar__link-icon"
+								aria-hidden="true"
+							/>
 						</Link>
 					</li>
 					<li className="navbar__item">
@@ -192,19 +193,43 @@ export default function Navbar() {
 							{t("navbar.organisations")}
 						</Link>
 					</li>
+					{isSuperAdmin && (
+						<li className="navbar__item">
+							<Link
+								to="/admin/users"
+								className="navbar__link"
+								onClick={closeMenu}>
+								Users
+							</Link>
+						</li>
+					)}
+
+					<li className="navbar__item">
+						<Link to="/guide" className="navbar__link" onClick={closeMenu}>
+							{t("navbar.guide")}
+						</Link>
+					</li>
+					<li className="navbar__item">
+						<Link to="/profile" className="navbar__link" onClick={closeMenu}>
+							{t("navbar.profile")}
+						</Link>
+					</li>
+					<li className="navbar__divider" aria-hidden="true" />
+					<li className="navbar__spacer" aria-hidden="true" />
 					<li
-						className="navbar__item relative"
+						className="navbar__item navbar__item--icon relative"
 						ref={notifRef}
 						onMouseEnter={() => setShowNotifications(true)}>
 						<Link
 							to="/notifications"
-							className="navbar__link flex items-center gap-2 relative"
+							title={t("navbar.notifications")}
+							aria-label={t("navbar.notifications")}
+							className="navbar__link navbar__link--icon relative"
 							onClick={() => {
 								closeMenu();
 								setShowNotifications(false);
 							}}>
 							<i className="fas fa-bell" aria-hidden="true" />
-							<span>{t("navbar.notifications")}</span>
 							{badgeValue && (
 								<span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold shadow-sm">
 									{badgeValue}
@@ -224,42 +249,29 @@ export default function Navbar() {
 							/>
 						)}
 					</li>
-					{isSuperAdmin && (
-						<li className="navbar__item">
-							<Link
-								to="/admin/users"
-								className="navbar__link"
-								onClick={closeMenu}>
-								Users
-							</Link>
-						</li>
-					)}
-
-					<li className="navbar__item">
-						<Link to="/profile" className="navbar__link" onClick={closeMenu}>
-							{t("navbar.profile")}
-						</Link>
-					</li>
-					<li className="md:hidden px-4 py-2">
-						<label
-							htmlFor="language-select-mobile"
-							className="block text-xs text-white/70 mb-1">
-							{t("common.language")}
-						</label>
-						<select
-							id="language-select-mobile"
-							value={language}
-							onChange={(event) => {
-								setLanguage(event.target.value);
-								closeMenu();
-							}}
-							className="w-full bg-indigo-500/40 text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/50">
-							{SUPPORTED_LANGUAGES.map((code) => (
-								<option key={code} value={code}>
-									{languageLabels[code]}
-								</option>
+					<li className="navbar__item navbar__item--icon">
+						<div
+							className="navbar__flags"
+							role="group"
+							aria-label={t("common.language")}>
+							{languageOptions.map((option) => (
+								<button
+									key={option.code}
+									type="button"
+									title={option.label}
+									aria-label={option.label}
+									aria-pressed={language === option.code}
+									className={`navbar__flag ${
+										language === option.code ? "is-active" : ""
+									}`}
+									onClick={() => {
+										setLanguage(option.code);
+										closeMenu();
+									}}>
+									<span aria-hidden="true">{option.flag}</span>
+								</button>
 							))}
-						</select>
+						</div>
 					</li>
 					<li className="navbar__item">
 						<button
@@ -279,7 +291,6 @@ export default function Navbar() {
 							)}
 						</button>
 					</li>
-					<li className="navbar__divider" aria-hidden="true" />
 					<li className="navbar__item">
 						<button
 							type="button"
@@ -314,8 +325,8 @@ function NotificationPreviewPopover({
 	const [isDarkMode, setIsDarkMode] = useState<boolean>(() =>
 		typeof document !== "undefined"
 			? document.documentElement.classList.contains("dark") ||
-			  document.documentElement.dataset.theme === "dark"
-			: false
+				document.documentElement.dataset.theme === "dark"
+			: false,
 	);
 
 	useEffect(() => {
@@ -336,12 +347,12 @@ function NotificationPreviewPopover({
 				backgroundColor: "#111827",
 				color: "#e5e7eb",
 				borderColor: "#1f2937",
-		  }
+			}
 		: {
 				backgroundColor: "#ffffff",
 				color: "#0f172a",
 				borderColor: "#e5e7eb",
-		  };
+			};
 	const dividerStyle = {
 		borderBottom: `1px solid ${isDarkMode ? "#1f2937" : "#e5e7eb"}`,
 	};

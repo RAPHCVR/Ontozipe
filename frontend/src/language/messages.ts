@@ -59,7 +59,7 @@ const definitions = {
 		es: "Cerrar la ventana",
 	},
 	"navbar.home": { fr: "Accueil", en: "Home", es: "Inicio" },
-	"navbar.assistant": { fr: "Assistant", en: "Assistant", es: "Asistente" },
+	"navbar.assistant": { fr: "OntoBot", en: "OntoBot", es: "OntoBot" },
 	"navbar.groups": { fr: "Groupes", en: "Groups", es: "Grupos" },
 	"navbar.organisations": {
 		fr: "Organisations",

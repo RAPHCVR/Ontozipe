@@ -76,6 +76,13 @@ export default function GuidePage() {
 	const defaultId = orderedIds[0];
 	const activeId = id && contentMap.has(id) ? id : defaultId;
 	const activeEntry = activeId ? contentMap.get(activeId) : undefined;
+	const activeIndex = activeId ? orderedIds.indexOf(activeId) : -1;
+	const previousEntry =
+		activeIndex > 0 ? contentMap.get(orderedIds[activeIndex - 1]) : undefined;
+	const nextEntry =
+		activeIndex >= 0 && activeIndex < orderedIds.length - 1
+			? contentMap.get(orderedIds[activeIndex + 1])
+			: undefined;
 
 	useEffect(() => {
 		if (!activeId) return;
@@ -167,7 +174,13 @@ export default function GuidePage() {
 					isOpen={sidebarOpen}
 					onClose={() => setSidebarOpen(false)}
 				/>
-				<GuideContent entry={activeEntry} categoryLabel={categoryLabel} />
+				<GuideContent
+					entry={activeEntry}
+					categoryLabel={categoryLabel}
+					previous={previousEntry}
+					next={nextEntry}
+					onNavigate={(value) => navigate(`/guide/${value}`)}
+				/>
 			</div>
 		</div>
 	);

@@ -8,6 +8,9 @@ import GuideVideo from "./GuideVideo";
 type GuideContentProps = {
 	entry?: GuideContentEntry;
 	categoryLabel?: string;
+	previous?: GuideContentEntry;
+	next?: GuideContentEntry;
+	onNavigate?: (id: string) => void;
 };
 
 const calloutTitleKey: Record<GuideCalloutType, TranslationKey> = {
@@ -31,7 +34,13 @@ const resolveVideoId = (entry?: GuideContentEntry): string | undefined => {
 	}
 };
 
-export default function GuideContent({ entry, categoryLabel }: GuideContentProps) {
+export default function GuideContent({
+	entry,
+	categoryLabel,
+	previous,
+	next,
+	onNavigate,
+}: GuideContentProps) {
 	const { t } = useTranslation();
 
 	if (!entry) {
@@ -58,6 +67,7 @@ export default function GuideContent({ entry, categoryLabel }: GuideContentProps
 
 			<div className="guide-content__layout">
 				<div className="guide-content__main">
+					<GuideVideo videoId={videoId} />
 					<div className="guide-markdown card">
 						<div className="guide-markdown__title">
 							<span>{t("guide.readme.title")}</span>
@@ -104,10 +114,39 @@ export default function GuideContent({ entry, categoryLabel }: GuideContentProps
 							))}
 						</div>
 					)}
-				</div>
 
-				<div className="guide-content__aside">
-					<GuideVideo videoId={videoId} />
+					{(previous || next) && (
+						<div className="guide-content__nav">
+							<button
+								type="button"
+								className="guide-content__nav-button"
+								disabled={!previous}
+								onClick={() => previous && onNavigate?.(previous.id)}>
+								<span className="guide-content__nav-label">
+									{t("common.pagination.previous")}
+								</span>
+								{previous && (
+									<span className="guide-content__nav-title">
+										{t(previous.titleKey)}
+									</span>
+								)}
+							</button>
+							<button
+								type="button"
+								className="guide-content__nav-button"
+								disabled={!next}
+								onClick={() => next && onNavigate?.(next.id)}>
+								<span className="guide-content__nav-label">
+									{t("common.pagination.next")}
+								</span>
+								{next && (
+									<span className="guide-content__nav-title">
+										{t(next.titleKey)}
+									</span>
+								)}
+							</button>
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
