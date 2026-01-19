@@ -2669,6 +2669,7 @@ textarea::placeholder {
 			transparent 55%
 		);
 	padding-bottom: 2rem;
+	--guide-sidebar-top: 0px;
 }
 
 .guide-hero {
@@ -2704,7 +2705,7 @@ textarea::placeholder {
 
 .guide-hero__text h1 {
 	font-size: clamp(1.7rem, 2vw + 1rem, 2.4rem);
-	margin-top: 0.75rem;
+	margin-top: 0;
 	margin-bottom: 0.35rem;
 }
 
@@ -2839,6 +2840,8 @@ textarea::placeholder {
 .guide-sidebar__content {
 	padding: 0.2rem 0.9rem 1rem;
 	overflow-y: auto;
+	flex: 1;
+	min-height: 0;
 }
 
 .guide-sidebar__empty {
@@ -2943,7 +2946,7 @@ textarea::placeholder {
 }
 
 .guide-content__header {
-	margin-bottom: 1.2rem;
+	margin-bottom: 0.8rem;
 }
 
 .guide-content__header h2 {
@@ -2994,6 +2997,17 @@ textarea::placeholder {
 	font-size: 0.95rem;
 }
 
+.guide-markdown__media {
+	margin-top: 1.4rem;
+}
+
+.guide-markdown .guide-video {
+	padding: 0;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+}
+
 .guide-markdown__title {
 	font-weight: 700;
 	margin-bottom: 0.85rem;
@@ -3025,6 +3039,10 @@ textarea::placeholder {
 	margin: 0;
 	display: grid;
 	gap: 0.65rem;
+}
+
+.guide-steps--inline {
+	margin-top: 1.2rem;
 }
 
 .guide-steps__title {
@@ -3094,6 +3112,26 @@ textarea::placeholder {
 		box-shadow 150ms ease;
 }
 
+.guide-content__nav-button--next {
+	align-items: flex-end;
+	text-align: right;
+}
+
+.guide-content__nav-meta {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--color-muted);
+	font-weight: 600;
+}
+
+.guide-content__nav-icon {
+	font-size: 0.95rem;
+}
+
 .guide-content__nav-button:hover:not(:disabled) {
 	border-color: var(--color-primary);
 	transform: translateY(-1px);
@@ -3103,14 +3141,6 @@ textarea::placeholder {
 .guide-content__nav-button:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
-}
-
-.guide-content__nav-label {
-	font-size: 0.7rem;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: var(--color-muted);
-	font-weight: 600;
 }
 
 .guide-content__nav-title {
@@ -3175,6 +3205,7 @@ textarea::placeholder {
 	border-radius: 1rem;
 	overflow: hidden;
 	background: #0b1120;
+	min-height: 220px;
 }
 
 .guide-video__frame iframe {
@@ -3243,6 +3274,20 @@ textarea::placeholder {
 	}
 }
 
+@media (min-width: 960px) {
+	.guide-sidebar {
+		position: fixed;
+		top: var(--guide-sidebar-top, 6rem);
+		width: min(320px, 28vw);
+		height: calc(100vh - var(--guide-sidebar-top, 6rem));
+		max-height: calc(100vh - var(--guide-sidebar-top, 6rem));
+	}
+
+	.guide-content {
+		grid-column: 2 / 3;
+	}
+}
+
 @media (max-width: 960px) {
 	.guide-hero__inner {
 		flex-direction: column;
@@ -3255,6 +3300,10 @@ textarea::placeholder {
 
 	.guide-layout {
 		grid-template-columns: 1fr;
+	}
+
+	.guide-content {
+		grid-column: 1 / -1;
 	}
 
 	.guide-sidebar {
@@ -3284,6 +3333,12 @@ textarea::placeholder {
 
 	.guide-content__nav {
 		grid-template-columns: 1fr;
+	}
+}
+
+@media (min-width: 960px) {
+	.guide-video__frame {
+		min-height: 360px;
 	}
 }
 

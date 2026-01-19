@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { guideNav } from "../guide/guideNav";
 import { guideContent } from "../guide/guideContent";
-import type { GuideAccess, GuideContentEntry, GuideNavCategory } from "../guide/guideTypes";
+import type { GuideAccess } from "../guide/guideTypes";
 import GuideSidebar from "../components/guide/GuideSidebar";
 import GuideContent from "../components/guide/GuideContent";
 import { useTranslation } from "../language/useTranslation";
@@ -24,27 +24,14 @@ const canAccess = (access: GuideAccess | undefined, roles: string[]) => {
 	return false;
 };
 
-const findCategoryLabel = (
-	categories: GuideNavCategory[],
-	entry?: GuideContentEntry
-) => {
-	if (!entry) return undefined;
-	for (const category of categories) {
-		for (const section of category.sections) {
-			if (section.items.some((item) => item.id === entry.id)) {
-				return category.titleKey;
-			}
-		}
-	}
-	return undefined;
-};
-
 export default function GuidePage() {
 	const { t } = useTranslation();
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
 	const profileQuery = useProfile();
 	const roles = profileQuery.data?.roles ?? [];
+	const heroRef = useRef<HTMLDivElement | null>(null);
+	const pageRef = useRef<HTMLDivElement | null>(null);
 
 	const accessibleContent = useMemo(
 		() => guideContent.filter((entry) => canAccess(entry.access, roles)),
@@ -90,6 +77,57 @@ export default function GuidePage() {
 			navigate(`/guide/${activeId}`, { replace: true });
 		}
 	}, [activeId, id, navigate]);
+
+	useLayoutEffect(() => {
+		const heroEl = heroRef.current;
+		const pageEl = pageRef.current;
+		if (!heroEl || !pageEl) return;
+
+		const navEl = document.querySelector<HTMLElement>(".navbar");
+		const rootFontSize =
+			parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+		const gap = rootFontSize * 1.5;
+		let rafId = 0;
+
+		const updateSidebarTop = () => {
+			const heroRect = heroEl.getBoundingClientRect();
+			const navHeight = navEl?.getBoundingClientRect().height ?? 0;
+			const minTop = navHeight + gap;
+			const desiredTop = heroRect.bottom + gap;
+			const top = Math.max(desiredTop, minTop);
+			pageEl.style.setProperty("--guide-sidebar-top", `${top}px`);
+		};
+
+		const scheduleUpdate = () => {
+			if (rafId) return;
+			rafId = window.requestAnimationFrame(() => {
+				rafId = 0;
+				updateSidebarTop();
+			});
+		};
+
+		updateSidebarTop();
+
+		const resizeObserver =
+			typeof ResizeObserver !== "undefined"
+				? new ResizeObserver(updateSidebarTop)
+				: null;
+
+		resizeObserver?.observe(heroEl);
+		if (navEl) resizeObserver?.observe(navEl);
+
+		window.addEventListener("scroll", scheduleUpdate, { passive: true });
+		window.addEventListener("resize", scheduleUpdate);
+
+		return () => {
+			if (rafId) {
+				window.cancelAnimationFrame(rafId);
+			}
+			window.removeEventListener("scroll", scheduleUpdate);
+			window.removeEventListener("resize", scheduleUpdate);
+			resizeObserver?.disconnect();
+		};
+	}, []);
 
 	const [searchTerm, setSearchTerm] = useState("");
 	const normalizedSearch = normalize(searchTerm.trim());
@@ -138,17 +176,13 @@ export default function GuidePage() {
 	}, [contentMap, normalizedSearch, roles, t]);
 
 	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const categoryTitleKey = findCategoryLabel(guideNav, activeEntry);
-	const categoryLabel = categoryTitleKey ? t(categoryTitleKey) : undefined;
 
 	return (
-		<div className="guide-page">
-			<div className="guide-hero">
+		<div className="guide-page" ref={pageRef}>
+			<div className="guide-hero" ref={heroRef}>
 				<div className="app-container guide-hero__inner">
 					<div className="guide-hero__text">
-						<span className="guide-hero__badge">{t("guide.page.badge")}</span>
 						<h1>{t("guide.page.title")}</h1>
-						<p>{t("guide.page.subtitle")}</p>
 					</div>
 					<button
 						type="button"
@@ -176,7 +210,6 @@ export default function GuidePage() {
 				/>
 				<GuideContent
 					entry={activeEntry}
-					categoryLabel={categoryLabel}
 					previous={previousEntry}
 					next={nextEntry}
 					onNavigate={(value) => navigate(`/guide/${value}`)}

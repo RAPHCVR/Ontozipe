@@ -8,10 +8,10 @@ type LocaleDictionaries<T extends MessageDefinitions> = {
 };
 
 const buildDictionaries = <T extends MessageDefinitions>(
-	defs: T
+	defs: T,
 ): LocaleDictionaries<T> => {
 	const base = Object.fromEntries(
-		SUPPORTED_LANGUAGES.map((lang) => [lang, {} as { [K in keyof T]: string }])
+		SUPPORTED_LANGUAGES.map((lang) => [lang, {} as { [K in keyof T]: string }]),
 	) as LocaleDictionaries<T>;
 
 	(Object.entries(defs) as Array<[keyof T, T[keyof T]]>).forEach(
@@ -19,7 +19,7 @@ const buildDictionaries = <T extends MessageDefinitions>(
 			SUPPORTED_LANGUAGES.forEach((lang) => {
 				base[lang][key] = translations[lang];
 			});
-		}
+		},
 	);
 
 	return base;
@@ -1850,7 +1850,11 @@ const definitions = {
 		es: "Página {{page}} / {{totalPages}}",
 	},
 	"navbar.guide": { fr: "Guide", en: "Guide", es: "Guía" },
-	"guide.page.badge": { fr: "Front Guide", en: "Front Guide", es: "Front Guide" },
+	"guide.page.badge": {
+		fr: "Front Guide",
+		en: "Front Guide",
+		es: "Front Guide",
+	},
 	"guide.page.title": {
 		fr: "Guide d'utilisation",
 		en: "User guide",
@@ -1908,12 +1912,6 @@ const definitions = {
 		en: "The left menu guides you step by step.",
 		es: "El menú izquierdo te guía paso a paso.",
 	},
-	"guide.readme.title": {
-		fr: "Mode d'emploi express",
-		en: "Quick guide",
-		es: "Guía express",
-	},
-	"guide.steps.title": { fr: "Étapes", en: "Steps", es: "Pasos" },
 	"guide.callout.warning.title": {
 		fr: "⚠️ Points d’attention",
 		en: "⚠️ Watch outs",
@@ -2101,12 +2099,9 @@ const definitions = {
 		es: "Un centro claro para encontrar proyectos y señales.",
 	},
 	"guide.content.profile.start.markdown": {
-		fr:
-			"### Ce que vous voyez\n- Un panorama simple de vos ontologies actives.\n- Des raccourcis vers le tableau de bord et les notifications.\n- Un bouton rapide pour lancer l'assistant.\n\n### Mini-checklist\n- [ ] Ouvrir une ontologie favorite.\n- [ ] Explorer une notification récente.",
-		en:
-			"### What you see\n- A simple panorama of your active ontologies.\n- Shortcuts to the dashboard and notifications.\n- A quick button to launch the assistant.\n\n### Mini checklist\n- [ ] Open a favorite ontology.\n- [ ] Check a recent notification.",
-		es:
-			"### Lo que ves\n- Un panorama simple de tus ontologías activas.\n- Atajos al panel y las notificaciones.\n- Un botón rápido para lanzar el asistente.\n\n### Mini checklist\n- [ ] Abrir una ontología favorita.\n- [ ] Revisar una notificación reciente.",
+		fr: "### Ce que vous voyez\n- Un panorama simple de vos ontologies actives.\n- Des raccourcis vers le tableau de bord et les notifications.\n- Un bouton rapide pour lancer l'assistant.\n\n### Mini-checklist\n- [ ] Ouvrir une ontologie favorite.\n- [ ] Explorer une notification récente.",
+		en: "### What you see\n- A simple panorama of your active ontologies.\n- Shortcuts to the dashboard and notifications.\n- A quick button to launch the assistant.\n\n### Mini checklist\n- [ ] Open a favorite ontology.\n- [ ] Check a recent notification.",
+		es: "### Lo que ves\n- Un panorama simple de tus ontologías activas.\n- Atajos al panel y las notificaciones.\n- Un botón rápido para lanzar el asistente.\n\n### Mini checklist\n- [ ] Abrir una ontología favorita.\n- [ ] Revisar una notificación reciente.",
 	},
 	"guide.content.profile.start.steps.1": {
 		fr: "Ouvrez l'accueil après connexion.",
@@ -2149,12 +2144,9 @@ const definitions = {
 		es: "Una contraseña fuerte, tranquilidad duradera.",
 	},
 	"guide.content.profile.security.markdown": {
-		fr:
-			"### Les bons réflexes\n- Utilisez une phrase simple mais unique.\n- Évitez de réutiliser un mot de passe personnel.\n- Changez-le après une session partagée.\n\n### À faire\n- [ ] Mettre à jour votre mot de passe.\n- [ ] Vérifier votre adresse email.",
-		en:
-			"### Good habits\n- Use a simple but unique phrase.\n- Avoid reusing personal passwords.\n- Change it after a shared session.\n\n### To do\n- [ ] Update your password.\n- [ ] Check your email address.",
-		es:
-			"### Buenos hábitos\n- Usa una frase simple pero única.\n- Evita reutilizar contraseñas personales.\n- Cámbiala después de una sesión compartida.\n\n### Para hacer\n- [ ] Actualizar tu contraseña.\n- [ ] Verificar tu correo.",
+		fr: "### Les bons réflexes\n- Utilisez une phrase simple mais unique.\n- Évitez de réutiliser un mot de passe personnel.\n- Changez-le après une session partagée.\n\n### À faire\n- [ ] Mettre à jour votre mot de passe.\n- [ ] Vérifier votre adresse email.",
+		en: "### Good habits\n- Use a simple but unique phrase.\n- Avoid reusing personal passwords.\n- Change it after a shared session.\n\n### To do\n- [ ] Update your password.\n- [ ] Check your email address.",
+		es: "### Buenos hábitos\n- Usa una frase simple pero única.\n- Evita reutilizar contraseñas personales.\n- Cámbiala después de una sesión compartida.\n\n### Para hacer\n- [ ] Actualizar tu contraseña.\n- [ ] Verificar tu correo.",
 	},
 	"guide.content.profile.security.steps.1": {
 		fr: "Ouvrez Profil puis Sécurité.",
@@ -2197,12 +2189,9 @@ const definitions = {
 		es: "Ve estructura y actividad de un vistazo.",
 	},
 	"guide.content.organization.overview.markdown": {
-		fr:
-			"### Ce que la page raconte\n- Qui pilote l'organisation et les groupes.\n- Les projets visibles pour votre équipe.\n- Les membres actifs du moment.\n\n### À explorer\n- [ ] Ouvrir la liste des organisations.\n- [ ] Identifier le groupe qui vous concerne.",
-		en:
-			"### What the page tells you\n- Who leads the organization and its groups.\n- Which projects are visible to your team.\n- The members active right now.\n\n### Explore\n- [ ] Open the organizations list.\n- [ ] Find the group that matters to you.",
-		es:
-			"### Lo que cuenta la página\n- Quién lidera la organización y los grupos.\n- Qué proyectos ve tu equipo.\n- Los miembros activos del momento.\n\n### Explora\n- [ ] Abrir la lista de organizaciones.\n- [ ] Encontrar el grupo que te importa.",
+		fr: "### Ce que la page raconte\n- Qui pilote l'organisation et les groupes.\n- Les projets visibles pour votre équipe.\n- Les membres actifs du moment.\n\n### À explorer\n- [ ] Ouvrir la liste des organisations.\n- [ ] Identifier le groupe qui vous concerne.",
+		en: "### What the page tells you\n- Who leads the organization and its groups.\n- Which projects are visible to your team.\n- The members active right now.\n\n### Explore\n- [ ] Open the organizations list.\n- [ ] Find the group that matters to you.",
+		es: "### Lo que cuenta la página\n- Quién lidera la organización y los grupos.\n- Qué proyectos ve tu equipo.\n- Los miembros activos del momento.\n\n### Explora\n- [ ] Abrir la lista de organizaciones.\n- [ ] Encontrar el grupo que te importa.",
 	},
 	"guide.content.organization.overview.steps.1": {
 		fr: "Ouvrez l'onglet Organisations.",
@@ -2245,12 +2234,9 @@ const definitions = {
 		es: "Invita rápido y mantén el equipo alineado.",
 	},
 	"guide.content.organization.members.markdown": {
-		fr:
-			"### Ce que vous pouvez faire (Admin)\n- Ajouter ou retirer des membres.\n- Ajuster l'owner lorsque l'équipe évolue.\n- Garder les groupes cohérents.\n\n### Mini-checklist\n- [ ] Préparer la liste des personnes.\n- [ ] Vérifier l'organisation cible.",
-		en:
-			"### What you can do (Admin)\n- Add or remove members.\n- Adjust the owner as the team evolves.\n- Keep groups coherent.\n\n### Mini checklist\n- [ ] Prepare the people list.\n- [ ] Double-check the target org.",
-		es:
-			"### Lo que puedes hacer (Admin)\n- Agregar o quitar miembros.\n- Ajustar el owner cuando el equipo cambia.\n- Mantener los grupos coherentes.\n\n### Mini checklist\n- [ ] Preparar la lista de personas.\n- [ ] Confirmar la organización objetivo.",
+		fr: "### Ce que vous pouvez faire (Admin)\n- Ajouter ou retirer des membres.\n- Ajuster l'owner lorsque l'équipe évolue.\n- Garder les groupes cohérents.\n\n### Mini-checklist\n- [ ] Préparer la liste des personnes.\n- [ ] Vérifier l'organisation cible.",
+		en: "### What you can do (Admin)\n- Add or remove members.\n- Adjust the owner as the team evolves.\n- Keep groups coherent.\n\n### Mini checklist\n- [ ] Prepare the people list.\n- [ ] Double-check the target org.",
+		es: "### Lo que puedes hacer (Admin)\n- Agregar o quitar miembros.\n- Ajustar el owner cuando el equipo cambia.\n- Mantener los grupos coherentes.\n\n### Mini checklist\n- [ ] Preparar la lista de personas.\n- [ ] Confirmar la organización objetivo.",
 	},
 	"guide.content.organization.members.steps.1": {
 		fr: "Ouvrez l'organisation à mettre à jour.",
@@ -2293,12 +2279,9 @@ const definitions = {
 		es: "Ajusta el nombre, el responsable y las referencias sin perturbar al equipo.",
 	},
 	"guide.content.organization.settings.markdown": {
-		fr:
-			"### Ce que vous pouvez ajuster\n- Le nom affiché partout.\n- La personne responsable de l'organisation.\n- Des repères pour garder l'équipe alignée.\n\n### Mini-checklist\n- [ ] Valider le nouveau nom.\n- [ ] Prévenir l'équipe du changement.",
-		en:
-			"### What you can adjust\n- The name shown everywhere.\n- The organization owner.\n- A few cues to keep the team aligned.\n\n### Mini checklist\n- [ ] Validate the new name.\n- [ ] Let the team know.",
-		es:
-			"### Lo que puedes ajustar\n- El nombre que aparece en todas partes.\n- La persona responsable de la organización.\n- Referencias para mantener al equipo alineado.\n\n### Mini checklist\n- [ ] Validar el nuevo nombre.\n- [ ] Avisar al equipo del cambio.",
+		fr: "### Ce que vous pouvez ajuster\n- Le nom affiché partout.\n- La personne responsable de l'organisation.\n- Des repères pour garder l'équipe alignée.\n\n### Mini-checklist\n- [ ] Valider le nouveau nom.\n- [ ] Prévenir l'équipe du changement.",
+		en: "### What you can adjust\n- The name shown everywhere.\n- The organization owner.\n- A few cues to keep the team aligned.\n\n### Mini checklist\n- [ ] Validate the new name.\n- [ ] Let the team know.",
+		es: "### Lo que puedes ajustar\n- El nombre que aparece en todas partes.\n- La persona responsable de la organización.\n- Referencias para mantener al equipo alineado.\n\n### Mini checklist\n- [ ] Validar el nuevo nombre.\n- [ ] Avisar al equipo del cambio.",
 	},
 	"guide.content.organization.settings.steps.1": {
 		fr: "Ouvrez l'organisation à modifier.",
@@ -2341,12 +2324,9 @@ const definitions = {
 		es: "Ver todas las cuentas y ajustar roles sensibles.",
 	},
 	"guide.content.organization.users.markdown": {
-		fr:
-			"### Ce que vous pilotez (SuperAdmin)\n- La liste complète des comptes.\n- Les rôles Admin / SuperAdmin.\n- Les accès sensibles à surveiller.\n\n### À faire\n- [ ] Identifier les comptes actifs.\n- [ ] Ajuster un rôle si besoin.",
-		en:
-			"### What you control (SuperAdmin)\n- The full account list.\n- Admin / SuperAdmin roles.\n- Sensitive access to monitor.\n\n### To do\n- [ ] Spot active accounts.\n- [ ] Adjust a role if needed.",
-		es:
-			"### Lo que controlas (SuperAdmin)\n- La lista completa de cuentas.\n- Los roles Admin / SuperAdmin.\n- Accesos sensibles a vigilar.\n\n### Para hacer\n- [ ] Identificar cuentas activas.\n- [ ] Ajustar un rol si hace falta.",
+		fr: "### Ce que vous pilotez (SuperAdmin)\n- La liste complète des comptes.\n- Les rôles Admin / SuperAdmin.\n- Les accès sensibles à surveiller.\n\n### À faire\n- [ ] Identifier les comptes actifs.\n- [ ] Ajuster un rôle si besoin.",
+		en: "### What you control (SuperAdmin)\n- The full account list.\n- Admin / SuperAdmin roles.\n- Sensitive access to monitor.\n\n### To do\n- [ ] Spot active accounts.\n- [ ] Adjust a role if needed.",
+		es: "### Lo que controlas (SuperAdmin)\n- La lista completa de cuentas.\n- Los roles Admin / SuperAdmin.\n- Accesos sensibles a vigilar.\n\n### Para hacer\n- [ ] Identificar cuentas activas.\n- [ ] Ajustar un rol si hace falta.",
 	},
 	"guide.content.organization.users.steps.1": {
 		fr: "Ouvrez Users depuis l'administration.",
@@ -2389,12 +2369,9 @@ const definitions = {
 		es: "Crea, limpia y gobierna accesos a escala.",
 	},
 	"guide.content.organization.superadmin.markdown": {
-		fr:
-			"### Vos leviers SuperAdmin\n- Créer ou supprimer une organisation.\n- Consulter la liste des utilisateurs.\n- Garder un paysage propre et lisible.\n\n### À garder en tête\n- [ ] Vérifier les dépendances avant suppression.\n- [ ] Uniformiser les noms d'organisations.",
-		en:
-			"### Your SuperAdmin levers\n- Create or remove an organization.\n- Review the user list.\n- Keep the landscape clean and readable.\n\n### Keep in mind\n- [ ] Check dependencies before deletion.\n- [ ] Use a consistent naming pattern.",
-		es:
-			"### Tus palancas SuperAdmin\n- Crear o eliminar una organización.\n- Revisar la lista de usuarios.\n- Mantener el paisaje limpio y claro.\n\n### Ten en cuenta\n- [ ] Revisar dependencias antes de borrar.\n- [ ] Usar un nombre consistente.",
+		fr: "### Vos leviers SuperAdmin\n- Créer ou supprimer une organisation.\n- Consulter la liste des utilisateurs.\n- Garder un paysage propre et lisible.\n\n### À garder en tête\n- [ ] Vérifier les dépendances avant suppression.\n- [ ] Uniformiser les noms d'organisations.",
+		en: "### Your SuperAdmin levers\n- Create or remove an organization.\n- Review the user list.\n- Keep the landscape clean and readable.\n\n### Keep in mind\n- [ ] Check dependencies before deletion.\n- [ ] Use a consistent naming pattern.",
+		es: "### Tus palancas SuperAdmin\n- Crear o eliminar una organización.\n- Revisar la lista de usuarios.\n- Mantener el paisaje limpio y claro.\n\n### Ten en cuenta\n- [ ] Revisar dependencias antes de borrar.\n- [ ] Usar un nombre consistente.",
 	},
 	"guide.content.organization.superadmin.steps.1": {
 		fr: "Ouvrez la section Administration.",
@@ -2437,12 +2414,9 @@ const definitions = {
 		es: "Un espacio ligero para un equipo enfocado.",
 	},
 	"guide.content.group.create.markdown": {
-		fr:
-			"### Pourquoi un groupe\n- Partager des ontologies à un cercle précis.\n- Structurer les projets par équipes.\n- Simplifier la communication.\n\n### Mini-checklist\n- [ ] Choisir un nom court.\n- [ ] Ajouter les membres essentiels.",
-		en:
-			"### Why a group\n- Share ontologies with a precise circle.\n- Structure projects by teams.\n- Simplify communication.\n\n### Mini checklist\n- [ ] Pick a short name.\n- [ ] Add essential members.",
-		es:
-			"### Por qué un grupo\n- Compartir ontologías con un círculo preciso.\n- Organizar proyectos por equipos.\n- Simplificar la comunicación.\n\n### Mini checklist\n- [ ] Elegir un nombre corto.\n- [ ] Agregar miembros clave.",
+		fr: "### Pourquoi un groupe\n- Partager des ontologies à un cercle précis.\n- Structurer les projets par équipes.\n- Simplifier la communication.\n\n### Mini-checklist\n- [ ] Choisir un nom court.\n- [ ] Ajouter les membres essentiels.",
+		en: "### Why a group\n- Share ontologies with a precise circle.\n- Structure projects by teams.\n- Simplify communication.\n\n### Mini checklist\n- [ ] Pick a short name.\n- [ ] Add essential members.",
+		es: "### Por qué un grupo\n- Compartir ontologías con un círculo preciso.\n- Organizar proyectos por equipos.\n- Simplificar la comunicación.\n\n### Mini checklist\n- [ ] Elegir un nombre corto.\n- [ ] Agregar miembros clave.",
 	},
 	"guide.content.group.create.steps.1": {
 		fr: "Ouvrez Groupes puis Nouveau groupe.",
@@ -2485,12 +2459,9 @@ const definitions = {
 		es: "Mantén el círculo al día sin fricción.",
 	},
 	"guide.content.group.members.markdown": {
-		fr:
-			"### Actions rapides\n- Ajouter un membre en un clic.\n- Retirer quelqu'un quand le scope change.\n- Garder un noyau actif.\n\n### À garder en tête\n- [ ] Valider que chacun a l'info utile.\n- [ ] Retirer les anciens accès.",
-		en:
-			"### Quick actions\n- Add a member in one click.\n- Remove someone when scope changes.\n- Keep a small active core.\n\n### Keep in mind\n- [ ] Make sure everyone has useful access.\n- [ ] Remove old access when it is no longer needed.",
-		es:
-			"### Acciones rápidas\n- Agregar un miembro en un clic.\n- Quitar a alguien cuando cambia el alcance.\n- Mantener un núcleo activo.\n\n### Ten en cuenta\n- [ ] Asegurar acceso útil para todos.\n- [ ] Retirar accesos antiguos.",
+		fr: "### Actions rapides\n- Ajouter un membre en un clic.\n- Retirer quelqu'un quand le scope change.\n- Garder un noyau actif.\n\n### À garder en tête\n- [ ] Valider que chacun a l'info utile.\n- [ ] Retirer les anciens accès.",
+		en: "### Quick actions\n- Add a member in one click.\n- Remove someone when scope changes.\n- Keep a small active core.\n\n### Keep in mind\n- [ ] Make sure everyone has useful access.\n- [ ] Remove old access when it is no longer needed.",
+		es: "### Acciones rápidas\n- Agregar un miembro en un clic.\n- Quitar a alguien cuando cambia el alcance.\n- Mantener un núcleo activo.\n\n### Ten en cuenta\n- [ ] Asegurar acceso útil para todos.\n- [ ] Retirar accesos antiguos.",
 	},
 	"guide.content.group.members.steps.1": {
 		fr: "Ouvrez le groupe concerné.",
@@ -2533,12 +2504,9 @@ const definitions = {
 		es: "Navega como en un mapa vivo.",
 	},
 	"guide.content.ontology.explore.markdown": {
-		fr:
-			"### Ce que vous pouvez faire\n- Visualiser les classes et leurs liens.\n- Ouvrir une classe pour voir ses propriétés.\n- Comprendre la structure en quelques clics.\n\n### À essayer\n- [ ] Zoomer sur une zone du graphe.\n- [ ] Cliquer sur une classe clé.",
-		en:
-			"### What you can do\n- Visualize classes and their links.\n- Open a class to see its properties.\n- Understand structure in a few clicks.\n\n### Try it\n- [ ] Zoom into a graph area.\n- [ ] Click a key class.",
-		es:
-			"### Lo que puedes hacer\n- Visualizar clases y sus enlaces.\n- Abrir una clase para ver propiedades.\n- Entender la estructura en pocos clics.\n\n### Prueba\n- [ ] Acercarte a una zona del grafo.\n- [ ] Hacer clic en una clase clave.",
+		fr: "### Ce que vous pouvez faire\n- Visualiser les classes et leurs liens.\n- Ouvrir une classe pour voir ses propriétés.\n- Comprendre la structure en quelques clics.\n\n### À essayer\n- [ ] Zoomer sur une zone du graphe.\n- [ ] Cliquer sur une classe clé.",
+		en: "### What you can do\n- Visualize classes and their links.\n- Open a class to see its properties.\n- Understand structure in a few clicks.\n\n### Try it\n- [ ] Zoom into a graph area.\n- [ ] Click a key class.",
+		es: "### Lo que puedes hacer\n- Visualizar clases y sus enlaces.\n- Abrir una clase para ver propiedades.\n- Entender la estructura en pocos clics.\n\n### Prueba\n- [ ] Acercarte a una zona del grafo.\n- [ ] Hacer clic en una clase clave.",
 	},
 	"guide.content.ontology.explore.steps.1": {
 		fr: "Ouvrez une ontologie depuis l'accueil.",
@@ -2581,12 +2549,9 @@ const definitions = {
 		es: "Abre acceso al grupo correcto, nada más.",
 	},
 	"guide.content.ontology.share.markdown": {
-		fr:
-			"### Ce que le partage change\n- Les groupes choisis voient l'ontologie.\n- Les commentaires suivent les visibilités.\n- Le travail reste clair et sécurisé.\n\n### À faire\n- [ ] Choisir les groupes cibles.\n- [ ] Confirmer les droits.",
-		en:
-			"### What sharing changes\n- Chosen groups can see the ontology.\n- Comments follow visibility rules.\n- Work stays clear and secure.\n\n### To do\n- [ ] Select the target groups.\n- [ ] Confirm the rights.",
-		es:
-			"### Lo que cambia al compartir\n- Los grupos elegidos ven la ontología.\n- Los comentarios siguen la visibilidad.\n- El trabajo queda claro y seguro.\n\n### Para hacer\n- [ ] Seleccionar los grupos objetivo.\n- [ ] Confirmar los permisos.",
+		fr: "### Ce que le partage change\n- Les groupes choisis voient l'ontologie.\n- Les commentaires suivent les visibilités.\n- Le travail reste clair et sécurisé.\n\n### À faire\n- [ ] Choisir les groupes cibles.\n- [ ] Confirmer les droits.",
+		en: "### What sharing changes\n- Chosen groups can see the ontology.\n- Comments follow visibility rules.\n- Work stays clear and secure.\n\n### To do\n- [ ] Select the target groups.\n- [ ] Confirm the rights.",
+		es: "### Lo que cambia al compartir\n- Los grupos elegidos ven la ontología.\n- Los comentarios siguen la visibilidad.\n- El trabajo queda claro y seguro.\n\n### Para hacer\n- [ ] Seleccionar los grupos objetivo.\n- [ ] Confirmar los permisos.",
 	},
 	"guide.content.ontology.share.steps.1": {
 		fr: "Ouvrez l'ontologie à partager.",
@@ -2629,12 +2594,9 @@ const definitions = {
 		es: "SuperAdmin: iniciar o limpiar con confianza.",
 	},
 	"guide.content.ontology.superadmin.markdown": {
-		fr:
-			"### Vos actions\n- Créer une nouvelle ontologie avec un nom clair.\n- Importer un fichier si besoin.\n- Supprimer une ontologie obsolète.\n\n### Checklist rapide\n- [ ] Vérifier le besoin avant création.\n- [ ] Sauvegarder avant suppression.",
-		en:
-			"### Your actions\n- Create a new ontology with a clear name.\n- Import a file if needed.\n- Remove an obsolete ontology.\n\n### Quick checklist\n- [ ] Validate the need before creating.\n- [ ] Back up before deletion.",
-		es:
-			"### Tus acciones\n- Crear una ontología con un nombre claro.\n- Importar un archivo si hace falta.\n- Eliminar una ontología obsoleta.\n\n### Checklist rápida\n- [ ] Validar la necesidad antes de crear.\n- [ ] Guardar respaldo antes de borrar.",
+		fr: "### Vos actions\n- Créer une nouvelle ontologie avec un nom clair.\n- Importer un fichier si besoin.\n- Supprimer une ontologie obsolète.\n\n### Checklist rapide\n- [ ] Vérifier le besoin avant création.\n- [ ] Sauvegarder avant suppression.",
+		en: "### Your actions\n- Create a new ontology with a clear name.\n- Import a file if needed.\n- Remove an obsolete ontology.\n\n### Quick checklist\n- [ ] Validate the need before creating.\n- [ ] Back up before deletion.",
+		es: "### Tus acciones\n- Crear una ontología con un nombre claro.\n- Importar un archivo si hace falta.\n- Eliminar una ontología obsoleta.\n\n### Checklist rápida\n- [ ] Validar la necesidad antes de crear.\n- [ ] Guardar respaldo antes de borrar.",
 	},
 	"guide.content.ontology.superadmin.steps.1": {
 		fr: "Depuis l'accueil, cliquez sur Nouvelle ontologie.",
@@ -2677,12 +2639,9 @@ const definitions = {
 		es: "Haz una pregunta y obtén una dirección clara.",
 	},
 	"guide.content.chatbot.start.markdown": {
-		fr:
-			"### Ce que vous pouvez demander\n- \"Résumé cette ontologie.\"\n- \"Montre-moi les concepts clés.\"\n- \"Explique-moi ce lien simplement.\"\n\n### Mini-checklist\n- [ ] Choisir l'ontologie active.\n- [ ] Poser une question courte.",
-		en:
-			"### What to ask\n- \"Summarize this ontology.\"\n- \"Show me the key concepts.\"\n- \"Explain this link simply.\"\n\n### Mini checklist\n- [ ] Pick the active ontology.\n- [ ] Ask a short question.",
-		es:
-			"### Qué puedes preguntar\n- \"Resume esta ontología.\"\n- \"Muéstrame los conceptos clave.\"\n- \"Explica este enlace de forma simple.\"\n\n### Mini checklist\n- [ ] Elegir la ontología activa.\n- [ ] Hacer una pregunta corta.",
+		fr: '### Ce que vous pouvez demander\n- "Résumé cette ontologie."\n- "Montre-moi les concepts clés."\n- "Explique-moi ce lien simplement."\n\n### Mini-checklist\n- [ ] Choisir l\'ontologie active.\n- [ ] Poser une question courte.',
+		en: '### What to ask\n- "Summarize this ontology."\n- "Show me the key concepts."\n- "Explain this link simply."\n\n### Mini checklist\n- [ ] Pick the active ontology.\n- [ ] Ask a short question.',
+		es: '### Qué puedes preguntar\n- "Resume esta ontología."\n- "Muéstrame los conceptos clave."\n- "Explica este enlace de forma simple."\n\n### Mini checklist\n- [ ] Elegir la ontología activa.\n- [ ] Hacer una pregunta corta.',
 	},
 	"guide.content.chatbot.start.steps.1": {
 		fr: "Choisissez l'ontologie active.",
@@ -2725,12 +2684,9 @@ const definitions = {
 		es: "Síntesis cortas para ahorrar tiempo.",
 	},
 	"guide.content.chatbot.summaries.markdown": {
-		fr:
-			"### Deux usages rapides\n- Résumer un dashboard pour un point d'équipe.\n- Synthétiser des commentaires d'un individu.\n- Gagner du temps avant une réunion.\n\n### À essayer\n- [ ] Ouvrir un dashboard récent.\n- [ ] Demander un résumé de commentaires.",
-		en:
-			"### Two quick uses\n- Summarize a dashboard for the team.\n- Summarize comments on an individual.\n- Save time before a meeting.\n\n### Try it\n- [ ] Open a recent dashboard.\n- [ ] Ask for a comment summary.",
-		es:
-			"### Dos usos rápidos\n- Resumir un dashboard para el equipo.\n- Sintetizar comentarios de un individuo.\n- Ahorrar tiempo antes de una reunión.\n\n### Prueba\n- [ ] Abrir un dashboard reciente.\n- [ ] Pedir un resumen de comentarios.",
+		fr: "### Deux usages rapides\n- Résumer un dashboard pour un point d'équipe.\n- Synthétiser des commentaires d'un individu.\n- Gagner du temps avant une réunion.\n\n### À essayer\n- [ ] Ouvrir un dashboard récent.\n- [ ] Demander un résumé de commentaires.",
+		en: "### Two quick uses\n- Summarize a dashboard for the team.\n- Summarize comments on an individual.\n- Save time before a meeting.\n\n### Try it\n- [ ] Open a recent dashboard.\n- [ ] Ask for a comment summary.",
+		es: "### Dos usos rápidos\n- Resumir un dashboard para el equipo.\n- Sintetizar comentarios de un individuo.\n- Ahorrar tiempo antes de una reunión.\n\n### Prueba\n- [ ] Abrir un dashboard reciente.\n- [ ] Pedir un resumen de comentarios.",
 	},
 	"guide.content.chatbot.summaries.steps.1": {
 		fr: "Ouvrez la section LLM dans le dashboard.",
@@ -2770,7 +2726,7 @@ export const messages = buildDictionaries(definitions);
 
 export const getMessage = (
 	lang: SupportedLanguage,
-	key: TranslationKey
+	key: TranslationKey,
 ): string => {
 	const localeDict = messages[lang] ?? messages[FALLBACK_LANGUAGE];
 	return localeDict[key] ?? key;
