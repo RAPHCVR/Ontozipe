@@ -241,7 +241,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.ontology.share.title",
 		summaryKey: "guide.content.ontology.share.summary",
 		markdownKey: "guide.content.ontology.share.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "21a6vhkZfQY",
 		callouts: [
 			{
 				type: "warning",
@@ -262,7 +262,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.ontology.superadmin.title",
 		summaryKey: "guide.content.ontology.superadmin.summary",
 		markdownKey: "guide.content.ontology.superadmin.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "HRiy5suKTJ4",
 		access: "superadmin",
 		callouts: [
 			{
@@ -284,7 +284,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.chatbot.start.title",
 		summaryKey: "guide.content.chatbot.start.summary",
 		markdownKey: "guide.content.chatbot.start.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "dskuu52ozMY",
 		callouts: [
 			{ type: "warning", textKey: "guide.content.chatbot.start.callouts.warning" },
 			{ type: "tip", textKey: "guide.content.chatbot.start.callouts.tip" },
@@ -302,7 +302,7 @@ export const guideContent: GuideContentEntry[] = [
 		titleKey: "guide.content.chatbot.summaries.title",
 		summaryKey: "guide.content.chatbot.summaries.summary",
 		markdownKey: "guide.content.chatbot.summaries.markdown",
-		youtubeVideoId: DEFAULT_VIDEO_ID,
+		youtubeVideoId: "oTPMzNDVbtg",
 		callouts: [
 			{
 				type: "warning",
