@@ -7,6 +7,8 @@ import { config as loadEnv } from "dotenv";
 import { existsSync } from "fs";
 import { resolve } from "path";
 import { ValidationPipe } from "@nestjs/common";
+import { join } from "path";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
 const envSources = [
     { path: resolve(__dirname, "../../.env"), override: false },
@@ -30,6 +32,40 @@ async function bootstrap() {
     }));
 
     app.enableCors();
+
+    // Expose le dossier uploads en statique
+    app.useStaticAssets(join(__dirname, "..", "uploads"), {
+        prefix: "/uploads/",
+    });
+
+    const swaggerEnabled =
+        String(process.env.SWAGGER_ENABLED ?? "true").toLowerCase() === "true";
+
+    if (swaggerEnabled) {
+        const config = new DocumentBuilder()
+            .setTitle("Ontozipe API")
+            .setDescription("Documentation OpenAPI pour l'API Ontozipe.")
+            .setVersion("1.0.0")
+            .addBearerAuth(
+                {
+                    type: "http",
+                    scheme: "bearer",
+                    bearerFormat: "JWT",
+                    description: "JWT access token",
+                },
+                "bearer"
+            )
+            .build();
+
+        const document = SwaggerModule.createDocument(app, config);
+        SwaggerModule.setup("docs", app, document, {
+            swaggerOptions: {
+                persistAuthorization: true,
+            },
+            jsonDocumentUrl: "/docs-json",
+        });
+    }
+
     await app.listen(4000);
 }
 bootstrap().catch((err) => {

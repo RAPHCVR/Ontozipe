@@ -4,10 +4,11 @@ import { HttpService } from "@nestjs/axios";
 import { OntologyBaseService } from "../common/base-ontology.service";
 import { OrganizationInfo } from "../common/types";
 import { escapeSparqlLiteral } from "../../utils/sparql.utils";
+import { NotificationsService } from "../../notifications/notifications.service";
 
 @Injectable()
 export class OrganizationsService extends OntologyBaseService {
-    constructor(httpService: HttpService) {
+    constructor(httpService: HttpService, private readonly notifications: NotificationsService) {
         super(httpService);
     }
 
@@ -132,6 +133,18 @@ export class OrganizationsService extends OntologyBaseService {
         await this.runUpdate(update);
         this.invalidateOrganizationOwnership();
         this.invalidateUserGroups(ownerIri);
+        if (ownerIri !== requesterIri) {
+            try {
+                await this.notifications.notifyOrganizationMembershipChange({
+                    actorIri: requesterIri,
+                    memberIri: ownerIri,
+                    organizationIri: iri,
+                    action: "add",
+                });
+            } catch (error) {
+                console.error("Failed to notify organization owner assignment", error);
+            }
+        }
         return iri;
     }
 
@@ -142,6 +155,19 @@ export class OrganizationsService extends OntologyBaseService {
     ): Promise<void> {
         if (!(await this.isSuperAdmin(requesterIri))) {
             throw new ForbiddenException("Seul un super‑admin peut modifier l’organisation");
+        }
+
+        let previousOwner: string | null = null;
+        if (newOwner !== undefined) {
+            const data = await this.runSelect(`
+                PREFIX core: <${this.CORE}>
+                SELECT ?o WHERE {
+                  GRAPH <${this.PROJECTS_GRAPH}> {
+                    <${orgIri}> core:ownedBy ?o .
+                  }
+                } LIMIT 1
+            `);
+            previousOwner = data?.results?.bindings?.[0]?.o?.value ?? null;
         }
 
         let deletePart = "";
@@ -167,6 +193,19 @@ export class OrganizationsService extends OntologyBaseService {
         await this.runUpdate(update);
         this.invalidateOrganizationOwnership(orgIri);
         if (newOwner) this.invalidateUserGroups(newOwner);
+        if (previousOwner && newOwner && previousOwner !== newOwner) {
+            this.invalidateUserGroups(previousOwner);
+            try {
+                await this.notifications.notifyOrganizationOwnerChanged({
+                    actorIri: requesterIri,
+                    organizationIri: orgIri,
+                    previousOwnerIri: previousOwner,
+                    newOwnerIri: newOwner,
+                });
+            } catch (error) {
+                console.error("Failed to notify organization owner change", error);
+            }
+        }
     }
 
     async deleteOrganization(requesterIri: string, orgIri: string): Promise<void> {
@@ -198,6 +237,16 @@ export class OrganizationsService extends OntologyBaseService {
         await this.runUpdate(update);
         this.invalidateOrganizationOwnership(orgIri);
         this.invalidateUserGroups(userIri);
+        try {
+            await this.notifications.notifyOrganizationMembershipChange({
+                actorIri: requesterIri,
+                memberIri: userIri,
+                organizationIri: orgIri,
+                action: "add",
+            });
+        } catch (error) {
+            console.error("Failed to notify organization add", error);
+        }
     }
 
     async removeOrganizationMember(requesterIri: string, orgIri: string, userIri: string): Promise<void> {
@@ -238,5 +287,15 @@ export class OrganizationsService extends OntologyBaseService {
         await this.runUpdate(update);
         this.invalidateOrganizationOwnership(orgIri);
         this.invalidateUserGroups(userIri);
+        try {
+            await this.notifications.notifyOrganizationMembershipChange({
+                actorIri: requesterIri,
+                memberIri: userIri,
+                organizationIri: orgIri,
+                action: "remove",
+            });
+        } catch (error) {
+            console.error("Failed to notify organization removal", error);
+        }
     }
 }

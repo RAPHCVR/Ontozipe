@@ -4,10 +4,11 @@ import { HttpService } from "@nestjs/axios";
 import { OntologyBaseService } from "../common/base-ontology.service";
 import { GroupInfo } from "../common/types";
 import { escapeSparqlLiteral } from "../../utils/sparql.utils";
+import { NotificationsService } from "../../notifications/notifications.service";
 
 @Injectable()
 export class GroupsService extends OntologyBaseService {
-    constructor(httpService: HttpService) {
+    constructor(httpService: HttpService, private readonly notifications: NotificationsService) {
         super(httpService);
     }
 
@@ -91,6 +92,20 @@ export class GroupsService extends OntologyBaseService {
         await this.runUpdate(update);
         members.forEach((member) => this.invalidateUserGroups(member));
         this.invalidateGroupOwnership();
+        // Notifier les membres ajout�s � la cr�ation (sauf le cr�ateur)
+        const notifyTargets = members.filter((m) => m !== creatorIri);
+        for (const member of notifyTargets) {
+            try {
+                await this.notifications.notifyGroupMembershipChange({
+                    actorIri: creatorIri,
+                    memberIri: member,
+                    groupIri: iri,
+                    action: "add",
+                });
+            } catch (error) {
+                console.error("Failed to notify group creation member", error);
+            }
+        }
         return iri;
     }
 
@@ -105,6 +120,22 @@ export class GroupsService extends OntologyBaseService {
         await this.runUpdate(update);
         this.invalidateUserGroups(memberIri);
         this.invalidateGroupOwnership(groupIri);
+        try {
+            await this.notifications.notifyGroupMembershipChange({
+                actorIri: requesterIri,
+                memberIri,
+                groupIri,
+                action: "add",
+            });
+            await this.notifications.notifyGroupMembershipBroadcast({
+                actorIri: requesterIri,
+                memberIri,
+                groupIri,
+                action: "add",
+            });
+        } catch (error) {
+            console.error("Failed to notify group add", error);
+        }
     }
 
     async removeGroupMember(requesterIri: string, groupIri: string, memberIri: string): Promise<void> {
@@ -118,6 +149,22 @@ export class GroupsService extends OntologyBaseService {
         await this.runUpdate(update);
         this.invalidateUserGroups(memberIri);
         this.invalidateGroupOwnership(groupIri);
+        try {
+            await this.notifications.notifyGroupMembershipChange({
+                actorIri: requesterIri,
+                memberIri,
+                groupIri,
+                action: "remove",
+            });
+            await this.notifications.notifyGroupMembershipBroadcast({
+                actorIri: requesterIri,
+                memberIri,
+                groupIri,
+                action: "remove",
+            });
+        } catch (error) {
+            console.error("Failed to notify group removal", error);
+        }
     }
 
     async updateGroupLabel(requesterIri: string, groupIri: string, newLabel?: string): Promise<void> {

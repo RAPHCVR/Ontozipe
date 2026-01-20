@@ -36,6 +36,7 @@ core:Comment         a owl:Class ; rdfs:subClassOf schema:Comment .
 core:AccessPolicy    a owl:Class ; rdfs:subClassOf acl:Authorization .
 core:ChatSession     a owl:Class ; rdfs:subClassOf core:Resource .
 core:ChatMessage     a owl:Class ; rdfs:subClassOf core:Resource .
+core:Notification    a owl:Class ; rdfs:subClassOf core:Resource .
 
 core:Organization  a owl:Class ; rdfs:subClassOf foaf:Organization .
 core:Role          a owl:Class .
@@ -62,6 +63,10 @@ core:onResource     a owl:ObjectProperty ; rdfs:domain core:AccessPolicy ; rdfs:
 core:hasRole               a owl:ObjectProperty ; rdfs:domain core:User ; rdfs:range core:Role .
 core:belongsToOrganization a owl:ObjectProperty ; rdfs:domain core:User ; rdfs:range core:Organization .
 core:hasChatSession        a owl:ObjectProperty ; rdfs:domain core:User ; rdfs:range core:ChatSession .
+core:recipient             a owl:ObjectProperty ; rdfs:domain core:Notification ; rdfs:range core:User .
+core:actor                 a owl:ObjectProperty ; rdfs:domain core:Notification ; rdfs:range core:User .
+core:target                a owl:ObjectProperty ; rdfs:domain core:Notification ; rdfs:range core:Resource .
+core:verb                  a owl:ObjectProperty ; rdfs:domain core:Notification ; rdfs:range core:Resource .
 
 core:memberOfOrganization a owl:ObjectProperty ;
     owl:inverseOf core:belongsToOrganization ;
@@ -120,7 +125,7 @@ core:provider   a owl:DatatypeProperty ; rdfs:domain core:Account ; rdfs:range x
 core:email      a owl:DatatypeProperty ; rdfs:domain core:Account ; rdfs:range xsd:string .
 core:isVerified a owl:DatatypeProperty ; rdfs:domain core:Account ; rdfs:range xsd:boolean .
 
-core:createdAt a owl:DatatypeProperty ; rdfs:domain core:Resource, core:Comment ; rdfs:range xsd:dateTime .
+core:createdAt a owl:DatatypeProperty ; rdfs:domain core:Resource, core:Comment, core:Notification ; rdfs:range xsd:dateTime .
 core:updatedAt a owl:DatatypeProperty ; rdfs:domain core:Resource ; rdfs:range xsd:dateTime .
 core:text      a owl:DatatypeProperty ; rdfs:domain core:Comment ; rdfs:range xsd:string .
 core:sessionId     a owl:DatatypeProperty ; rdfs:domain core:ChatSession ; rdfs:range xsd:string .
@@ -129,6 +134,24 @@ core:messageRole   a owl:DatatypeProperty ; rdfs:domain core:ChatMessage ; rdfs:
 core:messageIndex  a owl:DatatypeProperty ; rdfs:domain core:ChatMessage ; rdfs:range xsd:integer .
 core:messageContent a owl:DatatypeProperty ; rdfs:domain core:ChatMessage ; rdfs:range xsd:string .
 core:agentSteps     a owl:DatatypeProperty ; rdfs:domain core:ChatMessage ; rdfs:range xsd:string .
+core:isRead         a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:boolean .
+core:content        a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:string .
+core:link           a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:anyURI .
+core:scope          a owl:DatatypeProperty ; rdfs:domain core:Notification ; rdfs:range xsd:string .
+
+# --- PDF URL ---
+core:pdfUrl a owl:DatatypeProperty ;
+    rdfs:domain core:Resource ;
+    rdfs:range xsd:string ;
+    rdfs:label "URL du fichier PDF"@fr , "PDF file URL"@en ;
+    rdfs:comment "URL du fichier PDF associé à la ressource (stockage ou accès)"@fr .
+
+# --- PDF original file name ---
+core:pdfOriginalName a owl:DatatypeProperty ;
+    rdfs:domain core:Resource ;
+    rdfs:range xsd:string ;
+    rdfs:label "Nom original du fichier PDF"@fr , "Original PDF file name"@en ;
+    rdfs:comment "Nom d'origine du fichier PDF associé à la ressource (pour affichage utilisateur)"@fr .
 
 ##############################
 ## 7. Règles & annotations ###
@@ -142,6 +165,24 @@ core:AccessPolicy    rdfs:label "Politique d’accès"@fr , "Access Policy"@en .
 
 core:Organization rdfs:label "Organisation"@fr , "Organization"@en .
 core:Role         rdfs:label "Rôle"@fr , "Role"@en .
+core:Notification rdfs:label "Notification"@fr , "Notification"@en .
+
+# Types de notification (verbes)
+core:Commented               a core:Resource ; rdfs:label "Commentaire"@fr , "Commented"@en .
+core:AddedToGroup            a core:Resource ; rdfs:label "Ajout au groupe"@fr , "Added to group"@en .
+core:RemovedFromGroup        a core:Resource ; rdfs:label "Retrait du groupe"@fr , "Removed from group"@en .
+core:AddedToOrganization     a core:Resource ; rdfs:label "Ajout ?? l'organisation"@fr , "Added to organization"@en .
+core:RemovedFromOrganization a core:Resource ; rdfs:label "Retrait de l'organisation"@fr , "Removed from organization"@en .
+core:RolesUpdated            a core:Resource ; rdfs:label "R??les mis ?? jour"@fr , "Roles updated"@en .
+  core:UserRegistered          a core:Resource ; rdfs:label "Nouvelle inscription"@fr , "User registered"@en .
+  core:OntologyAccessGranted   a core:Resource ; rdfs:label "Acc??s ontologie"@fr , "Ontology access granted"@en .
+core:OntologyAccessRevoked   a core:Resource ; rdfs:label "Acces ontologie retire"@fr , "Ontology access revoked"@en .
+  core:IndividualCreated       a core:Resource ; rdfs:label "Creation individu"@fr , "Individual created"@en .
+core:IndividualUpdated       a core:Resource ; rdfs:label "Modification individu"@fr , "Individual updated"@en .
+  core:IndividualDeleted       a core:Resource ; rdfs:label "Suppression individu"@fr , "Individual deleted"@en .
+  core:IndividualAccessGranted a core:Resource ; rdfs:label "Acces individu accorde"@fr , "Individual access granted"@en .
+  core:IndividualAccessRevoked a core:Resource ; rdfs:label "Acces individu retire"@fr , "Individual access revoked"@en .
+core:OrganizationOwnerChanged a core:Resource ; rdfs:label "Changement owner organisation"@fr , "Organization owner changed"@en .
 
 ##############################
 # FIN #######################

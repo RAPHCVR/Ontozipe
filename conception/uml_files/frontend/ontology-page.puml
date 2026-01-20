@@ -1,0 +1,30 @@
+@startuml
+title Ontology Page Components
+skinparam componentStyle rectangle
+
+component OntologyPage
+component OntologyGraph
+component IndividualsPanel
+component IndividualCard
+component IndividualFormModal
+component Modal
+component CommentFormModal
+component CommentComponent
+component PdfModal
+component PdfViewer
+component PdfCommentSection
+
+OntologyPage --> OntologyGraph
+OntologyPage --> IndividualsPanel
+OntologyPage --> IndividualFormModal
+OntologyPage --> CommentFormModal
+OntologyPage --> Modal
+
+IndividualsPanel --> IndividualCard
+IndividualCard --> PdfModal
+IndividualCard --> CommentComponent
+
+PdfModal --> PdfViewer
+PdfModal --> PdfCommentSection
+PdfCommentSection --> CommentComponent
+@enduml

@@ -4,10 +4,11 @@ import { HttpService } from "@nestjs/axios";
 import { OntologyBaseService } from "../common/base-ontology.service";
 import { CommentNode } from "../common/types";
 import { escapeSparqlLiteral } from "../../utils/sparql.utils";
+import { NotificationsService } from "../../notifications/notifications.service";
 
 @Injectable()
 export class CommentsService extends OntologyBaseService {
-    constructor(httpService: HttpService) {
+    constructor(httpService: HttpService, private readonly notifications: NotificationsService) {
         super(httpService);
     }
 
@@ -132,6 +133,18 @@ export class CommentsService extends OntologyBaseService {
         `;
 
         await this.runUpdate(update);
+        try {
+            await this.notifications.notifyComment({
+                actorIri: requesterIri,
+                resourceIri: onResource,
+                ontologyIri,
+                body,
+                commentIri: id,
+                replyTo,
+            });
+        } catch (error) {
+            console.error("Failed to notify comment", error);
+        }
     }
 
     async updateComment(
@@ -182,4 +195,3 @@ export class CommentsService extends OntologyBaseService {
         await this.runUpdate(update);
     }
 }
-

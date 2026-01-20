@@ -9,13 +9,29 @@ import {
 	Body,
 	Delete,
 } from "@nestjs/common";
+import {
+	ApiBadRequestResponse,
+	ApiBearerAuth,
+	ApiConflictResponse,
+	ApiForbiddenResponse,
+	ApiNotFoundResponse,
+	ApiOkResponse,
+	ApiOperation,
+	ApiParam,
+	ApiQuery,
+	ApiTags,
+	ApiUnauthorizedResponse,
+} from "@nestjs/swagger";
 import { Request } from "express";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { AuthService } from "./auth.service";
 import {
 	AdminListUsersQueryDto,
+	AdminUsersListResponseDto,
 	AdminUpdateUserDto,
 } from "./dto/admin-user.dto";
+import { OkResponseDto } from "../common/dto/standard-response.dto";
+import { ApiErrorDto } from "../common/dto/api-error.dto";
 
 interface AuthRequest extends Request {
 	user: { sub: string; email?: string };
@@ -61,12 +77,32 @@ const normalizeEncodedIri = (value: string): string => {
 	return iri;
 };
 
+@ApiTags("Users")
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ type: ApiErrorDto })
+@ApiForbiddenResponse({ type: ApiErrorDto })
 @UseGuards(JwtAuthGuard)
 @Controller("auth/admin/users")
 export class AdminUsersController {
 	constructor(private readonly authService: AuthService) {}
 
 	@Get()
+	@ApiOperation({
+		summary: "Lister les utilisateurs (admin)",
+		description: "Necessite le role SuperAdmin.",
+	})
+	@ApiOkResponse({ type: AdminUsersListResponseDto })
+	@ApiBadRequestResponse({ type: ApiErrorDto })
+	@ApiQuery({ name: "page", required: false, type: Number, example: 1 })
+	@ApiQuery({ name: "pageSize", required: false, type: Number, example: 20 })
+	@ApiQuery({ name: "search", required: false, type: String, example: "doe" })
+	@ApiQuery({ name: "onlyUnverified", required: false, type: Boolean, example: true })
+	@ApiQuery({
+		name: "role",
+		required: false,
+		type: String,
+		example: "http://example.org/core#AdminRole",
+	})
 	listUsers(@Req() req: AuthRequest, @Query() query: AdminListUsersQueryDto) {
 		return this.authService.adminListUsers(req.user.sub, {
 			page: query.page ?? 1,
@@ -78,6 +114,19 @@ export class AdminUsersController {
 	}
 
 	@Patch(":encodedIri")
+	@ApiOperation({
+		summary: "Mettre a jour un utilisateur (admin)",
+		description: "Necessite le role SuperAdmin.",
+	})
+	@ApiOkResponse({ type: OkResponseDto })
+	@ApiParam({
+		name: "encodedIri",
+		description: "IRI encode (URL-encoded) de l'utilisateur",
+		example: "http%3A%2F%2Fexample.org%2Fuser%2Falice",
+	})
+	@ApiBadRequestResponse({ type: ApiErrorDto })
+	@ApiConflictResponse({ type: ApiErrorDto })
+	@ApiNotFoundResponse({ type: ApiErrorDto })
 	async updateUser(
 		@Req() req: AuthRequest,
 		@Param("encodedIri") encodedIri: string,
@@ -89,6 +138,18 @@ export class AdminUsersController {
 	}
 
 	@Delete(":encodedIri")
+	@ApiOperation({
+		summary: "Supprimer un utilisateur (admin)",
+		description: "Necessite le role SuperAdmin.",
+	})
+	@ApiOkResponse({ type: OkResponseDto })
+	@ApiParam({
+		name: "encodedIri",
+		description: "IRI encode (URL-encoded) de l'utilisateur",
+		example: "http%3A%2F%2Fexample.org%2Fuser%2Falice",
+	})
+	@ApiBadRequestResponse({ type: ApiErrorDto })
+	@ApiNotFoundResponse({ type: ApiErrorDto })
 	async deleteUser(
 		@Req() req: AuthRequest,
 		@Param("encodedIri") encodedIri: string

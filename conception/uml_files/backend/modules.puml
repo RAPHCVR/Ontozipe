@@ -1,0 +1,108 @@
+@startuml
+title Backend Modules and Dependencies
+skinparam componentStyle rectangle
+
+package "AuthModule" {
+  [AuthController]
+  [AdminUsersController]
+  [AuthService]
+  [JwtStrategy]
+}
+
+package "OntologyModule" {
+  [OntologiesController]
+  [OntologiesService]
+  [IndividualsController]
+  [IndividualsService]
+  [GroupsController]
+  [GroupsService]
+  [OrganizationsController]
+  [OrganizationsService]
+  [CommentsController]
+  [CommentsService]
+}
+
+package "LlmModule" {
+  [LlmController]
+  [LlmService]
+  [ChatHistoryService]
+}
+
+package "DashboardModule" {
+  [DashboardController]
+  [DashboardService]
+}
+
+package "NotificationsModule" {
+  [NotificationsController]
+  [NotificationsService]
+}
+
+package "Common/Utils" {
+  [OntologyBaseService]
+  [rdf.utils]
+  [sparql.utils]
+}
+
+database "Fuseki (SPARQL RDF store)" as Fuseki
+cloud "LLM Provider" as LLM
+folder "Uploads (PDF files)" as Uploads
+
+[AuthController] --> [AuthService]
+[AdminUsersController] --> [AuthService]
+[AuthService] ..> [NotificationsService]
+[AuthService] ..> [sparql.utils]
+[AuthService] --> Fuseki
+
+[OntologiesController] --> [OntologiesService]
+[OntologiesService] ..> [OntologyBaseService]
+[OntologiesService] ..> [sparql.utils]
+[OntologiesService] ..> [rdf.utils]
+[OntologiesService] ..> [NotificationsService]
+[OntologiesService] --> Fuseki
+
+[IndividualsController] --> [IndividualsService]
+[IndividualsService] ..> [OntologyBaseService]
+[IndividualsService] ..> [sparql.utils]
+[IndividualsService] ..> [rdf.utils]
+[IndividualsService] ..> [NotificationsService]
+[IndividualsService] --> Fuseki
+[IndividualsService] --> Uploads
+
+[GroupsController] --> [GroupsService]
+[GroupsService] ..> [OntologyBaseService]
+[GroupsService] ..> [sparql.utils]
+[GroupsService] ..> [rdf.utils]
+[GroupsService] ..> [NotificationsService]
+[GroupsService] --> Fuseki
+
+[OrganizationsController] --> [OrganizationsService]
+[OrganizationsService] ..> [OntologyBaseService]
+[OrganizationsService] ..> [sparql.utils]
+[OrganizationsService] ..> [rdf.utils]
+[OrganizationsService] ..> [NotificationsService]
+[OrganizationsService] --> Fuseki
+
+[CommentsController] --> [CommentsService]
+[CommentsService] ..> [OntologyBaseService]
+[CommentsService] ..> [sparql.utils]
+[CommentsService] ..> [rdf.utils]
+[CommentsService] ..> [NotificationsService]
+[CommentsService] --> Fuseki
+
+[DashboardController] --> [DashboardService]
+[DashboardService] ..> [OntologyBaseService]
+[DashboardService] ..> [sparql.utils]
+[DashboardService] --> Fuseki
+
+[LlmController] --> [LlmService]
+[LlmController] --> [ChatHistoryService]
+[LlmService] ..> [sparql.utils]
+[LlmService] --> LLM
+[LlmService] --> Fuseki
+[ChatHistoryService] --> Fuseki
+
+[NotificationsController] --> [NotificationsService]
+[NotificationsService] ..> [sparql.utils]
+[NotificationsService] --> Fuseki
+@enduml

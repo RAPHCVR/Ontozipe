@@ -27,6 +27,8 @@ import ProfilePage from "./pages/ProfilePage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import DashboardPage from "./pages/DashboardPage";
 import { useProfile } from "./hooks/apiQueries";
+import NotificationsPage from "./pages/NotificationsPage";
+import GuidePage from "./pages/GuidePage";
 
 // ---------------------------------------------------------------------------
 // --- RequireAuth component ---
@@ -73,6 +75,26 @@ export default function App() {
 								<RequireAuth>
 									<Layout>
 										<DashboardPage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
+						<Route
+							path="/guide"
+							element={
+								<RequireAuth>
+									<Layout>
+										<GuidePage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
+						<Route
+							path="/guide/:id"
+							element={
+								<RequireAuth>
+									<Layout>
+										<GuidePage />
 									</Layout>
 								</RequireAuth>
 							}
@@ -124,6 +146,16 @@ export default function App() {
 								<RequireAuth>
 									<Layout>
 										<ProfilePage />
+									</Layout>
+								</RequireAuth>
+							}
+						/>
+						<Route
+							path="/notifications"
+							element={
+								<RequireAuth>
+									<Layout>
+										<NotificationsPage />
 									</Layout>
 								</RequireAuth>
 							}

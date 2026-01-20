@@ -1,0 +1,52 @@
+@startuml
+title Frontend App Structure
+skinparam componentStyle rectangle
+
+component App
+component LanguageProvider
+component AuthProvider
+component BrowserRouter
+component RequireAuth
+component RequireSuperAdmin
+component Layout
+component NavBar
+component Footer
+
+component LoginPage
+component RegisterPage
+component HomePage
+component DashboardPage
+component GuidePage
+component AssistantPage
+component GroupsPage
+component OrganisationsPage
+component OntologyPage
+component ProfilePage
+component NotificationsPage
+component AdminUsersPage
+
+App --> LanguageProvider
+LanguageProvider --> AuthProvider
+AuthProvider --> BrowserRouter
+
+BrowserRouter --> LoginPage : /login
+BrowserRouter --> RegisterPage : /register
+
+BrowserRouter --> RequireAuth
+RequireAuth --> Layout
+Layout --> NavBar
+Layout --> Footer
+
+Layout --> HomePage : /
+Layout --> DashboardPage : /dashboard
+Layout --> GuidePage : /guide, /guide/:id
+Layout --> AssistantPage : /assistant
+Layout --> GroupsPage : /groups
+Layout --> OrganisationsPage : /organisations
+Layout --> OntologyPage : /ontology
+Layout --> ProfilePage : /profile
+Layout --> NotificationsPage : /notifications
+
+RequireSuperAdmin --> AdminUsersPage : /admin/users
+RequireAuth --> RequireSuperAdmin
+@enduml

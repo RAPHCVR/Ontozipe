@@ -10,7 +10,7 @@ export interface RelationFilter {
   predicate: string;                  // Predicate IRI
   direction?: RelationDirection;      // Default "both"
   present: boolean;                   // true => require it, false => require absence
-  object_uris?: string[];             // Only applies for outgoing direction (matches ?node <predicate> ?obj)
+  object_uris?: string[];             // Counterpart URIs filter (outgoing => objects, incoming => subjects)
 }
 
 export interface RelationNameFilter {
@@ -162,19 +162,26 @@ export class NodeRequest {
       const varTag = `__rf${idx}`;
       const objVar = `?__obj_${varTag}`;
       const subjVar = `?__subj_${varTag}`;
-      const objectValues =
+      const outgoingObjectValues =
         rf.object_uris && rf.object_uris.length > 0
           ? `VALUES ${objVar} { ${rf.object_uris.map((u) => ` <${u}>`).join(" ")} }`
+          : "";
+      const incomingSubjectValues =
+        rf.object_uris && rf.object_uris.length > 0
+          ? `VALUES ${subjVar} { ${rf.object_uris.map((u) => ` <${u}>`).join(" ")} }`
           : "";
       // Patterns per direction
       const outgoingPattern = `
         {
-          ${objectValues}
+          ${outgoingObjectValues}
           ?node ${pIri} ${rf.object_uris && rf.object_uris.length > 0 ? objVar : `?__o_${varTag}`} .
         }
       `.trim();
       const incomingPattern = `
-        { ${subjVar} ${pIri} ?node . }
+        {
+          ${incomingSubjectValues}
+          ${subjVar} ${pIri} ?node .
+        }
       `.trim();
       const dirPattern =
         dir === "outgoing"

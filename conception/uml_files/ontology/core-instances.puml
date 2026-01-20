@@ -1,0 +1,46 @@
+@startuml
+title Core Instances (Roles and Notification Verbs)
+skinparam classAttributeIconSize 0
+
+class Role
+class Resource
+
+class SuperAdminRole <<instance>>
+class AdminRole <<instance>>
+class RegularRole <<instance>>
+Role <|-- SuperAdminRole
+Role <|-- AdminRole
+Role <|-- RegularRole
+
+class Commented <<instance>>
+class AddedToGroup <<instance>>
+class RemovedFromGroup <<instance>>
+class AddedToOrganization <<instance>>
+class RemovedFromOrganization <<instance>>
+class RolesUpdated <<instance>>
+class UserRegistered <<instance>>
+class OntologyAccessGranted <<instance>>
+class OntologyAccessRevoked <<instance>>
+class IndividualCreated <<instance>>
+class IndividualUpdated <<instance>>
+class IndividualDeleted <<instance>>
+class IndividualAccessGranted <<instance>>
+class IndividualAccessRevoked <<instance>>
+class OrganizationOwnerChanged <<instance>>
+
+Resource <|-- Commented
+Resource <|-- AddedToGroup
+Resource <|-- RemovedFromGroup
+Resource <|-- AddedToOrganization
+Resource <|-- RemovedFromOrganization
+Resource <|-- RolesUpdated
+Resource <|-- UserRegistered
+Resource <|-- OntologyAccessGranted
+Resource <|-- OntologyAccessRevoked
+Resource <|-- IndividualCreated
+Resource <|-- IndividualUpdated
+Resource <|-- IndividualDeleted
+Resource <|-- IndividualAccessGranted
+Resource <|-- IndividualAccessRevoked
+Resource <|-- OrganizationOwnerChanged
+@enduml

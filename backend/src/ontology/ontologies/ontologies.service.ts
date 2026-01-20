@@ -9,12 +9,14 @@ import { FullSnapshot, NodeData, EdgeData } from "../common/types";
 import { rdfLiteral } from "../common/rdf.utils";
 import { LocalizedLabelDto } from "./dto/localized-label.dto";
 import { IndividualsService } from "../individuals/individuals.service";
+import { NotificationsService } from "../../notifications/notifications.service";
 
 @Injectable()
 export class OntologiesService extends OntologyBaseService {
     constructor(
         httpService: HttpService,
-        private readonly individualsService: IndividualsService
+        private readonly individualsService: IndividualsService,
+        private readonly notifications: NotificationsService
     ) {
         super(httpService);
     }
@@ -51,7 +53,7 @@ export class OntologiesService extends OntologyBaseService {
             langs?: { value: string };
         };
 
-        return (data.results.bindings as Row[]).map((row) => {
+        const results = (data.results.bindings as Row[]).map((row) => {
             const iri = row.proj.value;
             const label = row.label?.value?.trim() || iri.split(/[#/]/).pop() || iri;
             const rawLang = row.labelLang?.value?.trim();
@@ -63,6 +65,7 @@ export class OntologiesService extends OntologyBaseService {
                     : [];
             return { iri, label, labelLang, languages };
         });
+        return results;
     }
 
     async createProject(
@@ -106,15 +109,29 @@ export class OntologiesService extends OntologyBaseService {
         await this.runUpdate(metaTriples);
 
         if (file) {
-            await axios.post(
-                `${this.fusekiBase.replace(/\/?$/, "/data")}?graph=${encodeURIComponent(iri)}`,
-                file.buffer,
-                {
+            const targetUrl = `${this.fusekiBase.replace(/\/?$/, "/data")}?graph=${encodeURIComponent(iri)}`;
+            const contentType = this.guessContentType(file.originalname, file.mimetype);
+            await axios
+                .post(targetUrl, file.buffer, {
                     auth: this.adminAuth,
-                    headers: { "Content-Type": file.mimetype || "application/rdf+xml" },
+                    headers: { "Content-Type": contentType },
                     maxBodyLength: Infinity,
-                }
-            );
+                })
+                .catch((error) => {
+                    throw error;
+                });
+        }
+
+        if (groups.length > 0) {
+            try {
+                await this.notifications.notifyOntologyAccessGranted({
+                    actorIri: requesterIri,
+                    ontologyIri: iri,
+                    groupIris: groups,
+                });
+            } catch (error) {
+                console.error("Failed to notify ontology access", error);
+            }
         }
     }
 
@@ -130,7 +147,21 @@ export class OntologiesService extends OntologyBaseService {
             throw new ForbiddenException("Accès refusé. Vous n'avez pas les droits d'écriture sur cette ontologie.");
         }
 
+        let previousVisibleGroups: string[] | undefined;
+        if (Array.isArray(visibleToGroups)) {
+            const data = await this.runSelect(`
+                PREFIX core: <${this.CORE}>
+                SELECT ?g WHERE {
+                  GRAPH <${this.PROJECTS_GRAPH}> {
+                    <${projectIri}> core:visibleTo ?g .
+                  }
+                }
+            `);
+            previousVisibleGroups = (data?.results?.bindings ?? []).map((b: any) => b.g.value);
+        }
+
         const operations: string[] = [];
+        const targetGroups = Array.isArray(visibleToGroups) ? visibleToGroups : undefined;
 
         if (labels !== undefined || newLabel !== undefined) {
             const normalizedLabels = this.normalizeLabels(labels, newLabel ?? this.iriLocalName(projectIri));
@@ -168,6 +199,36 @@ export class OntologiesService extends OntologyBaseService {
         `;
 
         await this.runUpdate(update);
+        if (Array.isArray(targetGroups)) {
+            const prev = new Set(previousVisibleGroups ?? []);
+            const next = new Set(targetGroups);
+            const added = Array.from(next).filter((g) => !prev.has(g));
+            const removed = Array.from(prev).filter((g) => !next.has(g));
+
+            if (added.length > 0) {
+                try {
+                    await this.notifications.notifyOntologyAccessGranted({
+                        actorIri: requesterIri,
+                        ontologyIri: projectIri,
+                        groupIris: added,
+                    });
+                } catch (error) {
+                    console.error("Failed to notify ontology visibility change (granted)", error);
+                }
+            }
+
+            if (removed.length > 0) {
+                try {
+                    await this.notifications.notifyOntologyAccessRevoked({
+                        actorIri: requesterIri,
+                        ontologyIri: projectIri,
+                        groupIris: removed,
+                    });
+                } catch (error) {
+                    console.error("Failed to notify ontology visibility change (revoked)", error);
+                }
+            }
+        }
     }
 
     async deleteProject(requesterIri: string, projectIri: string): Promise<void> {
@@ -338,5 +399,20 @@ export class OntologiesService extends OntologyBaseService {
             this.individualsService.getAllPersons(preferredLang),
         ]);
         return { graph, individuals, persons };
+    }
+
+    private guessContentType(originalname?: string, mimetype?: string): string {
+        const mime = (mimetype || "").toLowerCase();
+        if (mime && mime !== "application/octet-stream") {
+            return mime;
+        }
+        const name = (originalname || "").toLowerCase();
+        if (name.endsWith(".ttl")) return "text/turtle";
+        if (name.endsWith(".owl") || name.endsWith(".rdf") || name.endsWith(".xml")) return "application/rdf+xml";
+        if (name.endsWith(".jsonld")) return "application/ld+json";
+        if (name.endsWith(".nt")) return "application/n-triples";
+        if (name.endsWith(".nq")) return "application/n-quads";
+        if (name.endsWith(".trig")) return "application/trig";
+        return "application/rdf+xml";
     }
 }

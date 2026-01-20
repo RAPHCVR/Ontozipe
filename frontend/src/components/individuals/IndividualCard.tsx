@@ -9,6 +9,57 @@ import { useTranslation } from "../../language/useTranslation";
 import { useCommentSummary } from "../../hooks/useCommentSummary";
 import SimpleModal from "../SimpleModal";
 import { SparklesIcon } from "@heroicons/react/24/solid";
+import PdfModal from "../pdf/PdfModal";
+import { usePdfModal } from "../../hooks/usePdfModal";
+
+// Fonction utilitaire pour transformer [PDF:nom.pdf] en bouton cliquable et URLs PDF en liens
+export function renderCommentWithPdfLinks(
+	text: string,
+	pdfs: { url: string; originalName: string }[]
+) {
+	// Regex pour détecter les URLs PDF (http/https avec extension .pdf)
+	const pdfUrlRegex = /(https?:\/\/[^\s]+\.pdf)/gi;
+
+	// Première étape : transformer les mentions [PDF:nom.pdf]
+	let processedText = text.split(/(\[PDF:[^\]]+\])/g).map((part, i) => {
+		const match = part.match(/^\[PDF:(.+)\]$/);
+		if (match) {
+			const pdf = pdfs.find((p) => p.originalName === match[1]);
+			if (pdf) {
+				return (
+					<button
+						key={`mention-${i}`}
+						type="button"
+						data-pdf-url={pdf.url}
+						className="pdf-mention-btn">
+						📄 {pdf.originalName}
+					</button>
+				);
+			}
+		}
+		// Deuxième étape : transformer les URLs PDF brutes dans cette partie
+		if (typeof part === "string" && pdfUrlRegex.test(part)) {
+			return part.split(pdfUrlRegex).map((segment, j) => {
+				if (segment.match(pdfUrlRegex)) {
+					return (
+						<a
+							key={`url-${i}-${j}`}
+							href={segment}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="pdf-link">
+							{segment}
+						</a>
+					);
+				}
+				return segment;
+			});
+		}
+		return part;
+	});
+
+	return processedText;
+}
 
 const IndividualCard: React.FC<{
 	ind: IndividualNode;
@@ -53,6 +104,32 @@ const IndividualCard: React.FC<{
 	const commonGroups =
 		userGroups.filter((g) => (ind.visibleTo || []).includes(g.iri)) || [];
 
+	// Extraction des PDFs associés à l'individu (url + nom original)
+	const pdfUrls = useMemo(
+		() =>
+			(ind.properties || []).filter(
+				(p) =>
+					p.predicate === "http://example.org/core#pdfUrl" &&
+					typeof p.value === "string" &&
+					p.value.endsWith(".pdf")
+			),
+		[ind.properties]
+	);
+	const pdfNames = useMemo(
+		() =>
+			(ind.properties || []).filter(
+				(p) =>
+					p.predicate === "http://example.org/core#pdfOriginalName" &&
+					typeof p.value === "string"
+			),
+		[ind.properties]
+	);
+	// Associe chaque url à son nom original (par index)
+	const pdfs = pdfUrls.map((u, i) => ({
+		url: u.value,
+		originalName: pdfNames[i]?.value || u.value.split("/").pop() || u.value,
+	}));
+
 	const uniqueProps = useMemo(() => {
 		const m = new Map<string, (typeof ind.properties)[number]>();
 		for (const p of ind.properties || []) {
@@ -77,7 +154,12 @@ const IndividualCard: React.FC<{
 		(uniqueProps || []).filter((prop) => !prop.predicate.endsWith("label")) ||
 		[];
 
-	const dataProps = filteredProps.filter((p) => p.isLiteral);
+	const dataProps = filteredProps.filter(
+		(p) =>
+			p.isLiteral &&
+			p.predicate !== "http://example.org/core#pdfUrl" &&
+			p.predicate !== "http://example.org/core#pdfOriginalName"
+	);
 	const relProps = filteredProps.filter((p) => !p.isLiteral);
 
 	const hasData = dataProps.length > 0 || relProps.length > 0;
@@ -110,6 +192,42 @@ const IndividualCard: React.FC<{
 
 	// saisie rapide d'un nouveau commentaire
 	const [draftComment, setDraftComment] = useState("");
+	const [showPdfAutocomplete, setShowPdfAutocomplete] = useState(false);
+	const [pdfAutocompleteOptions, setPdfAutocompleteOptions] = useState(pdfs);
+	const [pdfAutocompleteIndex, setPdfAutocompleteIndex] = useState(0);
+
+	// Hook pour gérer la modal PDF
+	const {
+		isOpen: showPdfModal,
+		pdfUrl: currentPdfUrl,
+		pdfName: currentPdfName,
+		openModal: openPdfModal,
+		closeModal: closePdfModal,
+	} = usePdfModal();
+
+	// Détecte le déclencheur d'autocomplétion
+	const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+		const val = e.target.value;
+		setDraftComment(val);
+		// Déclenche si @pdf ou [PDF: est tapé
+		const trigger = /(@pdf|\[PDF:?)$/i;
+		if (trigger.test(val)) {
+			setShowPdfAutocomplete(true);
+			setPdfAutocompleteOptions(pdfs);
+			setPdfAutocompleteIndex(0);
+		} else {
+			setShowPdfAutocomplete(false);
+		}
+	};
+
+	// Insertion de la mention PDF dans le commentaire
+	const insertPdfMention = (pdf: (typeof pdfs)[number]) => {
+		// Remplace le dernier @pdf ou [PDF: par la balise
+		setDraftComment((prev) =>
+			prev.replace(/(@pdf|\[PDF:?)$/i, `[PDF:${pdf.originalName}]`)
+		);
+		setShowPdfAutocomplete(false);
+	};
 
 	const summaryInput = useMemo(() => {
 		if (!open) return null;
@@ -185,278 +303,339 @@ const IndividualCard: React.FC<{
 		await fetchComments();
 	};
 
-	if (!hasData) {
-		return (
+	return (
+		<div
+			ref={cardRef}
+			className={`individual-card has-data${idx % 2 ? " is-alt" : ""}${
+				highlighted ? " is-highlighted" : ""
+			}`}>
 			<div
-				ref={cardRef}
-				className={`p-3 pl-4 border-l-4 border-indigo-500 ${
-					idx % 2 === 0
-						? "bg-white dark:bg-slate-700"
-						: "bg-slate-50 dark:bg-slate-800"
-				} ${
-					highlighted
-						? "ring-2 ring-offset-2 ring-indigo-300 dark:ring-indigo-500"
-						: ""
-				}`}>
-				<span className="font-medium">{formatLabel(ind.label)}</span>
-				<span className="text-gray-400 text-xs ml-2">
-					({t("individual.noDataShort")})
-				</span>
-			</div>
-		);
-	} else {
-		return (
-			<div
-				ref={cardRef}
-				className={`p-3 pl-4 border-l-4 border-indigo-500 space-y-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors ${
-					idx % 2 === 0
-						? "bg-white dark:bg-slate-700"
-						: "bg-slate-50 dark:bg-slate-800"
-				} ${
-					highlighted
-						? "ring-2 ring-offset-2 ring-indigo-300 dark:ring-indigo-500"
-						: ""
-				}`}>
-				<div
-					className="flex items-center justify-between cursor-pointer"
-					onClick={() => setOpen((v: any) => !v)}>
-					<span className="font-medium">{formatLabel(ind.label)}</span>
-					<div className="flex items-center gap-2">
-						{isCreator && (
-							<>
-								<button
-									title={t("common.delete")}
-									onClick={(e) => {
-										e.stopPropagation();
-										if (!window.confirm(t("individual.form.confirmDelete")))
-											return;
-										onDelete(ind);
-									}}
-									className="text-red-500 hover:text-red-700 text-sm">
-									🗑
-								</button>
-								<button
-									title={t("common.edit")}
-									onClick={(e) => {
-										e.stopPropagation();
-										onEdit(ind);
-									}}
-									className="text-indigo-500 hover:text-indigo-700 text-sm">
-									✎
-								</button>
-							</>
-						)}
-						<span className="text-gray-400 dark:text-gray-500">
-							{open ? "▼" : "▶"}
-						</span>
-					</div>
+				className="individual-card__header"
+				onClick={() => setOpen((v: any) => !v)}>
+				<span className="individual-card__title">{formatLabel(ind.label)}</span>
+				<div className="individual-card__actions">
+					{isCreator && (
+						<>
+							<button
+								title={t("common.delete")}
+								onClick={(e) => {
+									e.stopPropagation();
+									if (!window.confirm(t("individual.form.confirmDelete")))
+										return;
+									onDelete(ind);
+								}}
+								className="button button--ghost button--sm individual-card__action--danger">
+								{t("common.delete")}
+							</button>
+							<button
+								title={t("common.edit")}
+								onClick={(e) => {
+									e.stopPropagation();
+									onEdit(ind);
+								}}
+								className="button button--ghost button--sm">
+								{t("common.edit")}
+							</button>
+						</>
+					)}
+					<span className="individual-card__caret">{open ? "▼" : "▶"}</span>
 				</div>
-				{open && (
-					<div className="space-y-3">
-						{/* ---- DATA SECTION ---- */}
-						{dataProps.length > 0 && (
-							<div>
-								<h4 className="text-xs font-semibold text-indigo-500 mb-1">
-									Données
-								</h4>
-								<div className="overflow-x-auto">
-									<table className="text-xs min-w-full">
-										<tbody className="divide-y divide-slate-600/30 dark:divide-slate-600/60">
-											{dataProps.map((prop, idx) => (
-												<tr key={idx} className="align-top">
-													<th className="py-1 pr-2 text-left font-medium whitespace-nowrap">
-														{formatLabel(
-															prop.predicateLabel ||
-																prop.predicate.split(/[#/]/).pop() ||
-																""
-														)}
-													</th>
-													<td className="py-1 break-all">
-														{(() => {
-															const isURL =
-																typeof prop.value === "string" &&
-																prop.value.startsWith("http");
-															if (isURL) {
-																return (
-																	<a
-																		href={prop.value}
-																		target="_blank"
-																		rel="noopener noreferrer"
-																		className="text-sky-600 hover:underline">
-																		{prop.valueLabel || prop.value}
-																	</a>
-																);
-															}
-															return prop.value;
-														})()}
-													</td>
-												</tr>
-											))}
-										</tbody>
-									</table>
-								</div>
+			</div>
+			{open && (
+				<div className="individual-card__body">
+					{/* ---- GROUPES COMMUNS ---- */}
+					{commonGroups.length > 0 && (
+						<div className="individual-card__section">
+							<h4 className="individual-card__section-title">
+								{t("individual.commonGroups")}
+							</h4>
+							<div className="individual-card__chips">
+								{commonGroups.map((g, idx) => (
+									<span key={idx} className="group-chip">
+										{formatLabel(g.label || g.iri.split(/[#/]/).pop() || g.iri)}
+									</span>
+								))}
 							</div>
-						)}
+						</div>
+					)}
 
-						{/* ---- RELATIONS SECTION ---- */}
-						{relProps.length > 0 && (
-							<div>
-								<h4 className="text-xs font-semibold text-emerald-600 mb-1">
-									{t("individual.relations.title")}
-								</h4>
-								<div className="flex flex-wrap gap-1">
-									{relProps.map((prop, idx) => {
-										const target =
-											snapshot.individuals.find((t) => t.id === prop.value) ||
-											snapshot.persons.find((t) => t.id === prop.value);
+					{/* ---- RELATIONS SECTION ---- */}
+					{relProps.length > 0 && (
+						<div className="individual-card__section individual-card__section--relations">
+							<h4 className="individual-card__section-title">
+								{t("individual.relations.title")}
+							</h4>
+							<div className="individual-card__chips">
+								{relProps.map((prop, idx) => {
+									const target =
+										snapshot.individuals.find((t) => t.id === prop.value) ||
+										snapshot.persons.find((t) => t.id === prop.value);
 
-										const hasData =
-											!!target && (target.properties?.length ?? 0) > 0;
+									const hasData =
+										!!target && (target.properties?.length ?? 0) > 0;
 
-										const label = formatLabel(
-											target?.label ||
-												prop.valueLabel ||
-												(prop.value.startsWith("http")
-													? prop.value.split(/[#/]/).pop() || prop.value
-													: prop.value)
-										);
+									const label = formatLabel(
+										target?.label ||
+											prop.valueLabel ||
+											(prop.value.startsWith("http")
+												? prop.value.split(/[#/]/).pop() || prop.value
+												: prop.value)
+									);
 
-										const chipClass = hasData
-											? "bg-emerald-700/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300 hover:bg-emerald-700/20"
-											: "bg-slate-400/10 text-slate-600 dark:bg-slate-400/10 dark:text-slate-300 border border-dashed border-slate-400/50 hover:bg-slate-400/20";
+									const title = hasData
+										? t("individual.relations.openWithData")
+										: t("individual.relations.openWithoutData");
 
-										const title = hasData
-											? t("individual.relations.openWithData")
-											: t("individual.relations.openWithoutData");
+									return (
+										<span key={idx} className="relation-chip__wrapper">
+											<button
+												onClick={() => target && onShow(target)}
+												className={
+													"relation-chip" + (hasData ? " has-data" : " no-data")
+												}
+												title={title}>
+												<span className="relation-chip__bullet">
+													{hasData ? "●" : "○"}
+												</span>
+												{label}
+											</button>
+											<span className="relation-chip__tooltip">
+												{formatLabel(
+													prop.predicateLabel ||
+														prop.predicate.split(/[#/]/).pop() ||
+														""
+												)}
+											</span>
+										</span>
+									);
+								})}
+							</div>
+						</div>
+					)}
+					{relProps.length === 0 && (
+						<div className="individual-card__section individual-card__section--relations individual-card__empty">
+							<p className="individual-card__muted">
+								{t("individual.relations.empty")}
+							</p>
+						</div>
+					)}
 
-										return (
-											<span key={idx} className="relative group">
-												<button
-													onClick={() => target && onShow(target)}
-													className={`${chipClass} text-xs px-2 py-0.5 rounded-full transition-colors cursor-pointer`}
-													title={title}>
-													{hasData ? "● " : "○ "}
-													{label}
-												</button>
-												<span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 invisible group-hover:visible opacity-100 text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap z-20 bg-gray-800 text-white">
+					{/* ---- DATA SECTION ---- */}
+					{dataProps.length > 0 && (
+						<div className="individual-card__section individual-card__section--data">
+							<h4 className="individual-card__section-title">
+								{t("individual.data.title")}
+							</h4>
+							<div className="individual-card__table-wrapper">
+								<table className="individual-card__table">
+									<tbody>
+										{dataProps.map((prop, idx) => (
+											<tr key={idx}>
+												<th>
 													{formatLabel(
 														prop.predicateLabel ||
 															prop.predicate.split(/[#/]/).pop() ||
 															""
 													)}
-												</span>
-											</span>
-										);
-									})}
-								</div>
-							</div>
-						)}
-
-						{/* ---- GROUPES COMMUNS ---- */}
-						{commonGroups.length > 0 && (
-							<div>
-								<h4 className="text-xs font-semibold text-purple-600 mb-1">
-									{t("individual.commonGroups")}
-								</h4>
-								<div className="flex flex-wrap gap-1">
-									{commonGroups.map((g, idx) => (
-										<span
-											key={idx}
-											className="bg-purple-700/10 text-purple-700 dark:bg-purple-400/10 dark:text-purple-300 text-xs px-2 py-0.5 rounded-full">
-											{formatLabel(
-												g.label || g.iri.split(/[#/]/).pop() || g.iri
-											)}
-										</span>
-									))}
-								</div>
-							</div>
-						)}
-
-						{/* ---- COMMENTAIRES ---- */}
-						<div>
-							<h4 className="text-xs font-semibold text-yellow-600 mb-1">
-								{t("individual.comments.title")}
-							</h4>
-							<div className="flex items-center gap-2 mb-2">
-								<button
-									type="button"
-									className="dashboard-summary__button"
-									onClick={() => setSummaryOpen(true)}>
-									<SparklesIcon className="h-4 w-4" aria-hidden="true" />
-									{t("dashboard.section.summary")}
-								</button>
-							</div>
-							{/* zone de saisie */}
-							<div className="flex items-start gap-2 mb-2">
-								<textarea
-									value={draftComment}
-									onChange={(e) => setDraftComment(e.target.value)}
-									placeholder={t("individual.comments.placeholder")}
-									rows={2}
-									className="flex-1 text-xs border rounded px-2 py-1 dark:bg-slate-800 dark:border-slate-600 resize-none"
-								/>
-								<button
-									disabled={!draftComment.trim()}
-									onClick={() => {
-										if (draftComment.trim()) {
-											handleCreateComment(draftComment.trim());
-											setDraftComment("");
-										}
-									}}
-									className="self-stretch px-3 py-1 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white text-xs rounded">
-									{t("common.send")}
-								</button>
-							</div>
-							<div>
-								{comments
-									.filter((c) => !c.replyTo)
-									.map((c) => (
-										<CommentBlock
-											key={c.id}
-											comment={c}
-											allComments={comments}
-											snapshot={snapshot}
-											onAddReply={(parent, body) =>
-												handleCreateComment(body, parent)
-											}
-											onEdit={handleEditComment}
-											onDelete={handleDeleteComment}
-											currentUserIri={currentUserIri || ""}
-										/>
-									))}
+												</th>
+												<td>
+													{(() => {
+														const isURL =
+															typeof prop.value === "string" &&
+															prop.value.startsWith("http");
+														if (isURL) {
+															return (
+																<a
+																	href={prop.value}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	className="pdf-link">
+																	{prop.valueLabel || prop.value}
+																</a>
+															);
+														}
+														return prop.value;
+													})()}
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
 							</div>
 						</div>
-
-						{summaryOpen && (
-							<SimpleModal
-								title={t("dashboard.section.summary")}
-								onClose={() => setSummaryOpen(false)}
-								onSubmit={() => setSummaryOpen(false)}>
-								{summaryQuery.isLoading && (
-									<div className="flex items-center gap-2 text-sm text-gray-500">
-										<div className="page-state__spinner" aria-hidden />
-									</div>
-								)}
-								{summaryQuery.isError && (
-									<p className="text-sm text-gray-500">
-										{t("dashboard.state.error")}
-									</p>
-								)}
-								{summaryQuery.data && (
-									<p className="text-sm leading-relaxed">{summaryQuery.data}</p>
-								)}
-							</SimpleModal>
-						)}
-
-						{dataProps.length === 0 && relProps.length === 0 && (
-							<p className="text-xs italic text-gray-500">
-								{t("individual.noData")}
+					)}
+					{dataProps.length === 0 && (
+						<div className="individual-card__section individual-card__section--data individual-card__empty">
+							<p className="individual-card__muted">
+								{t("individual.data.empty")}
 							</p>
-						)}
+						</div>
+					)}
+
+					{/* ---- PDFS ASSOCIÉS ---- */}
+					{pdfs.length > 0 && (
+						<div className="individual-card__section">
+							<h4 className="individual-card__section-title">
+								{t("individual.pdf.associated")}
+							</h4>
+							<ul className="individual-card__list">
+								{pdfs.map((pdf, idx) => (
+									<li key={idx}>
+										<button
+											type="button"
+											onClick={() => openPdfModal(pdf.url, pdf.originalName)}
+											className="pdf-link pdf-link--button">
+											{pdf.originalName}
+										</button>
+										<span className="individual-card__muted individual-card__hint">
+											{t("individual.pdf.hint")}
+										</span>
+									</li>
+								))}
+							</ul>
+						</div>
+					)}
+
+					{/* ---- COMMENTAIRES ---- */}
+					<div className="individual-card__section individual-card__section--comments">
+						<div className="individual-card__section-header">
+							<h4 className="individual-card__section-title">
+								{t("individual.comments.title")}
+							</h4>
+						</div>
+						<div className="individual-comments__composer">
+							<textarea
+								value={draftComment}
+								onChange={(e) => setDraftComment(e.target.value)}
+								placeholder={t("individual.comments.placeholder")}
+								rows={2}
+								className="comment-block__textarea"
+								onKeyDown={(e) => {
+									if (
+										showPdfAutocomplete &&
+										pdfAutocompleteOptions.length > 0
+									) {
+										if (e.key === "ArrowDown") {
+											e.preventDefault();
+											setPdfAutocompleteIndex(
+												(i) => (i + 1) % pdfAutocompleteOptions.length
+											);
+										} else if (e.key === "ArrowUp") {
+											e.preventDefault();
+											setPdfAutocompleteIndex(
+												(i) =>
+													(i - 1 + pdfAutocompleteOptions.length) %
+													pdfAutocompleteOptions.length
+											);
+										} else if (e.key === "Enter") {
+											e.preventDefault();
+											insertPdfMention(
+												pdfAutocompleteOptions[pdfAutocompleteIndex]
+											);
+										} else if (e.key === "Escape") {
+											setShowPdfAutocomplete(false);
+										}
+									}
+								}}
+							/>
+							{showPdfAutocomplete && pdfAutocompleteOptions.length > 0 && (
+								<ul className="comment-suggestions">
+									{pdfAutocompleteOptions.map((pdf, idx) => (
+										<li
+											key={pdf.url}
+											className={
+												"comment-suggestions__item" +
+												(idx === pdfAutocompleteIndex ? " is-active" : "")
+											}
+											onMouseDown={() => insertPdfMention(pdf)}>
+											{pdf.originalName}
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+						<button
+							disabled={!draftComment.trim()}
+							onClick={() => {
+								if (draftComment.trim()) {
+									handleCreateComment(draftComment.trim());
+									setDraftComment("");
+								}
+							}}
+							className="button button--primary button--sm individual-comments__send">
+							{t("common.send")}
+						</button>
+						<button
+							type="button"
+							className="button button--ghost button--sm"
+							onClick={() => setSummaryOpen(true)}>
+							<SparklesIcon className="icon--sm" aria-hidden="true" />
+							{t("dashboard.section.summary")}
+						</button>
+						<div>
+							{comments
+								.filter((c) => !c.replyTo)
+								.map((c) => (
+									<CommentBlock
+										key={c.id}
+										comment={c}
+										allComments={comments}
+										snapshot={snapshot}
+										onAddReply={(parent, body) =>
+											handleCreateComment(body, parent)
+										}
+										onEdit={handleEditComment}
+										onDelete={handleDeleteComment}
+										currentUserIri={currentUserIri || ""}
+										ontologyIri={ontologyIri}
+										availablePdfs={pdfs}
+										renderBody={(body: string) =>
+											renderCommentWithPdfLinks(body, pdfs)
+										}
+									/>
+								))}
+							{comments.filter((c) => !c.replyTo).length === 0 && (
+								<p className="individual-card__muted">
+									{t("individual.comments.empty")}
+								</p>
+							)}
+						</div>
 					</div>
-				)}
-			</div>
-		);
-	}
+
+					{summaryOpen && (
+						<SimpleModal
+							title={t("dashboard.section.summary")}
+							onClose={() => setSummaryOpen(false)}
+							onSubmit={() => setSummaryOpen(false)}>
+							{summaryQuery.isLoading && (
+								<div className="individual-card__muted">
+									<div className="page-state__spinner" aria-hidden />
+								</div>
+							)}
+							{summaryQuery.isError && (
+								<p className="individual-card__muted">
+									{t("dashboard.state.error")}
+								</p>
+							)}
+							{summaryQuery.data && (
+								<p className="individual-card__summary-text">
+									{summaryQuery.data}
+								</p>
+							)}
+						</SimpleModal>
+					)}
+				</div>
+			)}
+			{/* Modal PDF unifiée avec commentaires */}
+			<PdfModal
+				isOpen={showPdfModal}
+				pdfUrl={currentPdfUrl}
+				pdfName={currentPdfName}
+				onClose={closePdfModal}
+				ontologyIri={ontologyIri}
+				snapshot={snapshot}
+			/>
+		</div>
+	);
 };
 export default IndividualCard;

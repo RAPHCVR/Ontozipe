@@ -1,0 +1,20 @@
+@startuml
+title System Context
+skinparam componentStyle rectangle
+
+actor "User" as User
+node "Browser" as Browser
+component "React Frontend" as Frontend
+component "NestJS API" as Backend
+
+database "Fuseki (SPARQL RDF store)" as Fuseki
+cloud "LLM Provider (OpenAI or Ollama)" as LLM
+folder "Uploads (PDF files)" as Uploads
+
+User --> Browser : interact
+Browser --> Frontend : UI
+Frontend --> Backend : REST + SSE (JWT)
+Backend --> Fuseki : SPARQL query/update
+Backend --> Uploads : store/read PDFs
+Backend --> LLM : chat + summaries
+@enduml

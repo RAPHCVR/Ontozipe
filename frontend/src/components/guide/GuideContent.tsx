@@ -1,0 +1,154 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { HiOutlineArrowLeft, HiOutlineArrowRight } from "react-icons/hi";
+import { useTranslation } from "../../language/useTranslation";
+import type { TranslationKey } from "../../language/messages";
+import type {
+	GuideContentEntry,
+	GuideCalloutType,
+} from "../../guide/guideTypes";
+import GuideVideo from "./GuideVideo";
+
+type GuideContentProps = {
+	entry?: GuideContentEntry;
+	previous?: GuideContentEntry;
+	next?: GuideContentEntry;
+	onNavigate?: (id: string) => void;
+};
+
+const calloutTitleKey: Record<GuideCalloutType, TranslationKey> = {
+	warning: "guide.callout.warning.title",
+	tip: "guide.callout.tip.title",
+	note: "guide.callout.note.title",
+};
+
+const resolveVideoId = (entry?: GuideContentEntry): string | undefined => {
+	if (!entry) return undefined;
+	if (entry.youtubeVideoId) return entry.youtubeVideoId;
+	if (!entry.youtubeUrl) return undefined;
+	try {
+		const url = new URL(entry.youtubeUrl);
+		if (url.hostname.includes("youtu.be")) {
+			return url.pathname.replace("/", "");
+		}
+		return url.searchParams.get("v") ?? undefined;
+	} catch {
+		return undefined;
+	}
+};
+
+export default function GuideContent({
+	entry,
+	previous,
+	next,
+	onNavigate,
+}: GuideContentProps) {
+	const { t } = useTranslation();
+
+	if (!entry) {
+		return (
+			<div className="guide-content__empty card">
+				<h2>{t("guide.empty.title")}</h2>
+				<p>{t("guide.empty.subtitle")}</p>
+			</div>
+		);
+	}
+
+	const markdown = t(entry.markdownKey);
+	const videoId = resolveVideoId(entry);
+
+	return (
+		<div className="guide-content" key={entry.id}>
+			<div className="guide-content__header">
+				<h2>{t(entry.titleKey)}</h2>
+			</div>
+
+			<div className="guide-content__layout">
+				<div className="guide-content__main">
+					<div className="guide-markdown card">
+						<ReactMarkdown remarkPlugins={[remarkGfm]}>
+							{markdown}
+						</ReactMarkdown>
+						<div className="guide-markdown__media">
+							<GuideVideo videoId={videoId} />
+						</div>
+
+						{entry.steps && entry.steps.length > 0 && (
+							<div className="guide-steps guide-steps--inline">
+								<ol>
+									{entry.steps.map((step, index) => (
+										<li key={`${entry.id}-step-${index}`}>
+											<span className="guide-steps__index">{index + 1}</span>
+											<span className="guide-steps__text">
+												{t(step.textKey)}
+											</span>
+											{step.timestamp && (
+												<span className="guide-steps__timestamp">
+													{step.timestamp}
+												</span>
+											)}
+										</li>
+									))}
+								</ol>
+							</div>
+						)}
+					</div>
+
+					{entry.callouts && entry.callouts.length > 0 && (
+						<div className="guide-callouts">
+							{entry.callouts.map((callout, index) => (
+								<div
+									key={`${entry.id}-callout-${index}`}
+									className={`guide-callout guide-callout--${callout.type}`}>
+									<div className="guide-callout__title">
+										{t(calloutTitleKey[callout.type])}
+									</div>
+									<p>{t(callout.textKey)}</p>
+								</div>
+							))}
+						</div>
+					)}
+
+					{(previous || next) && (
+						<div className="guide-content__nav">
+							<button
+								type="button"
+								className="guide-content__nav-button guide-content__nav-button--prev"
+								disabled={!previous}
+								onClick={() => previous && onNavigate?.(previous.id)}>
+								<span className="guide-content__nav-meta">
+									<HiOutlineArrowLeft className="guide-content__nav-icon" />
+									<span className="guide-content__nav-label">
+										{t("common.pagination.previous")}
+									</span>
+								</span>
+								{previous && (
+									<span className="guide-content__nav-title">
+										{t(previous.titleKey)}
+									</span>
+								)}
+							</button>
+							<button
+								type="button"
+								className="guide-content__nav-button guide-content__nav-button--next"
+								disabled={!next}
+								onClick={() => next && onNavigate?.(next.id)}>
+								<span className="guide-content__nav-meta">
+									<span className="guide-content__nav-label">
+										{t("common.pagination.next")}
+									</span>
+									<HiOutlineArrowRight className="guide-content__nav-icon" />
+								</span>
+								{next && (
+									<span className="guide-content__nav-title">
+										{t(next.titleKey)}
+									</span>
+								)}
+							</button>
+						</div>
+					)}
+				</div>
+			</div>
+		</div>
+	);
+}

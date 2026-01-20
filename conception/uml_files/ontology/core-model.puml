@@ -1,0 +1,83 @@
+@startuml
+title Core Ontology Model (core.ttl)
+skinparam classAttributeIconSize 0
+
+class User
+class Account {
+  provider: string
+  email: string
+  isVerified: boolean
+}
+class Organization
+class Group
+class Membership
+class Role
+class Resource {
+  createdAt: dateTime
+  updatedAt: dateTime
+  pdfUrl: string
+  pdfOriginalName: string
+}
+class OntologyProject
+class Comment {
+  text: string
+  createdAt: dateTime
+}
+class AccessPolicy
+class ChatSession {
+  sessionId: string
+  sessionTitle: string
+}
+class ChatMessage {
+  messageRole: string
+  messageIndex: integer
+  messageContent: string
+  agentSteps: string
+}
+class Notification {
+  createdAt: dateTime
+  isRead: boolean
+  content: string
+  link: anyURI
+  scope: string
+}
+
+Resource <|-- OntologyProject
+Resource <|-- ChatSession
+Resource <|-- ChatMessage
+Resource <|-- Notification
+
+User --> Account : hasAccount
+Group --> User : hasMember
+Membership --> User : member
+Membership --> Group : group
+Resource --> OntologyProject : inProject
+Resource --> User : createdBy
+Resource --> User : updatedBy
+Resource --> Group : visibleTo
+Resource --> Comment : hasComment
+Comment --> Resource : commentOf
+Comment --> User : author
+Comment --> Comment : replyTo
+AccessPolicy --> Group : allowRead
+AccessPolicy --> Group : allowEdit
+AccessPolicy --> Resource : onResource
+User --> Role : hasRole
+User --> Organization : belongsToOrganization
+Organization --> User : ownedBy
+Organization --> User : memberOfOrganization
+Group --> Organization : inOrganization
+Organization --> Group : organizationOf
+User --> ChatSession : hasChatSession
+ChatSession --> ChatMessage : hasChatMessage
+ChatMessage --> ChatSession : belongsToSession
+ChatSession --> OntologyProject : sessionForOntology
+Notification --> User : recipient
+Notification --> User : actor
+Notification --> Resource : target
+Notification --> Resource : verb
+
+note "Restrictions:\n- Group inOrganization some Organization\n- Organization ownedBy some User" as N1
+Group .. N1
+Organization .. N1
+@enduml
